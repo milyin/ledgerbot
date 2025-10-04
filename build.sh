@@ -33,6 +33,6 @@ if [ ! -d "target/openssl-3.6.0" ]; then
   cd ../../
 fi
 
-OPENSSL_DIR=$PWD/target/openssl-3.6.0/install cargo build --target=x86_64-unknown-linux-gnu --release
+OPENSSL_DIR=$PWD/target/openssl-3.6.0/install cargo build --target=x86_64-unknown-linux-gnu $CARGO_BUILD_FLAGS
 strip target/x86_64-unknown-linux-gnu/release/ledgerbot
 scp target/x86_64-unknown-linux-gnu/release/ledgerbot ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/ledgerbot
