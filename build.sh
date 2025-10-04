@@ -17,6 +17,22 @@ if [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_PATH" ]; then
   exit 1
 fi
 
-OPENSSL_DIR=$(brew --prefix openssl) cargo build --target=x86_64-unknown-linux-gnu --release
+# download openssl source code from 
+# https://github.com/openssl/openssl/releases/download/openssl-3.6.0/openssl-3.6.0.tar.gz 
+# into target/openssl if it does not exist there yet
+if [ ! -d "target/openssl-3.6.0" ]; then
+  mkdir -p target
+  cd target
+  curl -LO https://github.com/openssl/openssl/releases/download/openssl-3.6.0/openssl-3.6.0.tar.gz
+  tar -xzf openssl-3.6.0.tar.gz
+  cd openssl-3.6.0
+  CC=x86_64-linux-gnu-gcc LD=x86_64-linux-gnu-ld \
+  ./config linux-x86_64 --prefix=$(pwd)/install no-asm no-engine no-shared
+  make
+  make install
+  cd ../../
+fi
+
+OPENSSL_DIR=$PWD/target/openssl-3.6.0/install cargo build --target=x86_64-unknown-linux-gnu --release
 strip target/x86_64-unknown-linux-gnu/release/ledgerbot
 scp target/x86_64-unknown-linux-gnu/release/ledgerbot ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/ledgerbot
