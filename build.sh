@@ -34,5 +34,15 @@ if [ ! -d "target/openssl-3.6.0" ]; then
 fi
 
 OPENSSL_DIR=$PWD/target/openssl-3.6.0/install cargo build --target=x86_64-unknown-linux-gnu $CARGO_BUILD_FLAGS
-strip target/x86_64-unknown-linux-gnu/release/ledgerbot
-scp target/x86_64-unknown-linux-gnu/release/ledgerbot ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/ledgerbot
+
+# Determine the build directory based on CARGO_BUILD_FLAGS
+if [[ "$CARGO_BUILD_FLAGS" == *"--release"* ]]; then
+  BUILD_DIR="release"
+else
+  BUILD_DIR="debug"
+fi
+
+scp target/x86_64-unknown-linux-gnu/$BUILD_DIR/ledgerbot ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/ledgerbot
+
+# make ls command to show the deployed binary details
+ssh ${DEPLOY_USER}@${DEPLOY_HOST} "ls -lh ${DEPLOY_PATH}/ledgerbot"
