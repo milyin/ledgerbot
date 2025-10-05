@@ -1,9 +1,9 @@
 use clap::Parser;
 use regex::Regex;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use teloxide::{Bot, prelude::Requester as _, types::{Message, ChatId}, RequestError};
-use tokio::time::sleep;
+use std::sync::Arc;
+use teloxide::{prelude::*, utils::command::BotCommands};
+use tokio::{sync::Mutex, time::sleep};
 
 const PREDEFINED_BOT_TOKEN: Option<&str> = option_env!("PREDEFINED_BOT_TOKEN");
 const BOT_TOKEN_HELP: &str = if PREDEFINED_BOT_TOKEN.is_some() {
@@ -19,6 +19,20 @@ const BOT_TOKEN_HELP: &str = if PREDEFINED_BOT_TOKEN.is_some() {
 struct Args {
     #[arg(long, help = BOT_TOKEN_HELP)]
     bot_token_env: Option<String>,
+}
+
+/// Bot commands
+#[derive(BotCommands, Clone)]
+#[command(rename_rule = "lowercase", description = "These commands are supported:")]
+enum Command {
+    #[command(description = "display this help")]
+    Help,
+    #[command(description = "start the bot")]
+    Start,
+    #[command(description = "show all expenses")]
+    List,
+    #[command(description = "clear all expenses")]
+    Clear,
 }
 
 // Per-chat storage for expenses - each chat has its own expense HashMap
@@ -80,59 +94,89 @@ fn format_expenses_list(expenses: &HashMap<String, f64>) -> String {
     result
 }
 
-async fn handle_message(
+// Command handlers
+async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
+    let help_text = "💡 **Expense Bot Help**\n\n\
+        **How to add expenses:**\n\
+        Forward messages or send text with lines in format:\n\
+        `<description> <amount>`\n\n\
+        **Examples:**\n\
+        `Coffee 5.50`\n\
+        `Lunch 12.00`\n\
+        `Bus ticket 2.75`\n\n\
+        **Commands:**\n\
+        `/list` - Show all expenses\n\
+        `/clear` - Clear all expenses\n\
+        `/help` - Show this help\n\n\
+        **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.";
+    
+    bot.send_message(msg.chat.id, help_text).await?;
+    Ok(())
+}
+
+async fn list_command(
+    bot: Bot,
+    msg: Message,
+    storage: ExpenseStorage,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+    let expenses_list = {
+        let storage_guard = storage.lock().await;
+        let chat_expenses = storage_guard.get(&chat_id)
+            .cloned()
+            .unwrap_or_default();
+        format_expenses_list(&chat_expenses)
+    };
+    
+    bot.send_message(chat_id, expenses_list).await?;
+    Ok(())
+}
+
+async fn clear_command(
+    bot: Bot,
+    msg: Message,
+    storage: ExpenseStorage,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+    {
+        let mut storage_guard = storage.lock().await;
+        storage_guard.remove(&chat_id);
+    }
+    
+    bot.send_message(chat_id, "🗑️ All expenses cleared!").await?;
+    Ok(())
+}
+
+// Unified command handler
+async fn answer(
+    bot: Bot,
+    msg: Message,
+    cmd: Command,
+    storage: ExpenseStorage,
+) -> ResponseResult<()> {
+    match cmd {
+        Command::Help | Command::Start => help_command(bot, msg).await,
+        Command::List => list_command(bot, msg, storage).await,
+        Command::Clear => clear_command(bot, msg, storage).await,
+    }
+}
+
+async fn handle_text_message(
     bot: Bot, 
     msg: Message, 
     storage: ExpenseStorage,
-    batch_storage: BatchStorage
-) -> Result<(), RequestError> {
+    batch_storage: BatchStorage,
+) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     
     if let Some(text) = msg.text() {
-        // Handle commands immediately
-        if text.starts_with("/list") {
-            let expenses_list = {
-                let storage_guard = storage.lock().unwrap();
-                let chat_expenses = storage_guard.get(&chat_id)
-                    .cloned()
-                    .unwrap_or_default();
-                format_expenses_list(&chat_expenses)
-            };
-            bot.send_message(chat_id, expenses_list).await?;
-            return Ok(());
-        } else if text.starts_with("/clear") {
-            {
-                let mut storage_guard = storage.lock().unwrap();
-                storage_guard.remove(&chat_id);
-            }
-            bot.send_message(chat_id, "🗑️ All expenses cleared!").await?;
-            return Ok(());
-        } else if text.starts_with("/help") || text.starts_with("/start") {
-            let help_text = "💡 **Expense Bot Help**\n\n\
-                **How to add expenses:**\n\
-                Forward messages or send text with lines in format:\n\
-                `<description> <amount>`\n\n\
-                **Examples:**\n\
-                `Coffee 5.50`\n\
-                `Lunch 12.00`\n\
-                `Bus ticket 2.75`\n\n\
-                **Commands:**\n\
-                `/list` - Show all expenses\n\
-                `/clear` - Clear all expenses\n\
-                `/help` - Show this help\n\n\
-                **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.";
-            
-            bot.send_message(chat_id, help_text).await?;
-            return Ok(());
-        }
-
         // Parse expenses from the message
         let parsed_expenses = parse_expenses(text);
         
         if !parsed_expenses.is_empty() {
             // Store the expenses in chat-specific storage
             {
-                let mut storage_guard = storage.lock().unwrap();
+                let mut storage_guard = storage.lock().await;
                 let chat_expenses = storage_guard.entry(chat_id).or_default();
                 for (description, amount) in parsed_expenses.iter() {
                     chat_expenses.insert(description.clone(), *amount);
@@ -144,7 +188,7 @@ async fn handle_message(
             let is_first_message;
             
             {
-                let mut batch_guard = batch_storage.lock().unwrap();
+                let mut batch_guard = batch_storage.lock().await;
                 match batch_guard.get_mut(&chat_id) {
                     Some(state) => {
                         // Update existing batch for this chat
@@ -182,7 +226,7 @@ async fn handle_message(
 
 async fn send_batch_report(bot: Bot, batch_storage: BatchStorage, target_chat_id: ChatId) {
     let batch_data = {
-        let mut batch_guard = batch_storage.lock().unwrap();
+        let mut batch_guard = batch_storage.lock().await;
         // Simply remove and return the batch state if it exists
         batch_guard.remove(&target_chat_id)
     };
@@ -204,6 +248,8 @@ async fn send_batch_report(bot: Bot, batch_storage: BatchStorage, target_chat_id
         }
     }
 }
+
+
 
 #[tokio::main]
 async fn main() {
@@ -229,12 +275,22 @@ async fn main() {
     // Initialize batch storage
     let batch_storage: BatchStorage = Arc::new(Mutex::new(HashMap::new()));
 
-    teloxide::repl(bot, move |bot: Bot, msg: Message| {
-        let storage = storage.clone();
-        let batch_storage = batch_storage.clone();
-        async move {
-            handle_message(bot, msg, storage, batch_storage).await
-        }
-    })
-    .await;
+    // Create handler using modern teloxide patterns
+    let handler = Update::filter_message()
+        .branch(
+            dptree::entry()
+                .filter_command::<Command>()
+                .endpoint(answer)
+        )
+        .branch(
+            dptree::filter(|msg: Message| msg.text().is_some())
+                .endpoint(handle_text_message)
+        );
+
+    Dispatcher::builder(bot, handler)
+        .dependencies(dptree::deps![storage, batch_storage])
+        .enable_ctrlc_handler()
+        .build()
+        .dispatch()
+        .await;
 }
