@@ -18,8 +18,10 @@ pub enum Command {
     List,
     #[command(description = "clear all expenses")]
     Clear,
-    #[command(description = "add expense category with regex pattern", parse_with = "split")]
-    Category { name: String, pattern: String },
+    #[command(description = "add expense category", parse_with = "split")]
+    Category { name: String },
+    #[command(description = "assign regex pattern to existing category", parse_with = "split")]
+    Assign { name: String, pattern: String },
     #[command(description = "list all categories")]
     Categories,
 }
@@ -39,8 +41,10 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
         **Commands:**\n\
         {}\n\n\
         **Category Examples:**\n\
-        `/category Food (coffee|lunch|dinner)` - Match food expenses\n\
-        `/category Transport (bus|taxi|uber)` - Match transport expenses\n\
+        `/category Food` - Create Food category\n\
+        `/assign Food (coffee|lunch|dinner)` - Match food expenses\n\
+        `/category Transport` - Create Transport category\n\
+        `/assign Transport (bus|taxi|uber)` - Match transport expenses\n\
         `/categories` - Show all your categories\n\n\
         **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.",
         env!("CARGO_PKG_VERSION"),
@@ -77,8 +81,27 @@ pub async fn clear_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> R
     Ok(())
 }
 
-/// Add a category with regex pattern
+/// Add a category (name only)
 pub async fn category_command(
+    bot: Bot,
+    msg: Message,
+    category_storage: CategoryStorage,
+    name: String,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+    
+    add_category(&category_storage, chat_id, name.clone(), String::new()).await;
+    bot.send_message(
+        chat_id,
+        format!("✅ Category '{}' created. Use /assign to add a regex pattern.", name),
+    )
+    .await?;
+    
+    Ok(())
+}
+
+/// Assign a regex pattern to an existing category
+pub async fn assign_command(
     bot: Bot,
     msg: Message,
     category_storage: CategoryStorage,
@@ -87,13 +110,24 @@ pub async fn category_command(
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     
+    // Check if category exists
+    let categories = get_chat_categories(&category_storage, chat_id).await;
+    if !categories.contains_key(&name) {
+        bot.send_message(
+            chat_id,
+            format!("❌ Category '{}' does not exist. Use /category to create it first.", name),
+        )
+        .await?;
+        return Ok(());
+    }
+    
     // Validate regex pattern
     match regex::Regex::new(&pattern) {
         Ok(_) => {
             add_category(&category_storage, chat_id, name.clone(), pattern.clone()).await;
             bot.send_message(
                 chat_id,
-                format!("✅ Category '{}' added with pattern: {}", name, pattern),
+                format!("✅ Category '{}' assigned pattern: {}", name, pattern),
             )
             .await?;
         }
@@ -123,7 +157,11 @@ pub async fn categories_command(
     } else {
         let mut result = "📁 **Categories:**\n\n".to_string();
         for (name, pattern) in categories.iter() {
-            result.push_str(&format!("• **{}**: `{}`\n", name, pattern));
+            if pattern.is_empty() {
+                result.push_str(&format!("• **{}**: _(no pattern assigned)_\n", name));
+            } else {
+                result.push_str(&format!("• **{}**: `{}`\n", name, pattern));
+            }
         }
         bot.send_message(chat_id, result).await?;
     }
@@ -143,8 +181,11 @@ pub async fn answer(
         Command::Help | Command::Start => help_command(bot, msg).await,
         Command::List => list_command(bot, msg, storage, category_storage).await,
         Command::Clear => clear_command(bot, msg, storage).await,
-        Command::Category { name, pattern } => {
-            category_command(bot, msg, category_storage, name, pattern).await
+        Command::Category { name } => {
+            category_command(bot, msg, category_storage, name).await
+        }
+        Command::Assign { name, pattern } => {
+            assign_command(bot, msg, category_storage, name, pattern).await
         }
         Command::Categories => categories_command(bot, msg, category_storage).await,
     }
