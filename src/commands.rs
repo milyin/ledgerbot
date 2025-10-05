@@ -52,10 +52,16 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
 }
 
 /// List all expenses
-pub async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
+pub async fn list_command(
+    bot: Bot,
+    msg: Message,
+    storage: ExpenseStorage,
+    category_storage: CategoryStorage,
+) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     let chat_expenses = get_chat_expenses(&storage, chat_id).await;
-    let expenses_list = format_expenses_list(&chat_expenses);
+    let chat_categories = get_chat_categories(&category_storage, chat_id).await;
+    let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
 
     bot.send_message(chat_id, expenses_list).await?;
     Ok(())
@@ -135,7 +141,7 @@ pub async fn answer(
 ) -> ResponseResult<()> {
     match cmd {
         Command::Help | Command::Start => help_command(bot, msg).await,
-        Command::List => list_command(bot, msg, storage).await,
+        Command::List => list_command(bot, msg, storage, category_storage).await,
         Command::Clear => clear_command(bot, msg, storage).await,
         Command::Category { name, pattern } => {
             category_command(bot, msg, category_storage, name, pattern).await
