@@ -20,9 +20,10 @@ pub enum Command {
     Clear,
 }
 
-/// Display help message
+/// Display help message with auto-generated command list
 pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
-    let help_text = "💡 **Expense Bot Help**\n\n\
+    let help_text = format!(
+        "💡 **Expense Bot Help**\n\n\
         **How to add expenses:**\n\
         Forward messages or send text with lines in format:\n\
         `<description> <amount>`\n\n\
@@ -31,10 +32,10 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
         `Lunch 12.00`\n\
         `Bus ticket 2.75`\n\n\
         **Commands:**\n\
-        `/list` - Show all expenses\n\
-        `/clear` - Clear all expenses\n\
-        `/help` - Show this help\n\n\
-        **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.";
+        {}\n\n\
+        **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.",
+        Command::descriptions()
+    );
 
     bot.send_message(msg.chat.id, help_text).await?;
     Ok(())
