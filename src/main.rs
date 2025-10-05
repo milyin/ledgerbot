@@ -2,7 +2,6 @@ use clap::Parser;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 use teloxide::{Bot, prelude::Requester as _, types::{Message, ChatId}, RequestError};
 use tokio::time::sleep;
 
@@ -31,7 +30,6 @@ struct BatchState {
     messages_count: usize,
     records_count: usize,
     total_sum: f64,
-    last_activity: Instant,
 }
 
 // Per-chat batch storage - each chat has its own batch state
@@ -142,8 +140,8 @@ async fn handle_message(
             }
 
             // Update batch state for this chat
-            let current_time = Instant::now();
             let total_parsed: f64 = parsed_expenses.iter().map(|(_, amount)| amount).sum();
+            let is_first_message;
             
             {
                 let mut batch_guard = batch_storage.lock().unwrap();
@@ -153,7 +151,7 @@ async fn handle_message(
                         state.messages_count += 1;
                         state.records_count += parsed_expenses.len();
                         state.total_sum += total_parsed;
-                        state.last_activity = current_time;
+                        is_first_message = false;
                     }
                     None => {
                         // Start new batch for this chat
@@ -161,19 +159,21 @@ async fn handle_message(
                             messages_count: 1,
                             records_count: parsed_expenses.len(),
                             total_sum: total_parsed,
-                            last_activity: current_time,
                         });
+                        is_first_message = true;
                     }
                 }
             }
             
-            // Start timeout task for this specific chat
-            let batch_clone = batch_storage.clone();
-            let bot_clone = bot.clone();
-            tokio::spawn(async move {
-                sleep(tokio::time::Duration::from_secs(BATCH_TIMEOUT_SECONDS)).await;
-                send_batch_report(bot_clone, batch_clone, chat_id).await;
-            });
+            // Start timeout task only for the first message in batch
+            if is_first_message {
+                let batch_clone = batch_storage.clone();
+                let bot_clone = bot.clone();
+                tokio::spawn(async move {
+                    sleep(tokio::time::Duration::from_secs(BATCH_TIMEOUT_SECONDS)).await;
+                    send_batch_report(bot_clone, batch_clone, chat_id).await;
+                });
+            }
         }
     }
     
@@ -183,17 +183,8 @@ async fn handle_message(
 async fn send_batch_report(bot: Bot, batch_storage: BatchStorage, target_chat_id: ChatId) {
     let batch_data = {
         let mut batch_guard = batch_storage.lock().unwrap();
-        if let Some(state) = batch_guard.get(&target_chat_id) {
-            // Check if enough time has passed since last activity
-            if state.last_activity.elapsed().as_secs() >= BATCH_TIMEOUT_SECONDS {
-                batch_guard.remove(&target_chat_id)
-            } else {
-                // Not ready yet, don't send report
-                return;
-            }
-        } else {
-            None
-        }
+        // Simply remove and return the batch state if it exists
+        batch_guard.remove(&target_chat_id)
     };
 
     if let Some(state) = batch_data {
