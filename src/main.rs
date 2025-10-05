@@ -23,7 +23,10 @@ struct Args {
 
 /// Bot commands
 #[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase", description = "These commands are supported:")]
+#[command(
+    rename_rule = "lowercase",
+    description = "These commands are supported:"
+)]
 enum Command {
     #[command(description = "display this help")]
     Help,
@@ -54,17 +57,17 @@ const BATCH_TIMEOUT_SECONDS: u64 = 1; // Report after N seconds of inactivity
 // Function to parse expense lines from a message
 fn parse_expenses(text: &str) -> Vec<(String, f64)> {
     let mut expenses = Vec::new();
-    
+
     // Regex pattern to match "<any text> <number>"
     // This captures text followed by a space and then a number (integer or decimal)
     let re = Regex::new(r"^(.+?)\s+(\d+(?:\.\d+)?)$").unwrap();
-    
+
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() {
             continue;
         }
-        
+
         if let Some(captures) = re.captures(line) {
             let description = captures[1].trim().to_string();
             if let Ok(amount) = captures[2].parse::<f64>() {
@@ -72,7 +75,7 @@ fn parse_expenses(text: &str) -> Vec<(String, f64)> {
             }
         }
     }
-    
+
     expenses
 }
 
@@ -81,15 +84,15 @@ fn format_expenses_list(expenses: &HashMap<String, f64>) -> String {
     if expenses.is_empty() {
         return "No expenses recorded yet.".to_string();
     }
-    
+
     let mut result = "📊 **Current Expenses:**\n\n".to_string();
     let mut total = 0.0;
-    
+
     for (description, amount) in expenses.iter() {
         result.push_str(&format!("• {} - {:.2}\n", description, amount));
         total += amount;
     }
-    
+
     result.push_str(&format!("\n💰 **Total: {:.2}**", total));
     result
 }
@@ -109,41 +112,32 @@ async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
         `/clear` - Clear all expenses\n\
         `/help` - Show this help\n\n\
         **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.";
-    
+
     bot.send_message(msg.chat.id, help_text).await?;
     Ok(())
 }
 
-async fn list_command(
-    bot: Bot,
-    msg: Message,
-    storage: ExpenseStorage,
-) -> ResponseResult<()> {
+async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     let expenses_list = {
         let storage_guard = storage.lock().await;
-        let chat_expenses = storage_guard.get(&chat_id)
-            .cloned()
-            .unwrap_or_default();
+        let chat_expenses = storage_guard.get(&chat_id).cloned().unwrap_or_default();
         format_expenses_list(&chat_expenses)
     };
-    
+
     bot.send_message(chat_id, expenses_list).await?;
     Ok(())
 }
 
-async fn clear_command(
-    bot: Bot,
-    msg: Message,
-    storage: ExpenseStorage,
-) -> ResponseResult<()> {
+async fn clear_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     {
         let mut storage_guard = storage.lock().await;
         storage_guard.remove(&chat_id);
     }
-    
-    bot.send_message(chat_id, "🗑️ All expenses cleared!").await?;
+
+    bot.send_message(chat_id, "🗑️ All expenses cleared!")
+        .await?;
     Ok(())
 }
 
@@ -162,17 +156,17 @@ async fn answer(
 }
 
 async fn handle_text_message(
-    bot: Bot, 
-    msg: Message, 
+    bot: Bot,
+    msg: Message,
     storage: ExpenseStorage,
     batch_storage: BatchStorage,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    
+
     if let Some(text) = msg.text() {
         // Parse expenses from the message
         let parsed_expenses = parse_expenses(text);
-        
+
         if !parsed_expenses.is_empty() {
             // Store the expenses in chat-specific storage
             {
@@ -186,7 +180,7 @@ async fn handle_text_message(
             // Update batch state for this chat
             let total_parsed: f64 = parsed_expenses.iter().map(|(_, amount)| amount).sum();
             let is_first_message;
-            
+
             {
                 let mut batch_guard = batch_storage.lock().await;
                 match batch_guard.get_mut(&chat_id) {
@@ -199,16 +193,19 @@ async fn handle_text_message(
                     }
                     None => {
                         // Start new batch for this chat
-                        batch_guard.insert(chat_id, BatchState {
-                            messages_count: 1,
-                            records_count: parsed_expenses.len(),
-                            total_sum: total_parsed,
-                        });
+                        batch_guard.insert(
+                            chat_id,
+                            BatchState {
+                                messages_count: 1,
+                                records_count: parsed_expenses.len(),
+                                total_sum: total_parsed,
+                            },
+                        );
                         is_first_message = true;
                     }
                 }
             }
-            
+
             // Start timeout task only for the first message in batch
             if is_first_message {
                 let batch_clone = batch_storage.clone();
@@ -220,7 +217,7 @@ async fn handle_text_message(
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -238,18 +235,14 @@ async fn send_batch_report(bot: Bot, batch_storage: BatchStorage, target_chat_id
             📝 Records parsed: {}\n\
             💰 Total amount: {:.2}\n\n\
             Use `/list` to see all expenses.",
-            state.messages_count,
-            state.records_count,
-            state.total_sum
+            state.messages_count, state.records_count, state.total_sum
         );
-        
+
         if let Err(e) = bot.send_message(target_chat_id, report).await {
             log::error!("Failed to send batch report: {}", e);
         }
     }
 }
-
-
 
 #[tokio::main]
 async fn main() {
@@ -268,24 +261,17 @@ async fn main() {
     };
 
     let bot = Bot::new(token);
-    
+
     // Initialize shared expense storage
     let storage: ExpenseStorage = Arc::new(Mutex::new(HashMap::new()));
-    
+
     // Initialize batch storage
     let batch_storage: BatchStorage = Arc::new(Mutex::new(HashMap::new()));
 
     // Create handler using modern teloxide patterns
     let handler = Update::filter_message()
-        .branch(
-            dptree::entry()
-                .filter_command::<Command>()
-                .endpoint(answer)
-        )
-        .branch(
-            dptree::filter(|msg: Message| msg.text().is_some())
-                .endpoint(handle_text_message)
-        );
+        .branch(dptree::entry().filter_command::<Command>().endpoint(answer))
+        .branch(dptree::filter(|msg: Message| msg.text().is_some()).endpoint(handle_text_message));
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![storage, batch_storage])
