@@ -21,8 +21,11 @@ pub async fn handle_text_message(
         // Get bot username for filtering
         let bot_name = bot.get_me().await.ok().map(|me| me.username().to_string());
         
-        // Parse expenses and commands from the message, with bot name filtering
-        let (parsed_expenses, parsed_commands) = parse_expenses(text, bot_name.as_deref());
+        // Get message timestamp (Unix timestamp in seconds)
+        let timestamp = msg.date.timestamp();
+        
+        // Parse expenses and commands from the message, with bot name filtering and timestamp
+        let (parsed_expenses, parsed_commands) = parse_expenses(text, bot_name.as_deref(), timestamp);
 
         // Execute parsed commands
         for command_str in parsed_commands {
@@ -56,7 +59,7 @@ pub async fn handle_text_message(
             add_expenses(&storage, chat_id, parsed_expenses.clone()).await;
 
             // Update batch state for this chat
-            let total_parsed: f64 = parsed_expenses.iter().map(|(_, amount)| amount).sum();
+            let total_parsed: f64 = parsed_expenses.iter().map(|(_, amount, _)| amount).sum();
             let is_first_message =
                 add_to_batch(&batch_storage, chat_id, parsed_expenses.len(), total_parsed).await;
 

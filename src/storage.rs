@@ -4,7 +4,8 @@ use teloxide::types::ChatId;
 use tokio::sync::Mutex;
 
 /// Per-chat storage for expenses - each chat has its own expense HashMap
-pub type ExpenseStorage = Arc<Mutex<HashMap<ChatId, HashMap<String, f64>>>>;
+/// Maps description to (amount, unix_timestamp)
+pub type ExpenseStorage = Arc<Mutex<HashMap<ChatId, HashMap<String, (f64, i64)>>>>;
 
 /// Per-chat storage for categories - each chat has its own category mappings
 /// Maps category name to a list of regex patterns
@@ -15,7 +16,7 @@ pub type CategoryStorage = Arc<Mutex<HashMap<ChatId, HashMap<String, Vec<String>
 pub type FilterSelectionStorage = Arc<Mutex<HashMap<(ChatId, String), Vec<String>>>>;
 
 /// Get expenses for a specific chat
-pub async fn get_chat_expenses(storage: &ExpenseStorage, chat_id: ChatId) -> HashMap<String, f64> {
+pub async fn get_chat_expenses(storage: &ExpenseStorage, chat_id: ChatId) -> HashMap<String, (f64, i64)> {
     let storage_guard = storage.lock().await;
     storage_guard.get(&chat_id).cloned().unwrap_or_default()
 }
@@ -24,12 +25,12 @@ pub async fn get_chat_expenses(storage: &ExpenseStorage, chat_id: ChatId) -> Has
 pub async fn add_expenses(
     storage: &ExpenseStorage,
     chat_id: ChatId,
-    expenses: Vec<(String, f64)>,
+    expenses: Vec<(String, f64, i64)>,
 ) {
     let mut storage_guard = storage.lock().await;
     let chat_expenses = storage_guard.entry(chat_id).or_default();
-    for (description, amount) in expenses {
-        chat_expenses.insert(description, amount);
+    for (description, amount, timestamp) in expenses {
+        chat_expenses.insert(description, (amount, timestamp));
     }
 }
 

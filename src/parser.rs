@@ -3,11 +3,12 @@ use std::collections::HashMap;
 
 /// Parse expense lines and commands from a message text
 /// Returns a tuple of (expenses, commands) where:
-/// - expenses: vector of (description, amount) tuples
+/// - expenses: vector of (description, amount, timestamp) tuples
 /// - commands: vector of command strings (without the leading '/')
 /// 
 /// If bot_name is provided, lines starting with the bot name will have it stripped
-pub fn parse_expenses(text: &str, bot_name: Option<&str>) -> (Vec<(String, f64)>, Vec<String>) {
+/// timestamp is the Unix timestamp of the message date
+pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Vec<(String, f64, i64)>, Vec<String>) {
     let mut expenses = Vec::new();
     let mut commands = Vec::new();
 
@@ -55,7 +56,7 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>) -> (Vec<(String, f64)>
         if let Some(captures) = re.captures(line) {
             let description = captures[1].trim().to_string();
             if let Ok(amount) = captures[2].parse::<f64>() {
-                expenses.push((description, amount));
+                expenses.push((description, amount, timestamp));
             }
         }
     }
@@ -65,7 +66,7 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>) -> (Vec<(String, f64)>
 
 /// Format expenses as a readable list with total, grouped by categories
 pub fn format_expenses_list(
-    expenses: &HashMap<String, f64>,
+    expenses: &HashMap<String, (f64, i64)>,
     categories: &HashMap<String, Vec<String>>,
 ) -> String {
     if expenses.is_empty() {
@@ -88,10 +89,10 @@ pub fn format_expenses_list(
         .collect();
     
     // Group expenses by category
-    let mut categorized: HashMap<String, Vec<(String, f64)>> = HashMap::new();
-    let mut uncategorized: Vec<(String, f64)> = Vec::new();
+    let mut categorized: HashMap<String, Vec<(String, f64, i64)>> = HashMap::new();
+    let mut uncategorized: Vec<(String, f64, i64)> = Vec::new();
     
-    for (description, amount) in expenses.iter() {
+    for (description, (amount, timestamp)) in expenses.iter() {
         let mut matched = false;
         
         // Try to match against each category
@@ -101,14 +102,14 @@ pub fn format_expenses_list(
                 categorized
                     .entry(category_name.clone())
                     .or_default()
-                    .push((description.clone(), *amount));
+                    .push((description.clone(), *amount, *timestamp));
                 matched = true;
                 break; // Each expense goes into first matching category
             }
         }
         
         if !matched {
-            uncategorized.push((description.clone(), *amount));
+            uncategorized.push((description.clone(), *amount, *timestamp));
         }
     }
     
@@ -122,8 +123,9 @@ pub fn format_expenses_list(
             let mut category_total = 0.0;
             result.push_str(&format!("**{}:**\n", category_name));
             
-            for (description, amount) in items {
-                result.push_str(&format!("  • {} - {:.2}\n", description, amount));
+            for (description, amount, timestamp) in items {
+                let date_str = format_timestamp(*timestamp);
+                result.push_str(&format!("  • {} - {:.2} ({})\n", description, amount, date_str));
                 category_total += amount;
                 total += amount;
             }
@@ -137,8 +139,9 @@ pub fn format_expenses_list(
         let mut uncategorized_total = 0.0;
         result.push_str("**Other:**\n");
         
-        for (description, amount) in uncategorized {
-            result.push_str(&format!("  • {} - {:.2}\n", description, amount));
+        for (description, amount, timestamp) in uncategorized {
+            let date_str = format_timestamp(timestamp);
+            result.push_str(&format!("  • {} - {:.2} ({})\n", description, amount, date_str));
             uncategorized_total += amount;
             total += amount;
         }
@@ -150,11 +153,18 @@ pub fn format_expenses_list(
     result
 }
 
+/// Format Unix timestamp to a human-readable date string
+fn format_timestamp(timestamp: i64) -> String {
+    use chrono::{DateTime, Utc, TimeZone};
+    let datetime: DateTime<Utc> = Utc.timestamp_opt(timestamp, 0).unwrap();
+    datetime.format("%Y-%m-%d").to_string()
+}
+
 /// Extract unique words from uncategorized expenses
 /// Returns a sorted vector of unique words (lowercased) from expense descriptions
 /// that don't match any category patterns
 pub fn extract_words(
-    expenses: &HashMap<String, f64>,
+    expenses: &HashMap<String, (f64, i64)>,
     categories: &HashMap<String, Vec<String>>,
 ) -> Vec<String> {
     // Build regex matchers for each category (from all patterns)
@@ -202,12 +212,13 @@ mod tests {
     fn test_parse_expenses_with_bot_name() {
         // Test removing bot name prefix
         let text = "@testbot Coffee 5.50\ntestbot Lunch 12.00\nBus ticket 2.75";
-        let (expenses, commands) = parse_expenses(text, Some("testbot"));
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, Some("testbot"), timestamp);
         
         assert_eq!(expenses.len(), 3);
-        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50));
-        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00));
-        assert_eq!(expenses[2], ("Bus ticket".to_string(), 2.75));
+        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
+        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
+        assert_eq!(expenses[2], ("Bus ticket".to_string(), 2.75, timestamp));
         assert_eq!(commands.len(), 0);
     }
 
@@ -215,11 +226,12 @@ mod tests {
     fn test_parse_expenses_with_commands() {
         // Test that lines starting with '/' are collected as commands
         let text = "/help\nCoffee 5.50\n/list\nLunch 12.00";
-        let (expenses, commands) = parse_expenses(text, None);
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, None, timestamp);
         
         assert_eq!(expenses.len(), 2);
-        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50));
-        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00));
+        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
+        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
         assert_eq!(commands.len(), 2);
         assert_eq!(commands[0], "/help");
         assert_eq!(commands[1], "/list");
@@ -229,12 +241,13 @@ mod tests {
     fn test_parse_expenses_mixed() {
         // Test mixed input with bot name and commands
         let text = "@mybot Coffee 5.50\n/help\nmybot Lunch 12.00\nBus ticket 2.75\n/list";
-        let (expenses, commands) = parse_expenses(text, Some("mybot"));
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, Some("mybot"), timestamp);
         
         assert_eq!(expenses.len(), 3);
-        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50));
-        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00));
-        assert_eq!(expenses[2], ("Bus ticket".to_string(), 2.75));
+        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
+        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
+        assert_eq!(expenses[2], ("Bus ticket".to_string(), 2.75, timestamp));
         assert_eq!(commands.len(), 2);
         assert_eq!(commands[0], "/help");
         assert_eq!(commands[1], "/list");
@@ -244,11 +257,12 @@ mod tests {
     fn test_parse_expenses_case_insensitive_bot_name() {
         // Test that bot name matching is case-insensitive
         let text = "@TESTBOT Coffee 5.50\nTestBot Lunch 12.00";
-        let (expenses, commands) = parse_expenses(text, Some("testbot"));
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, Some("testbot"), timestamp);
         
         assert_eq!(expenses.len(), 2);
-        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50));
-        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00));
+        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
+        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
         assert_eq!(commands.len(), 0);
     }
 
@@ -256,7 +270,8 @@ mod tests {
     fn test_parse_commands_with_bot_name() {
         // Test that commands work with bot name prefix
         let text = "@mybot /help\nmybot /list\n/clear";
-        let (expenses, commands) = parse_expenses(text, Some("mybot"));
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, Some("mybot"), timestamp);
         
         assert_eq!(expenses.len(), 0);
         assert_eq!(commands.len(), 3);
@@ -269,7 +284,8 @@ mod tests {
     fn test_parse_commands_from_keyboard_buttons() {
         // Test that commands are extracted from keyboard button text like "📋 /list"
         let text = "📋 /list";
-        let (expenses, commands) = parse_expenses(text, None);
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, None, timestamp);
         
         assert_eq!(expenses.len(), 0);
         assert_eq!(commands.len(), 1);
@@ -277,7 +293,7 @@ mod tests {
         
         // Test multiple buttons
         let text2 = "🗑️ /clear";
-        let (expenses2, commands2) = parse_expenses(text2, None);
+        let (expenses2, commands2) = parse_expenses(text2, None, timestamp);
         
         assert_eq!(expenses2.len(), 0);
         assert_eq!(commands2.len(), 1);
@@ -285,7 +301,7 @@ mod tests {
         
         // Test with category command
         let text3 = "📂 /categories";
-        let (expenses3, commands3) = parse_expenses(text3, None);
+        let (expenses3, commands3) = parse_expenses(text3, None, timestamp);
         
         assert_eq!(expenses3.len(), 0);
         assert_eq!(commands3.len(), 1);
@@ -296,10 +312,11 @@ mod tests {
     fn test_extract_words() {
         // Create test expenses
         let mut expenses = HashMap::new();
-        expenses.insert("Coffee at Starbucks".to_string(), 5.50);
-        expenses.insert("Lunch at restaurant".to_string(), 12.00);
-        expenses.insert("Bus ticket".to_string(), 2.75);
-        expenses.insert("Taxi ride".to_string(), 15.00);
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        expenses.insert("Coffee at Starbucks".to_string(), (5.50, timestamp));
+        expenses.insert("Lunch at restaurant".to_string(), (12.00, timestamp));
+        expenses.insert("Bus ticket".to_string(), (2.75, timestamp));
+        expenses.insert("Taxi ride".to_string(), (15.00, timestamp));
         
         // Create categories with patterns
         let mut categories = HashMap::new();
@@ -335,8 +352,9 @@ mod tests {
     fn test_extract_words_all_categorized() {
         // Create test expenses
         let mut expenses = HashMap::new();
-        expenses.insert("Coffee".to_string(), 5.50);
-        expenses.insert("Lunch".to_string(), 12.00);
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        expenses.insert("Coffee".to_string(), (5.50, timestamp));
+        expenses.insert("Lunch".to_string(), (12.00, timestamp));
         
         // Create categories that match all expenses
         let mut categories = HashMap::new();
