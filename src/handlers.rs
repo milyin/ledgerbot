@@ -36,6 +36,12 @@ pub async fn handle_text_message(
             add_filter_menu(bot.clone(), chat_id, sent_msg.id, category_storage.clone()).await?;
             return Ok(());
         }
+        if trimmed_text == "/add_category" || trimmed_text == format!("/add_category@{}", bot_name.as_deref().unwrap_or("")) {
+            // /add_category without parameters - show the add category menu
+            let sent_msg = bot.send_message(chat_id, "➕ Add Category").await?;
+            crate::commands::add_category_menu(bot.clone(), chat_id, sent_msg.id).await?;
+            return Ok(());
+        }
 
         // Get message timestamp (Unix timestamp in seconds)
         // Use forward_date if available (for forwarded messages), otherwise use msg.date
@@ -68,7 +74,7 @@ pub async fn handle_text_message(
                     Command::Clear => {
                         clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
                     }
-                    Command::Category { name } => {
+                    Command::AddCategory { name } => {
                         crate::commands::category_command(
                             bot.clone(),
                             msg.clone(),

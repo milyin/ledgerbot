@@ -42,8 +42,8 @@ pub enum Command {
     Report,
     #[command(description = "clear all expenses")]
     Clear,
-    #[command(description = "add expense category", parse_with = "split")]
-    Category { name: String },
+    #[command(description = "add expense category", rename = "add_category", parse_with = "split")]
+    AddCategory { name: String },
     #[command(description = "list all categories")]
     Categories,
     #[command(
@@ -71,7 +71,6 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
             InlineKeyboardButton::callback("🗑️ Clear Expenses", "cmd_clear"),
         ],
         vec![
-            InlineKeyboardButton::switch_inline_query_current_chat("➕ Category", "/category "),
             InlineKeyboardButton::callback("❌ Remove Category", "cmd_remove_category"),
             InlineKeyboardButton::callback("📂 Categories", "cmd_categories"),
         ],
@@ -139,6 +138,29 @@ pub async fn clear_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> R
     Ok(())
 }
 
+/// Show add category menu
+pub async fn add_category_menu(
+    bot: Bot,
+    chat_id: ChatId,
+    message_id: MessageId,
+) -> ResponseResult<()> {
+    let text = "➕ **Add a new category:**\n\nClick the button below and type the category name.";
+
+    let keyboard = InlineKeyboardMarkup::new(vec![
+        vec![InlineKeyboardButton::switch_inline_query_current_chat(
+            "➕ Add Category",
+            "/add_category ",
+        )],
+    ]);
+
+    bot.edit_message_text(chat_id, message_id, text).await?;
+    bot.edit_message_reply_markup(chat_id, message_id)
+        .reply_markup(keyboard)
+        .await?;
+
+    Ok(())
+}
+
 /// Add a category (name only)
 pub async fn category_command(
     bot: Bot,
@@ -148,11 +170,19 @@ pub async fn category_command(
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
+    // Check if name is empty or just whitespace
+    if name.trim().is_empty() {
+        // Show the add category menu instead
+        let sent_msg = bot.send_message(chat_id, "➕ Add Category").await?;
+        add_category_menu(bot, chat_id, sent_msg.id).await?;
+        return Ok(());
+    }
+
     add_category(&category_storage, chat_id, name.clone()).await;
     bot.send_message(
         chat_id,
         format!(
-            "✅ Category '{}' created. Use the Add Filter button to add regex patterns.",
+            "✅ Category '{}' created. Use /add_filter to add regex patterns.",
             name
         ),
     )
@@ -170,6 +200,15 @@ pub async fn add_filter_command(
     pattern: String,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
+
+    // Check if category or pattern is empty or just whitespace
+    if category.trim().is_empty() || pattern.trim().is_empty() {
+        // Show the add filter menu instead
+        let sent_msg = bot.send_message(chat_id, "🔧 Add Filter").await?;
+        add_filter_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+        return Ok(());
+    }
+
     let categories = get_chat_categories(&category_storage, chat_id).await;
 
     // Check if category exists
@@ -177,7 +216,7 @@ pub async fn add_filter_command(
         bot.send_message(
             chat_id,
             format!(
-                "❌ Category '{}' does not exist. Create it first with /category {}",
+                "❌ Category '{}' does not exist. Create it first with /add_category {}",
                 category, category
             ),
         )
@@ -232,7 +271,7 @@ pub async fn categories_command(
 
         for (name, patterns) in sorted_categories {
             // First create the category
-            result.push_str(&format!("/category {}\n", name));
+            result.push_str(&format!("/add_category {}\n", name));
 
             // Then assign patterns if they exist
             for pattern in patterns {
@@ -301,7 +340,7 @@ pub async fn add_filter_menu(
         bot.edit_message_text(
             chat_id,
             message_id,
-            "No categories available. Create a category first with /category <name>",
+            "No categories available. Create a category first with /add_category <name>",
         )
         .await?;
     } else {
@@ -538,7 +577,7 @@ pub async fn answer(
         Command::List => list_command(bot, msg, storage).await,
         Command::Report => report_command(bot, msg, storage, category_storage).await,
         Command::Clear => clear_command(bot, msg, storage).await,
-        Command::Category { name } => category_command(bot, msg, category_storage, name).await,
+        Command::AddCategory { name } => category_command(bot, msg, category_storage, name).await,
         Command::Categories => categories_command(bot, msg, category_storage).await,
         Command::AddFilter { category, pattern } => {
             add_filter_command(bot, msg, category_storage, category, pattern).await
