@@ -148,14 +148,19 @@ pub async fn handle_callback_query(
                     let selected_words = get_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
                     
                     if !selected_words.is_empty() {
-                        let words = selected_words.join("|");
+                        // Escape each word and combine with case-insensitive OR pattern
+                        let escaped_words: Vec<String> = selected_words
+                            .iter()
+                            .map(|w| regex::escape(w))
+                            .collect();
+                        let pattern = format!("(?i)({})", escaped_words.join("|"));
                         
                         // Clear the selection
                         clear_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
                         
-                        // Call add_filter_command with the combined words
+                        // Call add_filter_command with the combined pattern
                         crate::commands::add_filter_command(
-                            bot.clone(), msg.clone(), category_storage.clone(), category_name, words
+                            bot.clone(), msg.clone(), category_storage.clone(), category_name, pattern
                         ).await?;
                     }
                 } else if data.starts_with("remove_filter_cat:") {

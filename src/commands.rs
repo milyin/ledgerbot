@@ -191,39 +191,14 @@ pub async fn add_filter_command(
         return Ok(());
     }
 
-    // Process the pattern: if it contains |, treat it as multiple words to combine with OR
-    let final_pattern = if pattern.contains('|') {
-        // Split by | and escape each word, then combine with case-insensitive OR
-        let words: Vec<String> = pattern
-            .split('|')
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty())
-            .map(|s| regex::escape(s))
-            .collect();
-        
-        if words.is_empty() {
-            pattern.clone()
-        } else {
-            format!("(?i)({})", words.join("|"))
-        }
-    } else {
-        // Single word or custom regex - check if it looks like a simple word
-        if pattern.chars().all(|c| c.is_alphanumeric() || c.is_whitespace()) {
-            // Simple word(s), make it case-insensitive
-            format!("(?i){}", regex::escape(&pattern))
-        } else {
-            // Custom regex pattern, use as-is
-            pattern.clone()
-        }
-    };
-
+    // Treat the pattern as a regexp directly without additional wrapping
     // Validate regex pattern
-    match regex::Regex::new(&final_pattern) {
+    match regex::Regex::new(&pattern) {
         Ok(_) => {
-            add_category_filter(&category_storage, chat_id, category.clone(), final_pattern.clone()).await;
+            add_category_filter(&category_storage, chat_id, category.clone(), pattern.clone()).await;
             bot.send_message(
                 chat_id,
-                format!("✅ Filter '{}' added to category '{}'.", final_pattern, category),
+                format!("✅ Filter '{}' added to category '{}'.", pattern, category),
             )
             .await?;
         }
