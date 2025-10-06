@@ -32,26 +32,38 @@ pub fn create_menu_keyboard() -> ReplyMarkup {
     description = "These commands are supported:"
 )]
 pub enum Command {
-    #[command(description = "display this help")]
-    Help,
     #[command(description = "start the bot")]
     Start,
-    #[command(description = "list expenses chronologically")]
+    #[command(description = "display this help")]
+    Help,
+    #[command(description = "list expenses chronologically in input format")]
     List,
-    #[command(description = "show all expenses")]
+    #[command(description = "show expenses report")]
     Report,
     #[command(description = "clear all expenses")]
     Clear,
+    #[command(description = "list all categories with filters in command format")]
+    Categories,
     #[command(description = "add expense category", rename = "add_category", parse_with = "split")]
     AddCategory { name: String },
-    #[command(description = "list all categories")]
-    Categories,
     #[command(
         description = "add filter to category",
         rename = "add_filter",
         parse_with = "split"
     )]
     AddFilter { category: String, pattern: String },
+    #[command(
+        description = "remove expense category",
+        rename = "remove_category",
+        parse_with = "split"
+    )]
+    RemoveCategory { name: String },
+    #[command(
+        description = "remove filter from category",
+        rename = "remove_filter",
+        parse_with = "split"
+    )]
+    RemoveFilter { category: String, pattern: String },
 }
 
 /// Display help message with inline keyboard buttons
@@ -63,25 +75,8 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
         commands = Command::descriptions()
     );
 
-    // Create inline keyboard with buttons for each command
-    let keyboard = InlineKeyboardMarkup::new(vec![
-        vec![
-            InlineKeyboardButton::callback("� List Expenses", "cmd_list"),
-            InlineKeyboardButton::callback("📋 Report Expenses", "cmd_report"),
-            InlineKeyboardButton::callback("🗑️ Clear Expenses", "cmd_clear"),
-        ],
-        vec![
-            InlineKeyboardButton::callback("❌ Remove Category", "cmd_remove_category"),
-            InlineKeyboardButton::callback("📂 Categories", "cmd_categories"),
-        ],
-        vec![
-            InlineKeyboardButton::callback("️ Remove Filter", "cmd_remove_filter"),
-        ],
-    ]);
-
     // Send message with both inline keyboard (for buttons in message) and reply keyboard (menu button)
     bot.send_message(msg.chat.id, help_text)
-        .reply_markup(keyboard)
         .await?;
     Ok(())
 }
@@ -284,6 +279,96 @@ pub async fn categories_command(
     Ok(())
 }
 
+/// Remove a category
+pub async fn remove_category_command(
+    bot: Bot,
+    msg: Message,
+    category_storage: CategoryStorage,
+    name: String,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+
+    // Check if name is empty or just whitespace
+    if name.trim().is_empty() {
+        // Show the remove category menu instead
+        let sent_msg = bot.send_message(chat_id, "❌ Remove Category").await?;
+        remove_category_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+        return Ok(());
+    }
+
+    let categories = get_chat_categories(&category_storage, chat_id).await;
+
+    // Check if category exists
+    if !categories.contains_key(&name) {
+        bot.send_message(
+            chat_id,
+            format!("❌ Category '{}' does not exist.", name),
+        )
+        .await?;
+        return Ok(());
+    }
+
+    // Remove the category
+    crate::storage::remove_category(&category_storage, chat_id, &name).await;
+    bot.send_message(chat_id, format!("✅ Category '{}' removed.", name))
+        .await?;
+
+    Ok(())
+}
+
+/// Remove a filter from a category
+pub async fn remove_filter_command(
+    bot: Bot,
+    msg: Message,
+    category_storage: CategoryStorage,
+    category: String,
+    pattern: String,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+
+    // Check if category or pattern is empty or just whitespace
+    if category.trim().is_empty() || pattern.trim().is_empty() {
+        // Show the remove filter menu instead
+        let sent_msg = bot.send_message(chat_id, "🗑️ Remove Filter").await?;
+        remove_filter_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+        return Ok(());
+    }
+
+    let categories = get_chat_categories(&category_storage, chat_id).await;
+
+    // Check if category exists
+    if !categories.contains_key(&category) {
+        bot.send_message(
+            chat_id,
+            format!("❌ Category '{}' does not exist.", category),
+        )
+        .await?;
+        return Ok(());
+    }
+
+    // Check if filter exists in the category
+    if let Some(patterns) = categories.get(&category) {
+        if !patterns.contains(&pattern) {
+            bot.send_message(
+                chat_id,
+                format!("❌ Filter '{}' not found in category '{}'.", pattern, category),
+            )
+            .await?;
+            return Ok(());
+        }
+    }
+
+    // Remove the filter
+    crate::storage::remove_category_filter(&category_storage, chat_id, &category, &pattern).await;
+    bot.send_message(
+        chat_id,
+        format!("✅ Filter '{}' removed from category '{}'.", pattern, category),
+    )
+    .await?;
+
+    Ok(())
+}
+
 /// Show category removal interface
 pub async fn remove_category_menu(
     bot: Bot,
@@ -297,24 +382,18 @@ pub async fn remove_category_menu(
         bot.edit_message_text(chat_id, message_id, "No categories to remove.")
             .await?;
     } else {
-        let text = "❌ **Select category to remove:**";
+        let text = "❌ **Select category to remove:**\n\nClick a button to place the command in your input box.";
 
-        // Create buttons for each category
-        let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
+        // Create buttons for each category using switch_inline_query_current_chat
+        let buttons: Vec<Vec<InlineKeyboardButton>> = categories
             .keys()
             .map(|name| {
-                vec![InlineKeyboardButton::callback(
+                vec![InlineKeyboardButton::switch_inline_query_current_chat(
                     format!("🚫 {}", name),
-                    format!("remove_cat:{}", name),
+                    format!("/remove_category {}", name),
                 )]
             })
             .collect();
-
-        // Add a back button
-        buttons.push(vec![InlineKeyboardButton::callback(
-            "⬅️ Back to Menu",
-            "cmd_back_to_help",
-        )]);
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
@@ -476,10 +555,10 @@ pub async fn remove_filter_menu(
         bot.edit_message_text(chat_id, message_id, "No categories available.")
             .await?;
     } else {
-        let text = "�️ **Select category to remove filter:**";
+        let text = "�️ **Select category to remove filter:**\n\nClick a button to see filters for that category.";
 
         // Create buttons for each category that has filters
-        let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
+        let buttons: Vec<Vec<InlineKeyboardButton>> = categories
             .iter()
             .filter(|(_, patterns)| !patterns.is_empty())
             .map(|(name, _)| {
@@ -495,12 +574,6 @@ pub async fn remove_filter_menu(
                 .await?;
             return Ok(());
         }
-
-        // Add a back button
-        buttons.push(vec![InlineKeyboardButton::callback(
-            "⬅️ Back to Menu",
-            "cmd_back_to_help",
-        )]);
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
@@ -532,15 +605,15 @@ pub async fn show_category_filters_for_removal(
             )
             .await?;
         } else {
-            let text = format!("�️ **Select filter to remove from '{}':**", category_name);
+            let text = format!("�️ **Select filter to remove from '{}':**\n\nClick a button to place the command in your input box.", category_name);
 
-            // Create buttons for each filter
+            // Create buttons for each filter using switch_inline_query_current_chat
             let mut buttons: Vec<Vec<InlineKeyboardButton>> = patterns
                 .iter()
                 .map(|pattern| {
-                    vec![InlineKeyboardButton::callback(
+                    vec![InlineKeyboardButton::switch_inline_query_current_chat(
                         pattern.clone(),
-                        format!("remove_filter:{}:{}", category_name, pattern),
+                        format!("/remove_filter {} {}", category_name, pattern),
                     )]
                 })
                 .collect();
@@ -575,12 +648,18 @@ pub async fn answer(
         Command::Start => start_command(bot, msg).await,
         Command::Help => help_command(bot, msg).await,
         Command::List => list_command(bot, msg, storage).await,
-        Command::Report => report_command(bot, msg, storage, category_storage).await,
+        Command::Report => report_command(bot, msg, storage, category_storage.clone()).await,
         Command::Clear => clear_command(bot, msg, storage).await,
-        Command::AddCategory { name } => category_command(bot, msg, category_storage, name).await,
-        Command::Categories => categories_command(bot, msg, category_storage).await,
+        Command::AddCategory { name } => category_command(bot, msg, category_storage.clone(), name).await,
+        Command::Categories => categories_command(bot, msg, category_storage.clone()).await,
         Command::AddFilter { category, pattern } => {
-            add_filter_command(bot, msg, category_storage, category, pattern).await
+            add_filter_command(bot, msg, category_storage.clone(), category, pattern).await
+        }
+        Command::RemoveCategory { name } => {
+            remove_category_command(bot, msg, category_storage.clone(), name).await
+        }
+        Command::RemoveFilter { category, pattern } => {
+            remove_filter_command(bot, msg, category_storage, category, pattern).await
         }
     }
 }

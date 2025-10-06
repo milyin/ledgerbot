@@ -42,6 +42,18 @@ pub async fn handle_text_message(
             crate::commands::add_category_menu(bot.clone(), chat_id, sent_msg.id).await?;
             return Ok(());
         }
+        if trimmed_text == "/remove_category" || trimmed_text == format!("/remove_category@{}", bot_name.as_deref().unwrap_or("")) {
+            // /remove_category without parameters - show the remove category menu
+            let sent_msg = bot.send_message(chat_id, "❌ Remove Category").await?;
+            remove_category_menu(bot.clone(), chat_id, sent_msg.id, category_storage.clone()).await?;
+            return Ok(());
+        }
+        if trimmed_text == "/remove_filter" || trimmed_text == format!("/remove_filter@{}", bot_name.as_deref().unwrap_or("")) {
+            // /remove_filter without parameters - show the remove filter menu
+            let sent_msg = bot.send_message(chat_id, "🗑️ Remove Filter").await?;
+            remove_filter_menu(bot.clone(), chat_id, sent_msg.id, category_storage.clone()).await?;
+            return Ok(());
+        }
 
         // Get message timestamp (Unix timestamp in seconds)
         // Use forward_date if available (for forwarded messages), otherwise use msg.date
@@ -89,6 +101,25 @@ pub async fn handle_text_message(
                     }
                     Command::AddFilter { category, pattern } => {
                         crate::commands::add_filter_command(
+                            bot.clone(),
+                            msg.clone(),
+                            category_storage.clone(),
+                            category,
+                            pattern,
+                        )
+                        .await?;
+                    }
+                    Command::RemoveCategory { name } => {
+                        crate::commands::remove_category_command(
+                            bot.clone(),
+                            msg.clone(),
+                            category_storage.clone(),
+                            name,
+                        )
+                        .await?;
+                    }
+                    Command::RemoveFilter { category, pattern } => {
+                        crate::commands::remove_filter_command(
                             bot.clone(),
                             msg.clone(),
                             category_storage.clone(),
