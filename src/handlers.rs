@@ -1,8 +1,9 @@
 use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
+use teloxide::utils::command::BotCommands;
 
 use crate::batch::{add_to_batch, send_batch_report, BatchStorage};
-use crate::commands::{categories_command, clear_command, help_command, list_command, remove_category_menu};
+use crate::commands::{categories_command, clear_command, help_command, list_command, remove_category_menu, Command};
 use crate::parser::parse_expenses;
 use crate::storage::{add_expenses, remove_category, CategoryStorage, ExpenseStorage};
 
@@ -12,12 +13,43 @@ pub async fn handle_text_message(
     msg: Message,
     storage: ExpenseStorage,
     batch_storage: BatchStorage,
+    category_storage: CategoryStorage,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
     if let Some(text) = msg.text() {
-        // Parse expenses from the message
-        let parsed_expenses = parse_expenses(text);
+        // Get bot username for filtering
+        let bot_name = bot.get_me().await.ok().map(|me| me.username().to_string());
+        
+        // Parse expenses and commands from the message, with bot name filtering
+        let (parsed_expenses, parsed_commands) = parse_expenses(text, bot_name.as_deref());
+
+        // Execute parsed commands
+        for command_str in parsed_commands {
+            if let Ok(cmd) = Command::parse(&command_str, bot_name.as_deref().unwrap_or("")) {
+                // Execute the command
+                match cmd {
+                    Command::Help | Command::Start => {
+                        help_command(bot.clone(), msg.clone()).await?;
+                    }
+                    Command::List => {
+                        list_command(bot.clone(), msg.clone(), storage.clone(), category_storage.clone()).await?;
+                    }
+                    Command::Clear => {
+                        clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
+                    }
+                    Command::Category { name } => {
+                        crate::commands::category_command(bot.clone(), msg.clone(), category_storage.clone(), name).await?;
+                    }
+                    Command::Assign { name, pattern } => {
+                        crate::commands::assign_command(bot.clone(), msg.clone(), category_storage.clone(), name, pattern).await?;
+                    }
+                    Command::Categories => {
+                        categories_command(bot.clone(), msg.clone(), category_storage.clone()).await?;
+                    }
+                }
+            }
+        }
 
         if !parsed_expenses.is_empty() {
             // Store the expenses in chat-specific storage
