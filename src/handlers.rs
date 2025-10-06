@@ -3,6 +3,7 @@ use teloxide::types::CallbackQuery;
 use teloxide::utils::command::BotCommands;
 
 use crate::batch::{BatchStorage, add_to_batch, send_batch_report};
+use crate::emojis;
 use crate::commands::{
     Command, add_filter_menu, categories_command, clear_command, help_command, list_command,
     remove_category_menu, remove_filter_menu, report_command, show_category_filters_for_removal,
@@ -32,25 +33,25 @@ pub async fn handle_text_message(
         let trimmed_text = text.trim();
         if trimmed_text == "/add_filter" || trimmed_text == format!("/add_filter@{}", bot_name.as_deref().unwrap_or("")) {
             // /add_filter without parameters - show the add filter menu
-            let sent_msg = bot.send_message(chat_id, "🔧 Add Filter").await?;
+            let sent_msg = bot.send_message(chat_id, format!("{} Add Filter", emojis::CONFIG)).await?;
             add_filter_menu(bot.clone(), chat_id, sent_msg.id, category_storage.clone()).await?;
             return Ok(());
         }
         if trimmed_text == "/add_category" || trimmed_text == format!("/add_category@{}", bot_name.as_deref().unwrap_or("")) {
             // /add_category without parameters - show the add category menu
-            let sent_msg = bot.send_message(chat_id, "➕ Add Category").await?;
+            let sent_msg = bot.send_message(chat_id, format!("{} Add Category", emojis::ADD)).await?;
             crate::commands::add_category_menu(bot.clone(), chat_id, sent_msg.id).await?;
             return Ok(());
         }
         if trimmed_text == "/remove_category" || trimmed_text == format!("/remove_category@{}", bot_name.as_deref().unwrap_or("")) {
             // /remove_category without parameters - show the remove category menu
-            let sent_msg = bot.send_message(chat_id, "❌ Remove Category").await?;
+            let sent_msg = bot.send_message(chat_id, format!("{} Remove Category", emojis::REMOVE)).await?;
             remove_category_menu(bot.clone(), chat_id, sent_msg.id, category_storage.clone()).await?;
             return Ok(());
         }
         if trimmed_text == "/remove_filter" || trimmed_text == format!("/remove_filter@{}", bot_name.as_deref().unwrap_or("")) {
             // /remove_filter without parameters - show the remove filter menu
-            let sent_msg = bot.send_message(chat_id, "🗑️ Remove Filter").await?;
+            let sent_msg = bot.send_message(chat_id, format!("{} Remove Filter", emojis::DELETE)).await?;
             remove_filter_menu(bot.clone(), chat_id, sent_msg.id, category_storage.clone()).await?;
             return Ok(());
         }
