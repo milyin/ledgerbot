@@ -1,5 +1,6 @@
 use teloxide::{
-    prelude::*, types::InlineKeyboardButton, types::InlineKeyboardMarkup,
+    prelude::*, 
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyMarkup},
     utils::command::BotCommands,
 };
 
@@ -8,6 +9,25 @@ use crate::storage::{
     CategoryStorage, ExpenseStorage, add_category, add_category_filter, clear_chat_expenses, get_chat_categories,
     get_chat_expenses,
 };
+
+/// Create a persistent menu keyboard that shows on the left of the input field
+pub fn create_menu_keyboard() -> ReplyMarkup {
+    let keyboard = vec![
+        vec![
+            KeyboardButton::new("📋 /list"),
+            KeyboardButton::new("🗑️ /clear"),
+        ],
+        vec![
+            KeyboardButton::new("📂 /categories"),
+            KeyboardButton::new("❓ /help"),
+        ],
+    ];
+    ReplyMarkup::Keyboard(
+        teloxide::types::KeyboardMarkup::new(keyboard)
+            .resize_keyboard()
+            .persistent()
+    )
+}
 
 /// Bot commands
 #[derive(BotCommands, Clone)]
@@ -71,9 +91,16 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
         ],
     ]);
 
+    // Send message with both inline keyboard (for buttons in message) and reply keyboard (menu button)
     bot.send_message(msg.chat.id, help_text)
         .reply_markup(keyboard)
         .await?;
+    
+    // Send a follow-up message to set the persistent reply keyboard menu
+    bot.send_message(msg.chat.id, "Menu buttons are now available ⬇️")
+        .reply_markup(create_menu_keyboard())
+        .await?;
+    
     Ok(())
 }
 
@@ -184,12 +211,12 @@ pub async fn categories_command(
         let mut sorted_categories: Vec<_> = categories.iter().collect();
         sorted_categories.sort_by(|a, b| a.0.cmp(b.0));
 
-        for (name, pattern) in sorted_categories {
+        for (name, patterns) in sorted_categories {
             // First create the category
             result.push_str(&format!("/category {}\n", name));
 
-            // Then assign pattern if it exists
-            if !pattern.is_empty() {
+            // Then assign patterns if they exist
+            for pattern in patterns {
                 result.push_str(&format!("/add_filter {} {}\n", name, pattern));
             }
         }

@@ -21,7 +21,19 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>) -> (Vec<(String, f64)>
             continue;
         }
 
-        // If line starts with bot name (case-insensitive), remove it
+        // If leading word in the line is bot name or emoji, remove it
+        // This allows commands like "@botname /help" or "📋 /list
+        // or "🗑️ /clear" to be recognized as commands
+
+        // Remove emoji prefix (simple heuristic: non-alphanumeric and non-syntactic char)
+        if let Some(first_word) = line.split_whitespace().next() {
+            // Check if first word is an emoji (simple heuristic: non-alphanumeric and non-syntactic char)
+            if first_word.chars().all(|c| !c.is_alphanumeric() && !c.is_ascii_punctuation()) {
+                line = line[first_word.len()..].trim_start();
+            }
+        }
+
+        // Remove bot name prefix if present (case-insensitive)
         if let Some(name) = bot_name {
             let bot_name_lower = name.to_lowercase();
             let line_lower = line.to_lowercase();
@@ -207,5 +219,32 @@ mod tests {
         assert_eq!(commands[0], "/help");
         assert_eq!(commands[1], "/list");
         assert_eq!(commands[2], "/clear");
+    }
+
+    #[test]
+    fn test_parse_commands_from_keyboard_buttons() {
+        // Test that commands are extracted from keyboard button text like "📋 /list"
+        let text = "📋 /list";
+        let (expenses, commands) = parse_expenses(text, None);
+        
+        assert_eq!(expenses.len(), 0);
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0], "/list");
+        
+        // Test multiple buttons
+        let text2 = "🗑️ /clear";
+        let (expenses2, commands2) = parse_expenses(text2, None);
+        
+        assert_eq!(expenses2.len(), 0);
+        assert_eq!(commands2.len(), 1);
+        assert_eq!(commands2[0], "/clear");
+        
+        // Test with category command
+        let text3 = "📂 /categories";
+        let (expenses3, commands3) = parse_expenses(text3, None);
+        
+        assert_eq!(expenses3.len(), 0);
+        assert_eq!(commands3.len(), 1);
+        assert_eq!(commands3[0], "/categories");
     }
 }
