@@ -64,6 +64,29 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Ve
     (expenses, commands)
 }
 
+/// Format expenses as a chronological list without category grouping
+/// Output format: "date description price"
+pub fn format_expenses_chronological(expenses: &HashMap<String, (f64, i64)>) -> String {
+    if expenses.is_empty() {
+        return "No expenses recorded yet.".to_string();
+    }
+
+    // Convert HashMap to Vec for sorting
+    let mut expense_vec: Vec<(&String, &(f64, i64))> = expenses.iter().collect();
+    
+    // Sort by timestamp (chronological order)
+    expense_vec.sort_by_key(|(_, (_, timestamp))| timestamp);
+    
+    let mut result = String::new();
+    
+    for (description, (amount, timestamp)) in expense_vec {
+        let date_str = format_timestamp(*timestamp);
+        result.push_str(&format!("{} {} {:.2}\n", date_str, description, amount));
+    }
+    
+    result
+}
+
 /// Format expenses as a readable list with total, grouped by categories
 pub fn format_expenses_list(
     expenses: &HashMap<String, (f64, i64)>,
@@ -365,5 +388,42 @@ mod tests {
         // Extract words - should be empty as all are categorized
         let words = extract_words(&expenses, &categories);
         assert_eq!(words.len(), 0);
+    }
+
+    #[test]
+    fn test_format_expenses_chronological() {
+        // Create test expenses with different timestamps
+        let mut expenses = HashMap::new();
+        let timestamp1 = 1609459200; // 2021-01-01 00:00:00 UTC
+        let timestamp2 = 1609545600; // 2021-01-02 00:00:00 UTC
+        let timestamp3 = 1609632000; // 2021-01-03 00:00:00 UTC
+        
+        expenses.insert("Lunch".to_string(), (12.00, timestamp2));
+        expenses.insert("Coffee".to_string(), (5.50, timestamp1));
+        expenses.insert("Dinner".to_string(), (25.00, timestamp3));
+        
+        let result = format_expenses_chronological(&expenses);
+        
+        // Check that expenses are listed in chronological order
+        assert!(result.contains("📝 **Expenses (Chronological):**"));
+        assert!(result.contains("2021-01-01 Coffee 5.50"));
+        assert!(result.contains("2021-01-02 Lunch 12.00"));
+        assert!(result.contains("2021-01-03 Dinner 25.00"));
+        assert!(result.contains("💰 **Total: 42.50**"));
+        
+        // Verify chronological order by checking positions
+        let coffee_pos = result.find("Coffee").unwrap();
+        let lunch_pos = result.find("Lunch").unwrap();
+        let dinner_pos = result.find("Dinner").unwrap();
+        assert!(coffee_pos < lunch_pos);
+        assert!(lunch_pos < dinner_pos);
+    }
+
+    #[test]
+    fn test_format_expenses_chronological_empty() {
+        // Test with no expenses
+        let expenses = HashMap::new();
+        let result = format_expenses_chronological(&expenses);
+        assert_eq!(result, "No expenses recorded yet.");
     }
 }

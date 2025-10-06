@@ -3,7 +3,7 @@ use teloxide::types::CallbackQuery;
 use teloxide::utils::command::BotCommands;
 
 use crate::batch::{add_to_batch, send_batch_report, BatchStorage};
-use crate::commands::{categories_command, clear_command, help_command, list_command, remove_category_menu, add_filter_menu, remove_filter_menu, show_category_filters_for_removal, show_filter_word_suggestions, Command};
+use crate::commands::{categories_command, clear_command, help_command, report_command, list_command, remove_category_menu, add_filter_menu, remove_filter_menu, show_category_filters_for_removal, show_filter_word_suggestions, Command};
 use crate::parser::parse_expenses;
 use crate::storage::{add_expenses, remove_category, remove_category_filter, get_filter_selection, set_filter_selection, clear_filter_selection, CategoryStorage, ExpenseStorage, FilterSelectionStorage};
 
@@ -22,7 +22,10 @@ pub async fn handle_text_message(
         let bot_name = bot.get_me().await.ok().map(|me| me.username().to_string());
         
         // Get message timestamp (Unix timestamp in seconds)
-        let timestamp = msg.date.timestamp();
+        // Use forward_date if available (for forwarded messages), otherwise use msg.date
+        let timestamp = msg.forward_date()
+            .unwrap_or(msg.date)
+            .timestamp();
         
         // Parse expenses and commands from the message, with bot name filtering and timestamp
         let (parsed_expenses, parsed_commands) = parse_expenses(text, bot_name.as_deref(), timestamp);
@@ -35,8 +38,11 @@ pub async fn handle_text_message(
                     Command::Help | Command::Start => {
                         help_command(bot.clone(), msg.clone()).await?;
                     }
+                    Command::List => {
+                        list_command(bot.clone(), msg.clone(), storage.clone()).await?;
+                    }
                     Command::Report => {
-                        list_command(bot.clone(), msg.clone(), storage.clone(), category_storage.clone()).await?;
+                        report_command(bot.clone(), msg.clone(), storage.clone(), category_storage.clone()).await?;
                     }
                     Command::Clear => {
                         clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
@@ -174,7 +180,10 @@ pub async fn handle_callback_query(
                 } else {
                     match data.as_str() {
                         "cmd_list" => {
-                            list_command(bot, msg, storage, category_storage).await?;
+                            list_command(bot, msg, storage).await?;
+                        }
+                        "cmd_report" => {
+                            report_command(bot, msg, storage, category_storage).await?;
                         }
                         "cmd_clear" => {
                             clear_command(bot, msg, storage).await?;

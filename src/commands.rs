@@ -4,7 +4,7 @@ use teloxide::{
     utils::command::BotCommands,
 };
 
-use crate::parser::{extract_words, format_expenses_list};
+use crate::parser::{extract_words, format_expenses_list, format_expenses_chronological};
 use crate::storage::{
     CategoryStorage, ExpenseStorage, FilterSelectionStorage, add_category, add_category_filter, 
     clear_chat_expenses, get_chat_categories, get_chat_expenses, get_filter_selection,
@@ -14,7 +14,10 @@ use crate::storage::{
 pub fn create_menu_keyboard() -> ReplyMarkup {
     let keyboard = vec![
         vec![
-            KeyboardButton::new("📋 /report"),
+            KeyboardButton::new("� /list"),
+            KeyboardButton::new("�📋 /report"),
+        ],
+        vec![
             KeyboardButton::new("🗑️ /clear"),
         ],
         vec![
@@ -40,6 +43,8 @@ pub enum Command {
     Help,
     #[command(description = "start the bot")]
     Start,
+    #[command(description = "list expenses chronologically")]
+    List,
     #[command(description = "show all expenses")]
     Report,
     #[command(description = "clear all expenses")]
@@ -75,7 +80,8 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     // Create inline keyboard with buttons for each command
     let keyboard = InlineKeyboardMarkup::new(vec![
         vec![
-            InlineKeyboardButton::callback("📋 List Expenses", "cmd_list"),
+            InlineKeyboardButton::callback("� List Expenses", "cmd_list"),
+            InlineKeyboardButton::callback("📋 Report Expenses", "cmd_report"),
             InlineKeyboardButton::callback("🗑️ Clear Expenses", "cmd_clear"),
         ],
         vec![
@@ -102,8 +108,22 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     Ok(())
 }
 
-/// List all expenses
+/// List all expenses chronologically without category grouping
 pub async fn list_command(
+    bot: Bot,
+    msg: Message,
+    storage: ExpenseStorage,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+    let chat_expenses = get_chat_expenses(&storage, chat_id).await;
+    let expenses_list = format_expenses_chronological(&chat_expenses);
+
+    bot.send_message(chat_id, expenses_list).await?;
+    Ok(())
+}
+
+/// Report all expenses grouped by categories
+pub async fn report_command(
     bot: Bot,
     msg: Message,
     storage: ExpenseStorage,
@@ -527,7 +547,8 @@ pub async fn answer(
 ) -> ResponseResult<()> {
     match cmd {
         Command::Help | Command::Start => help_command(bot, msg).await,
-        Command::Report => list_command(bot, msg, storage, category_storage).await,
+        Command::List => list_command(bot, msg, storage).await,
+        Command::Report => report_command(bot, msg, storage, category_storage).await,
         Command::Clear => clear_command(bot, msg, storage).await,
         Command::Category { name } => category_command(bot, msg, category_storage, name).await,
         Command::Categories => categories_command(bot, msg, category_storage).await,
