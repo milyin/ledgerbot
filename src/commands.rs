@@ -12,17 +12,12 @@ use crate::storage::{
 
 /// Create a persistent menu keyboard that shows on the left of the input field
 pub fn create_menu_keyboard() -> ReplyMarkup {
-    let keyboard = vec![
-        vec![
-            KeyboardButton::new("� /list"),
-            KeyboardButton::new("�📋 /report"),
-        ],
-        vec![KeyboardButton::new("🗑️ /clear")],
-        vec![
-            KeyboardButton::new("📂 /categories"),
-            KeyboardButton::new("💡 /help"),
-        ],
-    ];
+    let keyboard = vec![vec![
+        KeyboardButton::new("💡 /help"),
+        KeyboardButton::new("🗒️ /list"),
+        KeyboardButton::new("🗂 /categories"),
+        KeyboardButton::new("📋 /report"),
+    ]];
     ReplyMarkup::Keyboard(
         teloxide::types::KeyboardMarkup::new(keyboard)
             .resize_keyboard()
@@ -62,21 +57,10 @@ pub enum Command {
 /// Display help message with inline keyboard buttons
 pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     let help_text = format!(
-        "💡 **Expense Bot Help**\n\
-        Version: {}\n\n\
-        **How to add expenses:**\n\
-        Forward messages or send text with lines in format:\n\
-        `<description> <amount>`\n\n\
-        **Examples:**\n\
-        `Coffee 5.50`\n\
-        `Lunch 12.00`\n\
-        `Bus ticket 2.75`\n\n\
-        **Category Examples:**\n\
-        • Create a category: `/category Food`\n\
-        • Add a filter: Use the Add Filter button\n\n\
-        **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.\n\n\
-        👇 **Use the buttons below:**",
-        env!("CARGO_PKG_VERSION")
+        "To add expenses forward messages or send text with lines in format:\n\
+        `[<yyyy-mm-dd>] <description> <amount>\n\n\
+        {commands}",
+        commands = Command::descriptions()
     );
 
     // Create inline keyboard with buttons for each command
@@ -101,15 +85,25 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     bot.send_message(msg.chat.id, help_text)
         .reply_markup(keyboard)
         .await?;
-
-    // Send a follow-up message to set the persistent reply keyboard menu
-    bot.send_message(msg.chat.id, "Menu buttons are now available ⬇️")
-        .reply_markup(create_menu_keyboard())
-        .await?;
-
     Ok(())
 }
 
+pub async fn start_command(bot: Bot, msg: Message) -> ResponseResult<()> {
+    // Send a follow-up message to set the persistent reply keyboard menu
+    bot.send_message(
+        msg.chat.id,
+        format!(
+            "Expense Bot v.{}\nMenu buttons are available ⬇️",
+            env!("CARGO_PKG_VERSION"),
+        ),
+    )
+    .reply_markup(create_menu_keyboard())
+    .await?;
+
+    help_command(bot, msg).await?;
+
+    Ok(())
+}
 /// List all expenses chronologically without category grouping
 pub async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
@@ -546,6 +540,7 @@ pub async fn answer(
     category_storage: CategoryStorage,
 ) -> ResponseResult<()> {
     match cmd {
+        Command::Start => start_command(bot, msg).await,
         Command::Help | Command::Start => help_command(bot, msg).await,
         Command::List => list_command(bot, msg, storage).await,
         Command::Report => report_command(bot, msg, storage, category_storage).await,
