@@ -10,6 +10,10 @@ pub type ExpenseStorage = Arc<Mutex<HashMap<ChatId, HashMap<String, f64>>>>;
 /// Maps category name to a list of regex patterns
 pub type CategoryStorage = Arc<Mutex<HashMap<ChatId, HashMap<String, Vec<String>>>>>;
 
+/// Storage for temporary filter word selections during filter creation
+/// Maps (ChatId, CategoryName) to selected words
+pub type FilterSelectionStorage = Arc<Mutex<HashMap<(ChatId, String), Vec<String>>>>;
+
 /// Get expenses for a specific chat
 pub async fn get_chat_expenses(storage: &ExpenseStorage, chat_id: ChatId) -> HashMap<String, f64> {
     let storage_guard = storage.lock().await;
@@ -102,4 +106,47 @@ pub async fn remove_category(
 /// Create a new category storage
 pub fn create_category_storage() -> CategoryStorage {
     Arc::new(Mutex::new(HashMap::new()))
+}
+
+/// Create a new filter selection storage
+pub fn create_filter_selection_storage() -> FilterSelectionStorage {
+    Arc::new(Mutex::new(HashMap::new()))
+}
+
+/// Get selected words for a filter being created
+pub async fn get_filter_selection(
+    storage: &FilterSelectionStorage,
+    chat_id: ChatId,
+    category: &str,
+) -> Vec<String> {
+    let storage_guard = storage.lock().await;
+    storage_guard
+        .get(&(chat_id, category.to_string()))
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// Set selected words for a filter being created
+pub async fn set_filter_selection(
+    storage: &FilterSelectionStorage,
+    chat_id: ChatId,
+    category: String,
+    words: Vec<String>,
+) {
+    let mut storage_guard = storage.lock().await;
+    if words.is_empty() {
+        storage_guard.remove(&(chat_id, category));
+    } else {
+        storage_guard.insert((chat_id, category), words);
+    }
+}
+
+/// Clear filter selection for a chat/category
+pub async fn clear_filter_selection(
+    storage: &FilterSelectionStorage,
+    chat_id: ChatId,
+    category: &str,
+) {
+    let mut storage_guard = storage.lock().await;
+    storage_guard.remove(&(chat_id, category.to_string()));
 }

@@ -6,8 +6,8 @@ use teloxide::{
 
 use crate::parser::{extract_words, format_expenses_list};
 use crate::storage::{
-    CategoryStorage, ExpenseStorage, add_category, add_category_filter, clear_chat_expenses, get_chat_categories,
-    get_chat_expenses,
+    CategoryStorage, ExpenseStorage, FilterSelectionStorage, add_category, add_category_filter, 
+    clear_chat_expenses, get_chat_categories, get_chat_expenses, get_filter_selection,
 };
 
 /// Create a persistent menu keyboard that shows on the left of the input field
@@ -340,25 +340,47 @@ pub async fn show_filter_word_suggestions(
     chat_id: ChatId,
     storage: ExpenseStorage,
     category_storage: CategoryStorage,
+    filter_selection_storage: FilterSelectionStorage,
     category_name: String,
 ) -> ResponseResult<()> {
     let expenses = get_chat_expenses(&storage, chat_id).await;
     let categories = get_chat_categories(&category_storage, chat_id).await;
     
+    // Get currently selected words from storage
+    let selected_words = get_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
+    
     // Extract words from uncategorized expenses
     let words = extract_words(&expenses, &categories);
     
-    let text = format!("💡 **Select word(s) for filter '{}':**\n\nClick a word to add it to the input field. To combine multiple words, separate them with | (e.g., coffee|tea|lunch).\nOr choose custom filter to enter your own regex pattern.", category_name);
+    // Build selected words display
+    let selected_display = if selected_words.is_empty() {
+        "(none selected)".to_string()
+    } else {
+        selected_words.join(" | ")
+    };
+    
+    let text = format!(
+        "💡 **Select word(s) for filter '{}':**\n\nSelected: {}\n\nClick words to add/remove them. When done, click 'Apply Filter'.",
+        category_name, selected_display
+    );
     
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
     
     // Add buttons for each suggested word (limit to 20 most common ones, 4 per row)
     let mut row: Vec<InlineKeyboardButton> = Vec::new();
     for word in words.iter().take(20) {
-        // Use switch_inline_query_current_chat to add the word to the input field
-        row.push(InlineKeyboardButton::switch_inline_query_current_chat(
-            word.clone(),
-            format!("/add_filter {} {}", category_name, word),
+        // Check if this word is selected
+        let is_selected = selected_words.contains(word);
+        let label = if is_selected {
+            format!("✓ {}", word)
+        } else {
+            word.clone()
+        };
+        
+        // Use short callback data without encoding state
+        row.push(InlineKeyboardButton::callback(
+            label,
+            format!("toggle_word:{}:{}", category_name, word),
         ));
         
         // Add row when we have 4 buttons
@@ -371,6 +393,14 @@ pub async fn show_filter_word_suggestions(
     // Add remaining buttons if any
     if !row.is_empty() {
         buttons.push(row);
+    }
+    
+    // Add apply button if words are selected
+    if !selected_words.is_empty() {
+        buttons.push(vec![InlineKeyboardButton::callback(
+            "✅ Apply Filter",
+            format!("apply_words:{}", category_name),
+        )]);
     }
     
     // Add custom filter button

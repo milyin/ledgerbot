@@ -12,7 +12,7 @@ use batch::create_batch_storage;
 use commands::{answer, Command};
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storage::{create_category_storage, create_storage};
+use storage::{create_category_storage, create_filter_selection_storage, create_storage};
 
 #[tokio::main]
 async fn main() {
@@ -33,6 +33,9 @@ async fn main() {
     // Initialize batch storage
     let batch_storage = create_batch_storage();
 
+    // Initialize filter selection storage
+    let filter_selection_storage = create_filter_selection_storage();
+
     // Create handler using modern teloxide patterns
     let handler = dptree::entry()
         .branch(
@@ -43,7 +46,7 @@ async fn main() {
         .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![storage, category_storage, batch_storage])
+        .dependencies(dptree::deps![storage, category_storage, batch_storage, filter_selection_storage])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
