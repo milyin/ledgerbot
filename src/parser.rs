@@ -54,7 +54,7 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>) -> (Vec<(String, f64)>
 /// Format expenses as a readable list with total, grouped by categories
 pub fn format_expenses_list(
     expenses: &HashMap<String, f64>,
-    categories: &HashMap<String, String>,
+    categories: &HashMap<String, Vec<String>>,
 ) -> String {
     if expenses.is_empty() {
         return "No expenses recorded yet.".to_string();
@@ -63,11 +63,15 @@ pub fn format_expenses_list(
     let mut result = "📊 **Current Expenses:**\n\n".to_string();
     let mut total = 0.0;
     
-    // Build regex matchers for each category
-    let category_matchers: Vec<(String, regex::Regex)> = categories
+    // Build regex matchers for each category (from all patterns)
+    let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
         .iter()
-        .filter_map(|(name, pattern)| {
-            regex::Regex::new(pattern).ok().map(|re| (name.clone(), re))
+        .map(|(name, patterns)| {
+            let regexes: Vec<regex::Regex> = patterns
+                .iter()
+                .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                .collect();
+            (name.clone(), regexes)
         })
         .collect();
     
@@ -79,8 +83,9 @@ pub fn format_expenses_list(
         let mut matched = false;
         
         // Try to match against each category
-        for (category_name, regex) in &category_matchers {
-            if regex.is_match(description) {
+        for (category_name, regexes) in &category_matchers {
+            // Check if description matches any of the patterns in this category
+            if regexes.iter().any(|re| re.is_match(description)) {
                 categorized
                     .entry(category_name.clone())
                     .or_default()

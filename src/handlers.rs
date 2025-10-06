@@ -3,9 +3,9 @@ use teloxide::types::CallbackQuery;
 use teloxide::utils::command::BotCommands;
 
 use crate::batch::{add_to_batch, send_batch_report, BatchStorage};
-use crate::commands::{categories_command, clear_command, help_command, list_command, remove_category_menu, Command};
+use crate::commands::{categories_command, clear_command, help_command, list_command, remove_category_menu, add_filter_menu, remove_filter_menu, show_category_filters_for_removal, Command};
 use crate::parser::parse_expenses;
-use crate::storage::{add_expenses, remove_category, CategoryStorage, ExpenseStorage};
+use crate::storage::{add_expenses, remove_category, remove_category_filter, CategoryStorage, ExpenseStorage};
 
 /// Handle text messages containing potential expense data
 pub async fn handle_text_message(
@@ -41,11 +41,11 @@ pub async fn handle_text_message(
                     Command::Category { name } => {
                         crate::commands::category_command(bot.clone(), msg.clone(), category_storage.clone(), name).await?;
                     }
-                    Command::Assign { name, pattern } => {
-                        crate::commands::assign_command(bot.clone(), msg.clone(), category_storage.clone(), name, pattern).await?;
-                    }
                     Command::Categories => {
                         categories_command(bot.clone(), msg.clone(), category_storage.clone()).await?;
+                    }
+                    Command::AddFilter { category, pattern } => {
+                        crate::commands::add_filter_command(bot.clone(), msg.clone(), category_storage.clone(), category, pattern).await?;
                     }
                 }
             }
@@ -99,6 +99,25 @@ pub async fn handle_callback_query(
                         .await?;
                     // Show the updated remove menu
                     remove_category_menu(bot, msg, category_storage).await?;
+                } else if data.starts_with("remove_filter_cat:") {
+                    // Show filters for a specific category
+                    let category_name = data.strip_prefix("remove_filter_cat:").unwrap().to_string();
+                    show_category_filters_for_removal(bot, chat_id, category_storage, category_name).await?;
+                } else if data.starts_with("remove_filter:") {
+                    // Handle remove_filter:CategoryName:Pattern format
+                    let parts: Vec<&str> = data.strip_prefix("remove_filter:").unwrap().splitn(2, ':').collect();
+                    if parts.len() == 2 {
+                        let category_name = parts[0];
+                        let pattern = parts[1];
+                        remove_category_filter(&category_storage, chat_id, category_name, pattern).await;
+                        bot.send_message(
+                            chat_id,
+                            format!("✅ Filter '{}' removed from category '{}'.", pattern, category_name)
+                        )
+                        .await?;
+                        // Show the updated filters for this category
+                        show_category_filters_for_removal(bot, chat_id, category_storage, category_name.to_string()).await?;
+                    }
                 } else {
                     match data.as_str() {
                         "cmd_list" => {
@@ -112,6 +131,12 @@ pub async fn handle_callback_query(
                         }
                         "cmd_remove_category" => {
                             remove_category_menu(bot, msg, category_storage).await?;
+                        }
+                        "cmd_add_filter" => {
+                            add_filter_menu(bot, msg, category_storage).await?;
+                        }
+                        "cmd_remove_filter" => {
+                            remove_filter_menu(bot, msg, category_storage).await?;
                         }
                         "cmd_back_to_help" => {
                             help_command(bot, msg).await?;
