@@ -1,7 +1,13 @@
-use teloxide::{prelude::*, utils::command::BotCommands, types::InlineKeyboardButton, types::InlineKeyboardMarkup};
+use teloxide::{
+    prelude::*, types::InlineKeyboardButton, types::InlineKeyboardMarkup,
+    utils::command::BotCommands,
+};
 
 use crate::parser::format_expenses_list;
-use crate::storage::{add_category, clear_chat_expenses, get_chat_categories, get_chat_expenses, CategoryStorage, ExpenseStorage};
+use crate::storage::{
+    CategoryStorage, ExpenseStorage, add_category, clear_chat_expenses, get_chat_categories,
+    get_chat_expenses,
+};
 
 /// Bot commands
 #[derive(BotCommands, Clone)]
@@ -20,7 +26,10 @@ pub enum Command {
     Clear,
     #[command(description = "add expense category", parse_with = "split")]
     Category { name: String },
-    #[command(description = "assign regex pattern to existing category", parse_with = "split")]
+    #[command(
+        description = "assign regex pattern to existing category",
+        parse_with = "split"
+    )]
     Assign { name: String, pattern: String },
     #[command(description = "list all categories")]
     Categories,
@@ -102,14 +111,17 @@ pub async fn category_command(
     name: String,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    
+
     add_category(&category_storage, chat_id, name.clone(), String::new()).await;
     bot.send_message(
         chat_id,
-        format!("✅ Category '{}' created. Use /assign to add a regex pattern.", name),
+        format!(
+            "✅ Category '{}' created. Use /assign to add a regex pattern.",
+            name
+        ),
     )
     .await?;
-    
+
     Ok(())
 }
 
@@ -122,18 +134,21 @@ pub async fn assign_command(
     pattern: String,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    
+
     // Check if category exists
     let categories = get_chat_categories(&category_storage, chat_id).await;
     if !categories.contains_key(&name) {
         bot.send_message(
             chat_id,
-            format!("❌ Category '{}' does not exist. Use /category to create it first.", name),
+            format!(
+                "❌ Category '{}' does not exist. Use /category to create it first.",
+                name
+            ),
         )
         .await?;
         return Ok(());
     }
-    
+
     // Validate regex pattern
     match regex::Regex::new(&pattern) {
         Ok(_) => {
@@ -145,18 +160,15 @@ pub async fn assign_command(
             .await?;
         }
         Err(e) => {
-            bot.send_message(
-                chat_id,
-                format!("❌ Invalid regex pattern: {}", e),
-            )
-            .await?;
+            bot.send_message(chat_id, format!("❌ Invalid regex pattern: {}", e))
+                .await?;
         }
     }
-    
+
     Ok(())
 }
 
-/// List all categories
+/// List all categories as executable commands
 pub async fn categories_command(
     bot: Bot,
     msg: Message,
@@ -164,21 +176,29 @@ pub async fn categories_command(
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     let categories = get_chat_categories(&category_storage, chat_id).await;
-    
+
     if categories.is_empty() {
-        bot.send_message(chat_id, "No categories defined yet.").await?;
+        bot.send_message(chat_id, "No categories defined yet.")
+            .await?;
     } else {
-        let mut result = "📁 **Categories:**\n\n".to_string();
-        for (name, pattern) in categories.iter() {
-            if pattern.is_empty() {
-                result.push_str(&format!("• **{}**: _(no pattern assigned)_\n", name));
-            } else {
-                result.push_str(&format!("• **{}**: `{}`\n", name, pattern));
+        let mut result = String::new();
+
+        // Sort categories for consistent output
+        let mut sorted_categories: Vec<_> = categories.iter().collect();
+        sorted_categories.sort_by(|a, b| a.0.cmp(b.0));
+
+        for (name, pattern) in sorted_categories {
+            // First create the category
+            result.push_str(&format!("/category {}\n", name));
+
+            // Then assign pattern if it exists
+            if !pattern.is_empty() {
+                result.push_str(&format!("/assign {} {}\n", name, pattern));
             }
         }
         bot.send_message(chat_id, result).await?;
     }
-    
+
     Ok(())
 }
 
@@ -190,12 +210,13 @@ pub async fn remove_category_menu(
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     let categories = get_chat_categories(&category_storage, chat_id).await;
-    
+
     if categories.is_empty() {
-        bot.send_message(chat_id, "No categories to remove.").await?;
+        bot.send_message(chat_id, "No categories to remove.")
+            .await?;
     } else {
         let text = "🗑️ **Select category to remove:**";
-        
+
         // Create buttons for each category
         let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
             .keys()
@@ -206,20 +227,20 @@ pub async fn remove_category_menu(
                 )]
             })
             .collect();
-        
+
         // Add a back button
         buttons.push(vec![InlineKeyboardButton::callback(
             "⬅️ Back to Menu",
             "cmd_back_to_help",
         )]);
-        
+
         let keyboard = InlineKeyboardMarkup::new(buttons);
-        
+
         bot.send_message(chat_id, text)
             .reply_markup(keyboard)
             .await?;
     }
-    
+
     Ok(())
 }
 
@@ -235,9 +256,7 @@ pub async fn answer(
         Command::Help | Command::Start => help_command(bot, msg).await,
         Command::List => list_command(bot, msg, storage, category_storage).await,
         Command::Clear => clear_command(bot, msg, storage).await,
-        Command::Category { name } => {
-            category_command(bot, msg, category_storage, name).await
-        }
+        Command::Category { name } => category_command(bot, msg, category_storage, name).await,
         Command::Assign { name, pattern } => {
             assign_command(bot, msg, category_storage, name, pattern).await
         }
