@@ -1,4 +1,4 @@
-use teloxide::{prelude::*, utils::command::BotCommands};
+use teloxide::{prelude::*, utils::command::BotCommands, types::InlineKeyboardButton, types::InlineKeyboardMarkup};
 
 use crate::parser::format_expenses_list;
 use crate::storage::{add_category, clear_chat_expenses, get_chat_categories, get_chat_expenses, CategoryStorage, ExpenseStorage};
@@ -26,7 +26,7 @@ pub enum Command {
     Categories,
 }
 
-/// Display help message with auto-generated command list
+/// Display help message with inline keyboard buttons
 pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     let help_text = format!(
         "💡 **Expense Bot Help**\n\
@@ -38,20 +38,33 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
         `Coffee 5.50`\n\
         `Lunch 12.00`\n\
         `Bus ticket 2.75`\n\n\
-        **Commands:**\n\
-        {}\n\n\
         **Category Examples:**\n\
-        `/category Food` - Create Food category\n\
-        `/assign Food (coffee|lunch|dinner)` - Match food expenses\n\
-        `/category Transport` - Create Transport category\n\
-        `/assign Transport (bus|taxi|uber)` - Match transport expenses\n\
-        `/categories` - Show all your categories\n\n\
-        **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.",
-        env!("CARGO_PKG_VERSION"),
-        Command::descriptions()
+        • Create a category: `/category Food`\n\
+        • Assign pattern: `/assign Food (coffee|lunch|dinner)`\n\n\
+        **Note:** The bot will collect your expense messages and report a summary after a few seconds of inactivity.\n\n\
+        👇 **Use the buttons below:**",
+        env!("CARGO_PKG_VERSION")
     );
 
-    bot.send_message(msg.chat.id, help_text).await?;
+    // Create inline keyboard with buttons for each command
+    let keyboard = InlineKeyboardMarkup::new(vec![
+        vec![
+            InlineKeyboardButton::callback("📋 List", "cmd_list"),
+            InlineKeyboardButton::callback("🗑️ Clear", "cmd_clear"),
+        ],
+        vec![
+            InlineKeyboardButton::switch_inline_query_current_chat("➕ Category", "/category "),
+            InlineKeyboardButton::switch_inline_query_current_chat("🔗 Assign", "/assign "),
+        ],
+        vec![
+            InlineKeyboardButton::callback("📁 Categories", "cmd_categories"),
+            InlineKeyboardButton::callback("🗑️ Remove Category", "cmd_remove_category"),
+        ],
+    ]);
+
+    bot.send_message(msg.chat.id, help_text)
+        .reply_markup(keyboard)
+        .await?;
     Ok(())
 }
 
@@ -164,6 +177,47 @@ pub async fn categories_command(
             }
         }
         bot.send_message(chat_id, result).await?;
+    }
+    
+    Ok(())
+}
+
+/// Show category removal interface
+pub async fn remove_category_menu(
+    bot: Bot,
+    msg: Message,
+    category_storage: CategoryStorage,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+    let categories = get_chat_categories(&category_storage, chat_id).await;
+    
+    if categories.is_empty() {
+        bot.send_message(chat_id, "No categories to remove.").await?;
+    } else {
+        let text = "🗑️ **Select category to remove:**";
+        
+        // Create buttons for each category
+        let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
+            .keys()
+            .map(|name| {
+                vec![InlineKeyboardButton::callback(
+                    format!("❌ {}", name),
+                    format!("remove_cat:{}", name),
+                )]
+            })
+            .collect();
+        
+        // Add a back button
+        buttons.push(vec![InlineKeyboardButton::callback(
+            "⬅️ Back to Menu",
+            "cmd_back_to_help",
+        )]);
+        
+        let keyboard = InlineKeyboardMarkup::new(buttons);
+        
+        bot.send_message(chat_id, text)
+            .reply_markup(keyboard)
+            .await?;
     }
     
     Ok(())

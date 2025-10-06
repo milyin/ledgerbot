@@ -11,7 +11,7 @@ use teloxide::prelude::*;
 use batch::create_batch_storage;
 use commands::{answer, Command};
 use config::Args;
-use handlers::handle_text_message;
+use handlers::{handle_callback_query, handle_text_message};
 use storage::{create_category_storage, create_storage};
 
 #[tokio::main]
@@ -34,9 +34,13 @@ async fn main() {
     let batch_storage = create_batch_storage();
 
     // Create handler using modern teloxide patterns
-    let handler = Update::filter_message()
-        .branch(dptree::entry().filter_command::<Command>().endpoint(answer))
-        .branch(dptree::filter(|msg: Message| msg.text().is_some()).endpoint(handle_text_message));
+    let handler = dptree::entry()
+        .branch(
+            Update::filter_message()
+                .branch(dptree::entry().filter_command::<Command>().endpoint(answer))
+                .branch(dptree::filter(|msg: Message| msg.text().is_some()).endpoint(handle_text_message))
+        )
+        .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![storage, category_storage, batch_storage])
