@@ -19,7 +19,7 @@ pub fn create_menu_keyboard() -> ReplyMarkup {
         ],
         vec![
             KeyboardButton::new("📂 /categories"),
-            KeyboardButton::new("❓ /help"),
+            KeyboardButton::new("💡 /help"),
         ],
     ];
     ReplyMarkup::Keyboard(
@@ -75,19 +75,17 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     // Create inline keyboard with buttons for each command
     let keyboard = InlineKeyboardMarkup::new(vec![
         vec![
-            InlineKeyboardButton::callback("📋 List", "cmd_list"),
-            InlineKeyboardButton::callback("🗑️ Clear", "cmd_clear"),
+            InlineKeyboardButton::callback("📋 List Expenses", "cmd_list"),
+            InlineKeyboardButton::callback("🗑️ Clear Expenses", "cmd_clear"),
         ],
         vec![
             InlineKeyboardButton::switch_inline_query_current_chat("➕ Category", "/category "),
-            InlineKeyboardButton::callback("� Categories", "cmd_categories"),
+            InlineKeyboardButton::callback("❌ Remove Category", "cmd_remove_category"),
+            InlineKeyboardButton::callback("📂 Categories", "cmd_categories"),
         ],
         vec![
-            InlineKeyboardButton::callback("� Add Filter", "cmd_add_filter"),
+            InlineKeyboardButton::callback("🔧 Add Filter", "cmd_add_filter"),
             InlineKeyboardButton::callback("🗑️ Remove Filter", "cmd_remove_filter"),
-        ],
-        vec![
-            InlineKeyboardButton::callback("🗑️ Remove Category", "cmd_remove_category"),
         ],
     ]);
 
@@ -239,14 +237,14 @@ pub async fn remove_category_menu(
         bot.send_message(chat_id, "No categories to remove.")
             .await?;
     } else {
-        let text = "🗑️ **Select category to remove:**";
+        let text = "❌ **Select category to remove:**";
 
         // Create buttons for each category
         let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
             .keys()
             .map(|name| {
                 vec![InlineKeyboardButton::callback(
-                    format!("❌ {}", name),
+                    format!("🚫 {}", name),
                     format!("remove_cat:{}", name),
                 )]
             })
@@ -281,14 +279,14 @@ pub async fn add_filter_menu(
         bot.send_message(chat_id, "No categories available. Create a category first with /category <name>")
             .await?;
     } else {
-        let text = "🔍 **Select category to add filter:**";
+        let text = "� **Select category to add filter:**";
 
         // Create buttons for each category
         let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
             .keys()
             .map(|name| {
                 vec![InlineKeyboardButton::switch_inline_query_current_chat(
-                    format!("➕ {}", name),
+                    format!("🔧 {}", name),
                     format!("/add_filter {} ", name),
                 )]
             })
@@ -323,7 +321,7 @@ pub async fn remove_filter_menu(
         bot.send_message(chat_id, "No categories available.")
             .await?;
     } else {
-        let text = "🗑️ **Select category to remove filter:**";
+        let text = "�️ **Select category to remove filter:**";
 
         // Create buttons for each category that has filters
         let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
@@ -331,7 +329,7 @@ pub async fn remove_filter_menu(
             .filter(|(_, patterns)| !patterns.is_empty())
             .map(|(name, _)| {
                 vec![InlineKeyboardButton::callback(
-                    format!("🗑️ {}", name),
+                    format!("�️ {}", name),
                     format!("remove_filter_cat:{}", name),
                 )]
             })
@@ -373,7 +371,7 @@ pub async fn show_category_filters_for_removal(
             bot.send_message(chat_id, format!("No filters in category '{}'.", category_name))
                 .await?;
         } else {
-            let text = format!("🗑️ **Select filter to remove from '{}':**", category_name);
+            let text = format!("�️ **Select filter to remove from '{}':**", category_name);
 
             // Create buttons for each filter
             let mut buttons: Vec<Vec<InlineKeyboardButton>> = patterns
@@ -388,7 +386,7 @@ pub async fn show_category_filters_for_removal(
 
             // Add a back button
             buttons.push(vec![InlineKeyboardButton::callback(
-                "⬅️ Back",
+                "↩️ Back",
                 "cmd_remove_filter",
             )]);
 
