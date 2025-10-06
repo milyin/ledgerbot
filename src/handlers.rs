@@ -28,6 +28,15 @@ pub async fn handle_text_message(
         // Get bot username for filtering
         let bot_name = bot.get_me().await.ok().map(|me| me.username().to_string());
 
+        // Check for commands without parameters that should trigger menus
+        let trimmed_text = text.trim();
+        if trimmed_text == "/add_filter" || trimmed_text == format!("/add_filter@{}", bot_name.as_deref().unwrap_or("")) {
+            // /add_filter without parameters - show the add filter menu
+            let sent_msg = bot.send_message(chat_id, "🔧 Add Filter").await?;
+            add_filter_menu(bot.clone(), chat_id, sent_msg.id, category_storage.clone()).await?;
+            return Ok(());
+        }
+
         // Get message timestamp (Unix timestamp in seconds)
         // Use forward_date if available (for forwarded messages), otherwise use msg.date
         let timestamp = msg.forward_date().unwrap_or(msg.date).timestamp();

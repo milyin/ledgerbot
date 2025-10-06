@@ -76,8 +76,7 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
             InlineKeyboardButton::callback("📂 Categories", "cmd_categories"),
         ],
         vec![
-            InlineKeyboardButton::callback("🔧 Add Filter", "cmd_add_filter"),
-            InlineKeyboardButton::callback("🗑️ Remove Filter", "cmd_remove_filter"),
+            InlineKeyboardButton::callback("️ Remove Filter", "cmd_remove_filter"),
         ],
     ]);
 
@@ -309,7 +308,7 @@ pub async fn add_filter_menu(
         let text = "� **Select category to add filter:**";
 
         // Create buttons for each category
-        let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
+        let buttons: Vec<Vec<InlineKeyboardButton>> = categories
             .keys()
             .map(|name| {
                 vec![InlineKeyboardButton::callback(
@@ -318,12 +317,6 @@ pub async fn add_filter_menu(
                 )]
             })
             .collect();
-
-        // Add a back button
-        buttons.push(vec![InlineKeyboardButton::callback(
-            "⬅️ Back to Menu",
-            "cmd_back_to_help",
-        )]);
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
@@ -541,7 +534,7 @@ pub async fn answer(
 ) -> ResponseResult<()> {
     match cmd {
         Command::Start => start_command(bot, msg).await,
-        Command::Help | Command::Start => help_command(bot, msg).await,
+        Command::Help => help_command(bot, msg).await,
         Command::List => list_command(bot, msg, storage).await,
         Command::Report => report_command(bot, msg, storage, category_storage).await,
         Command::Clear => clear_command(bot, msg, storage).await,
