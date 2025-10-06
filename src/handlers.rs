@@ -35,7 +35,7 @@ pub async fn handle_text_message(
                     Command::Help | Command::Start => {
                         help_command(bot.clone(), msg.clone()).await?;
                     }
-                    Command::List => {
+                    Command::Report => {
                         list_command(bot.clone(), msg.clone(), storage.clone(), category_storage.clone()).await?;
                     }
                     Command::Clear => {

@@ -69,7 +69,7 @@ pub async fn send_batch_report(bot: Bot, batch_storage: BatchStorage, target_cha
             📨 Messages processed: {}\n\
             📝 Records parsed: {}\n\
             💰 Total amount: {:.2}\n\n\
-            Use `/list` to see all expenses.",
+            Use `/report` to see all expenses.",
             state.messages_count, state.records_count, state.total_sum
         );
 

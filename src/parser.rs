@@ -23,7 +23,7 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Ve
         }
 
         // If leading word in the line is bot name or emoji, remove it
-        // This allows commands like "@botname /help" or "📋 /list
+        // This allows commands like "@botname /help" or "📋 /report
         // or "🗑️ /clear" to be recognized as commands
 
         // Remove emoji prefix (simple heuristic: non-alphanumeric and non-syntactic char)
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn test_parse_expenses_with_commands() {
         // Test that lines starting with '/' are collected as commands
-        let text = "/help\nCoffee 5.50\n/list\nLunch 12.00";
+        let text = "/help\nCoffee 5.50\n/report\nLunch 12.00";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, None, timestamp);
         
@@ -234,13 +234,13 @@ mod tests {
         assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
         assert_eq!(commands.len(), 2);
         assert_eq!(commands[0], "/help");
-        assert_eq!(commands[1], "/list");
+        assert_eq!(commands[1], "/report");
     }
 
     #[test]
     fn test_parse_expenses_mixed() {
         // Test mixed input with bot name and commands
-        let text = "@mybot Coffee 5.50\n/help\nmybot Lunch 12.00\nBus ticket 2.75\n/list";
+        let text = "@mybot Coffee 5.50\n/help\nmybot Lunch 12.00\nBus ticket 2.75\n/report";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, Some("mybot"), timestamp);
         
@@ -250,7 +250,7 @@ mod tests {
         assert_eq!(expenses[2], ("Bus ticket".to_string(), 2.75, timestamp));
         assert_eq!(commands.len(), 2);
         assert_eq!(commands[0], "/help");
-        assert_eq!(commands[1], "/list");
+        assert_eq!(commands[1], "/report");
     }
 
     #[test]
@@ -269,27 +269,27 @@ mod tests {
     #[test]
     fn test_parse_commands_with_bot_name() {
         // Test that commands work with bot name prefix
-        let text = "@mybot /help\nmybot /list\n/clear";
+        let text = "@mybot /help\nmybot /report\n/clear";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, Some("mybot"), timestamp);
         
         assert_eq!(expenses.len(), 0);
         assert_eq!(commands.len(), 3);
         assert_eq!(commands[0], "/help");
-        assert_eq!(commands[1], "/list");
+        assert_eq!(commands[1], "/report");
         assert_eq!(commands[2], "/clear");
     }
 
     #[test]
     fn test_parse_commands_from_keyboard_buttons() {
-        // Test that commands are extracted from keyboard button text like "📋 /list"
-        let text = "📋 /list";
+        // Test that commands are extracted from keyboard button text like "📋 /report"
+        let text = "📋 /report";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, None, timestamp);
         
         assert_eq!(expenses.len(), 0);
         assert_eq!(commands.len(), 1);
-        assert_eq!(commands[0], "/list");
+        assert_eq!(commands[0], "/report");
         
         // Test multiple buttons
         let text2 = "🗑️ /clear";

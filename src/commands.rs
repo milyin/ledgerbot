@@ -14,7 +14,7 @@ use crate::storage::{
 pub fn create_menu_keyboard() -> ReplyMarkup {
     let keyboard = vec![
         vec![
-            KeyboardButton::new("📋 /list"),
+            KeyboardButton::new("📋 /report"),
             KeyboardButton::new("🗑️ /clear"),
         ],
         vec![
@@ -41,7 +41,7 @@ pub enum Command {
     #[command(description = "start the bot")]
     Start,
     #[command(description = "show all expenses")]
-    List,
+    Report,
     #[command(description = "clear all expenses")]
     Clear,
     #[command(description = "add expense category", parse_with = "split")]
@@ -527,7 +527,7 @@ pub async fn answer(
 ) -> ResponseResult<()> {
     match cmd {
         Command::Help | Command::Start => help_command(bot, msg).await,
-        Command::List => list_command(bot, msg, storage, category_storage).await,
+        Command::Report => list_command(bot, msg, storage, category_storage).await,
         Command::Clear => clear_command(bot, msg, storage).await,
         Command::Category { name } => category_command(bot, msg, category_storage, name).await,
         Command::Categories => categories_command(bot, msg, category_storage).await,
