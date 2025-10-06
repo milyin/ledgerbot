@@ -1,6 +1,6 @@
 use teloxide::{
     prelude::*, 
-    types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyMarkup},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, MessageId, ReplyMarkup},
     utils::command::BotCommands,
 };
 
@@ -248,14 +248,14 @@ pub async fn categories_command(
 /// Show category removal interface
 pub async fn remove_category_menu(
     bot: Bot,
-    msg: Message,
+    chat_id: ChatId,
+    message_id: MessageId,
     category_storage: CategoryStorage,
 ) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
     let categories = get_chat_categories(&category_storage, chat_id).await;
 
     if categories.is_empty() {
-        bot.send_message(chat_id, "No categories to remove.")
+        bot.edit_message_text(chat_id, message_id, "No categories to remove.")
             .await?;
     } else {
         let text = "❌ **Select category to remove:**";
@@ -279,7 +279,9 @@ pub async fn remove_category_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.send_message(chat_id, text)
+        bot.edit_message_text(chat_id, message_id, text)
+            .await?;
+        bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
     }
@@ -290,14 +292,14 @@ pub async fn remove_category_menu(
 /// Show add filter interface - first show categories
 pub async fn add_filter_menu(
     bot: Bot,
-    msg: Message,
+    chat_id: ChatId,
+    message_id: MessageId,
     category_storage: CategoryStorage,
 ) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
     let categories = get_chat_categories(&category_storage, chat_id).await;
 
     if categories.is_empty() {
-        bot.send_message(chat_id, "No categories available. Create a category first with /category <name>")
+        bot.edit_message_text(chat_id, message_id, "No categories available. Create a category first with /category <name>")
             .await?;
     } else {
         let text = "� **Select category to add filter:**";
@@ -321,7 +323,9 @@ pub async fn add_filter_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.send_message(chat_id, text)
+        bot.edit_message_text(chat_id, message_id, text)
+            .await?;
+        bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
     }
@@ -333,6 +337,7 @@ pub async fn add_filter_menu(
 pub async fn show_filter_word_suggestions(
     bot: Bot,
     chat_id: ChatId,
+    message_id: MessageId,
     storage: ExpenseStorage,
     category_storage: CategoryStorage,
     filter_selection_storage: FilterSelectionStorage,
@@ -412,7 +417,9 @@ pub async fn show_filter_word_suggestions(
     
     let keyboard = InlineKeyboardMarkup::new(buttons);
     
-    bot.send_message(chat_id, text)
+    bot.edit_message_text(chat_id, message_id, text)
+        .await?;
+    bot.edit_message_reply_markup(chat_id, message_id)
         .reply_markup(keyboard)
         .await?;
     
@@ -422,14 +429,14 @@ pub async fn show_filter_word_suggestions(
 /// Show remove filter interface - first show categories
 pub async fn remove_filter_menu(
     bot: Bot,
-    msg: Message,
+    chat_id: ChatId,
+    message_id: MessageId,
     category_storage: CategoryStorage,
 ) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
     let categories = get_chat_categories(&category_storage, chat_id).await;
 
     if categories.is_empty() {
-        bot.send_message(chat_id, "No categories available.")
+        bot.edit_message_text(chat_id, message_id, "No categories available.")
             .await?;
     } else {
         let text = "�️ **Select category to remove filter:**";
@@ -447,7 +454,7 @@ pub async fn remove_filter_menu(
             .collect();
 
         if buttons.is_empty() {
-            bot.send_message(chat_id, "No filters defined in any category.")
+            bot.edit_message_text(chat_id, message_id, "No filters defined in any category.")
                 .await?;
             return Ok(());
         }
@@ -460,7 +467,9 @@ pub async fn remove_filter_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.send_message(chat_id, text)
+        bot.edit_message_text(chat_id, message_id, text)
+            .await?;
+        bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
     }
@@ -472,6 +481,7 @@ pub async fn remove_filter_menu(
 pub async fn show_category_filters_for_removal(
     bot: Bot,
     chat_id: ChatId,
+    message_id: MessageId,
     category_storage: CategoryStorage,
     category_name: String,
 ) -> ResponseResult<()> {
@@ -479,7 +489,7 @@ pub async fn show_category_filters_for_removal(
 
     if let Some(patterns) = categories.get(&category_name) {
         if patterns.is_empty() {
-            bot.send_message(chat_id, format!("No filters in category '{}'.", category_name))
+            bot.edit_message_text(chat_id, message_id, format!("No filters in category '{}'.", category_name))
                 .await?;
         } else {
             let text = format!("�️ **Select filter to remove from '{}':**", category_name);
@@ -503,7 +513,9 @@ pub async fn show_category_filters_for_removal(
 
             let keyboard = InlineKeyboardMarkup::new(buttons);
 
-            bot.send_message(chat_id, text)
+            bot.edit_message_text(chat_id, message_id, text)
+                .await?;
+            bot.edit_message_reply_markup(chat_id, message_id)
                 .reply_markup(keyboard)
                 .await?;
         }

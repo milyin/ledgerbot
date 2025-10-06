@@ -105,16 +105,14 @@ pub async fn handle_callback_query(
                 if data.starts_with("remove_cat:") {
                     let category_name = data.strip_prefix("remove_cat:").unwrap();
                     remove_category(&category_storage, chat_id, category_name).await;
-                    bot.send_message(chat_id, format!("✅ Category '{}' removed.", category_name))
-                        .await?;
                     // Show the updated remove menu
-                    remove_category_menu(bot, msg, category_storage).await?;
+                    remove_category_menu(bot, chat_id, message.id(), category_storage).await?;
                 } else if data.starts_with("add_filter_cat:") {
                     // Show word suggestions for a specific category
                     let category_name = data.strip_prefix("add_filter_cat:").unwrap().to_string();
                     // Clear any previous selection
                     clear_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
-                    show_filter_word_suggestions(bot, chat_id, storage.clone(), category_storage, filter_selection_storage.clone(), category_name).await?;
+                    show_filter_word_suggestions(bot, chat_id, message.id(), storage.clone(), category_storage, filter_selection_storage.clone(), category_name).await?;
                 } else if data.starts_with("toggle_word:") {
                     // Handle toggle_word:CategoryName:Word format
                     let parts: Vec<&str> = data.strip_prefix("toggle_word:").unwrap().splitn(2, ':').collect();
@@ -137,7 +135,7 @@ pub async fn handle_callback_query(
                         
                         // Update the message with new selection
                         show_filter_word_suggestions(
-                            bot, chat_id, storage.clone(), category_storage, filter_selection_storage.clone(), category_name
+                            bot, chat_id, message.id(), storage.clone(), category_storage, filter_selection_storage.clone(), category_name
                         ).await?;
                     }
                 } else if data.starts_with("apply_words:") {
@@ -166,7 +164,7 @@ pub async fn handle_callback_query(
                 } else if data.starts_with("remove_filter_cat:") {
                     // Show filters for a specific category
                     let category_name = data.strip_prefix("remove_filter_cat:").unwrap().to_string();
-                    show_category_filters_for_removal(bot, chat_id, category_storage, category_name).await?;
+                    show_category_filters_for_removal(bot, chat_id, message.id(), category_storage, category_name).await?;
                 } else if data.starts_with("remove_filter:") {
                     // Handle remove_filter:CategoryName:Pattern format
                     let parts: Vec<&str> = data.strip_prefix("remove_filter:").unwrap().splitn(2, ':').collect();
@@ -174,13 +172,8 @@ pub async fn handle_callback_query(
                         let category_name = parts[0];
                         let pattern = parts[1];
                         remove_category_filter(&category_storage, chat_id, category_name, pattern).await;
-                        bot.send_message(
-                            chat_id,
-                            format!("✅ Filter '{}' removed from category '{}'.", pattern, category_name)
-                        )
-                        .await?;
                         // Show the updated filters for this category
-                        show_category_filters_for_removal(bot, chat_id, category_storage, category_name.to_string()).await?;
+                        show_category_filters_for_removal(bot, chat_id, message.id(), category_storage, category_name.to_string()).await?;
                     }
                 } else {
                     match data.as_str() {
@@ -197,13 +190,13 @@ pub async fn handle_callback_query(
                             categories_command(bot, msg, category_storage).await?;
                         }
                         "cmd_remove_category" => {
-                            remove_category_menu(bot, msg, category_storage).await?;
+                            remove_category_menu(bot, chat_id, message.id(), category_storage).await?;
                         }
                         "cmd_add_filter" => {
-                            add_filter_menu(bot, msg, category_storage).await?;
+                            add_filter_menu(bot, chat_id, message.id(), category_storage).await?;
                         }
                         "cmd_remove_filter" => {
-                            remove_filter_menu(bot, msg, category_storage).await?;
+                            remove_filter_menu(bot, chat_id, message.id(), category_storage).await?;
                         }
                         "cmd_back_to_help" => {
                             help_command(bot, msg).await?;
