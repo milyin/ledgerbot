@@ -12,6 +12,10 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Ve
     let mut expenses = Vec::new();
     let mut commands = Vec::new();
 
+    // Regex pattern to match "<date> <text> <number>"
+    // Date format: YYYY-MM-DD
+    let re_with_date = Regex::new(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)\s+(\d+(?:\.\d+)?)$").unwrap();
+    
     // Regex pattern to match "<any text> <number>"
     // This captures text followed by a space and then a number (integer or decimal)
     let re = Regex::new(r"^(.+?)\s+(\d+(?:\.\d+)?)$").unwrap();
@@ -53,7 +57,21 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Ve
             continue;
         }
 
-        if let Some(captures) = re.captures(line) {
+        // Try to match pattern with date first: <date> <text> <sum>
+        if let Some(captures) = re_with_date.captures(line) {
+            let date_str = captures[1].trim();
+            let description = captures[2].trim().to_string();
+            if let Ok(amount) = captures[3].parse::<f64>() {
+                // Parse the date and convert to timestamp
+                if let Some(parsed_timestamp) = parse_date_to_timestamp(date_str) {
+                    expenses.push((description, amount, parsed_timestamp));
+                } else {
+                    // If date parsing fails, use message timestamp
+                    expenses.push((description, amount, timestamp));
+                }
+            }
+        // If no date pattern matches, try pattern without date: <text> <sum>
+        } else if let Some(captures) = re.captures(line) {
             let description = captures[1].trim().to_string();
             if let Ok(amount) = captures[2].parse::<f64>() {
                 expenses.push((description, amount, timestamp));
@@ -62,6 +80,16 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Ve
     }
 
     (expenses, commands)
+}
+
+/// Parse date string to Unix timestamp
+/// Supports format: YYYY-MM-DD
+fn parse_date_to_timestamp(date_str: &str) -> Option<i64> {
+    use chrono::NaiveDate;
+    
+    // Parse YYYY-MM-DD format
+    let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d").ok()?;
+    Some(date.and_hms_opt(0, 0, 0)?.and_utc().timestamp())
 }
 
 /// Format expenses as a chronological list without category grouping
@@ -230,6 +258,70 @@ pub fn extract_words(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_expenses_with_date() {
+        // Test parsing expenses with date prefix
+        let text = "2024-10-05 Coffee 5.50\n2024-10-06 Lunch 12.00";
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC (message timestamp)
+        let (expenses, commands) = parse_expenses(text, None, timestamp);
+        
+        assert_eq!(expenses.len(), 2);
+        assert_eq!(expenses[0].0, "Coffee".to_string());
+        assert_eq!(expenses[0].1, 5.50);
+        // The timestamp should be from the parsed date (2024-10-05), not the message timestamp
+        assert_ne!(expenses[0].2, timestamp);
+        assert_eq!(expenses[1].0, "Lunch".to_string());
+        assert_eq!(expenses[1].1, 12.00);
+        assert_eq!(commands.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_expenses_with_different_date_formats() {
+        // Test YYYY-MM-DD date format
+        let text = "2024-10-05 Coffee 5.50\n2024-10-06 Tea 3.00";
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC (message timestamp)
+        let (expenses, commands) = parse_expenses(text, None, timestamp);
+        
+        assert_eq!(expenses.len(), 2);
+        assert_eq!(expenses[0].0, "Coffee".to_string());
+        assert_eq!(expenses[1].0, "Tea".to_string());
+        // All timestamps should be different from message timestamp
+        for expense in &expenses {
+            assert_ne!(expense.2, timestamp);
+        }
+        assert_eq!(commands.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_expenses_without_date() {
+        // Test parsing expenses without date (should use message timestamp)
+        let text = "Coffee 5.50\nLunch 12.00";
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, None, timestamp);
+        
+        assert_eq!(expenses.len(), 2);
+        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
+        assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
+        assert_eq!(commands.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_expenses_mixed_with_and_without_date() {
+        // Test mixing expenses with and without dates
+        let text = "2024-10-05 Coffee 5.50\nLunch 12.00\n2024-10-06 Dinner 15.00";
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC (message timestamp)
+        let (expenses, commands) = parse_expenses(text, None, timestamp);
+        
+        assert_eq!(expenses.len(), 3);
+        assert_eq!(expenses[0].0, "Coffee".to_string());
+        assert_ne!(expenses[0].2, timestamp); // Should use parsed date
+        assert_eq!(expenses[1].0, "Lunch".to_string());
+        assert_eq!(expenses[1].2, timestamp); // Should use message timestamp
+        assert_eq!(expenses[2].0, "Dinner".to_string());
+        assert_ne!(expenses[2].2, timestamp); // Should use parsed date
+        assert_eq!(commands.len(), 0);
+    }
 
     #[test]
     fn test_parse_expenses_with_bot_name() {
