@@ -16,7 +16,10 @@ pub type CategoryStorage = Arc<Mutex<HashMap<ChatId, HashMap<String, Vec<String>
 pub type FilterSelectionStorage = Arc<Mutex<HashMap<(ChatId, String), Vec<String>>>>;
 
 /// Get expenses for a specific chat
-pub async fn get_chat_expenses(storage: &ExpenseStorage, chat_id: ChatId) -> HashMap<String, (f64, i64)> {
+pub async fn get_chat_expenses(
+    storage: &ExpenseStorage,
+    chat_id: ChatId,
+) -> HashMap<String, (f64, i64)> {
     let storage_guard = storage.lock().await;
     storage_guard.get(&chat_id).cloned().unwrap_or_default()
 }
@@ -46,20 +49,21 @@ pub fn create_storage() -> ExpenseStorage {
 }
 
 /// Get categories for a specific chat
-pub async fn get_chat_categories(storage: &CategoryStorage, chat_id: ChatId) -> HashMap<String, Vec<String>> {
+pub async fn get_chat_categories(
+    storage: &CategoryStorage,
+    chat_id: ChatId,
+) -> HashMap<String, Vec<String>> {
     let storage_guard = storage.lock().await;
     storage_guard.get(&chat_id).cloned().unwrap_or_default()
 }
 
 /// Add or update a category for a specific chat
-pub async fn add_category(
-    storage: &CategoryStorage,
-    chat_id: ChatId,
-    category_name: String,
-) {
+pub async fn add_category(storage: &CategoryStorage, chat_id: ChatId, category_name: String) {
     let mut storage_guard = storage.lock().await;
     let chat_categories = storage_guard.entry(chat_id).or_default();
-    chat_categories.entry(category_name).or_insert_with(Vec::new);
+    chat_categories
+        .entry(category_name)
+        .or_insert_with(Vec::new);
 }
 
 /// Add a regex filter to an existing category
@@ -71,7 +75,9 @@ pub async fn add_category_filter(
 ) {
     let mut storage_guard = storage.lock().await;
     let chat_categories = storage_guard.entry(chat_id).or_default();
-    let patterns = chat_categories.entry(category_name).or_insert_with(Vec::new);
+    let patterns = chat_categories
+        .entry(category_name)
+        .or_insert_with(Vec::new);
     if !patterns.contains(&regex_pattern) {
         patterns.push(regex_pattern);
     }
@@ -85,19 +91,15 @@ pub async fn remove_category_filter(
     regex_pattern: &str,
 ) {
     let mut storage_guard = storage.lock().await;
-    if let Some(chat_categories) = storage_guard.get_mut(&chat_id) {
-        if let Some(patterns) = chat_categories.get_mut(category_name) {
-            patterns.retain(|p| p != regex_pattern);
-        }
+    if let Some(chat_categories) = storage_guard.get_mut(&chat_id)
+        && let Some(patterns) = chat_categories.get_mut(category_name)
+    {
+        patterns.retain(|p| p != regex_pattern);
     }
 }
 
 /// Remove a category from a specific chat
-pub async fn remove_category(
-    storage: &CategoryStorage,
-    chat_id: ChatId,
-    category_name: &str,
-) {
+pub async fn remove_category(storage: &CategoryStorage, chat_id: ChatId, category_name: &str) {
     let mut storage_guard = storage.lock().await;
     if let Some(chat_categories) = storage_guard.get_mut(&chat_id) {
         chat_categories.remove(category_name);

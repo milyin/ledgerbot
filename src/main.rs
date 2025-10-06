@@ -9,7 +9,7 @@ use clap::Parser;
 use teloxide::prelude::*;
 
 use batch::create_batch_storage;
-use commands::{answer, Command};
+use commands::{Command, answer};
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
 use storage::{create_category_storage, create_filter_selection_storage, create_storage};
@@ -41,12 +41,20 @@ async fn main() {
         .branch(
             Update::filter_message()
                 .branch(dptree::entry().filter_command::<Command>().endpoint(answer))
-                .branch(dptree::filter(|msg: Message| msg.text().is_some()).endpoint(handle_text_message))
+                .branch(
+                    dptree::filter(|msg: Message| msg.text().is_some())
+                        .endpoint(handle_text_message),
+                ),
         )
         .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![storage, category_storage, batch_storage, filter_selection_storage])
+        .dependencies(dptree::deps![
+            storage,
+            category_storage,
+            batch_storage,
+            filter_selection_storage
+        ])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

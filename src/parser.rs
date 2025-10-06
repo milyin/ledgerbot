@@ -5,17 +5,21 @@ use std::collections::HashMap;
 /// Returns a tuple of (expenses, commands) where:
 /// - expenses: vector of (description, amount, timestamp) tuples
 /// - commands: vector of command strings (without the leading '/')
-/// 
+///
 /// If bot_name is provided, lines starting with the bot name will have it stripped
 /// timestamp is the Unix timestamp of the message date
-pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Vec<(String, f64, i64)>, Vec<String>) {
+pub fn parse_expenses(
+    text: &str,
+    bot_name: Option<&str>,
+    timestamp: i64,
+) -> (Vec<(String, f64, i64)>, Vec<String>) {
     let mut expenses = Vec::new();
     let mut commands = Vec::new();
 
     // Regex pattern to match "<date> <text> <number>"
     // Date format: YYYY-MM-DD
     let re_with_date = Regex::new(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)\s+(\d+(?:\.\d+)?)$").unwrap();
-    
+
     // Regex pattern to match "<any text> <number>"
     // This captures text followed by a space and then a number (integer or decimal)
     let re = Regex::new(r"^(.+?)\s+(\d+(?:\.\d+)?)$").unwrap();
@@ -33,7 +37,10 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Ve
         // Remove emoji prefix (simple heuristic: non-alphanumeric and non-syntactic char)
         if let Some(first_word) = line.split_whitespace().next() {
             // Check if first word is an emoji (simple heuristic: non-alphanumeric and non-syntactic char)
-            if first_word.chars().all(|c| !c.is_alphanumeric() && !c.is_ascii_punctuation()) {
+            if first_word
+                .chars()
+                .all(|c| !c.is_alphanumeric() && !c.is_ascii_punctuation())
+            {
                 line = line[first_word.len()..].trim_start();
             }
         }
@@ -42,7 +49,7 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Ve
         if let Some(name) = bot_name {
             let bot_name_lower = name.to_lowercase();
             let line_lower = line.to_lowercase();
-            
+
             // Try to match @botname or botname at the start
             if line_lower.starts_with(&format!("@{}", bot_name_lower)) {
                 line = line[name.len() + 1..].trim_start();
@@ -86,7 +93,7 @@ pub fn parse_expenses(text: &str, bot_name: Option<&str>, timestamp: i64) -> (Ve
 /// Supports format: YYYY-MM-DD
 fn parse_date_to_timestamp(date_str: &str) -> Option<i64> {
     use chrono::NaiveDate;
-    
+
     // Parse YYYY-MM-DD format
     let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d").ok()?;
     Some(date.and_hms_opt(0, 0, 0)?.and_utc().timestamp())
@@ -101,17 +108,17 @@ pub fn format_expenses_chronological(expenses: &HashMap<String, (f64, i64)>) -> 
 
     // Convert HashMap to Vec for sorting
     let mut expense_vec: Vec<(&String, &(f64, i64))> = expenses.iter().collect();
-    
+
     // Sort by timestamp (chronological order)
     expense_vec.sort_by_key(|(_, (_, timestamp))| timestamp);
-    
+
     let mut result = String::new();
-    
+
     for (description, (amount, timestamp)) in expense_vec {
         let date_str = format_timestamp(*timestamp);
         result.push_str(&format!("{} {} {:.2}\n", date_str, description, amount));
     }
-    
+
     result
 }
 
@@ -126,7 +133,7 @@ pub fn format_expenses_list(
 
     let mut result = "📊 **Current Expenses:**\n\n".to_string();
     let mut total = 0.0;
-    
+
     // Build regex matchers for each category (from all patterns)
     let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
         .iter()
@@ -138,65 +145,72 @@ pub fn format_expenses_list(
             (name.clone(), regexes)
         })
         .collect();
-    
+
     // Group expenses by category
     let mut categorized: HashMap<String, Vec<(String, f64, i64)>> = HashMap::new();
     let mut uncategorized: Vec<(String, f64, i64)> = Vec::new();
-    
+
     for (description, (amount, timestamp)) in expenses.iter() {
         let mut matched = false;
-        
+
         // Try to match against each category
         for (category_name, regexes) in &category_matchers {
             // Check if description matches any of the patterns in this category
             if regexes.iter().any(|re| re.is_match(description)) {
-                categorized
-                    .entry(category_name.clone())
-                    .or_default()
-                    .push((description.clone(), *amount, *timestamp));
+                categorized.entry(category_name.clone()).or_default().push((
+                    description.clone(),
+                    *amount,
+                    *timestamp,
+                ));
                 matched = true;
                 break; // Each expense goes into first matching category
             }
         }
-        
+
         if !matched {
             uncategorized.push((description.clone(), *amount, *timestamp));
         }
     }
-    
+
     // Sort category names for consistent output
     let mut category_names: Vec<String> = categorized.keys().cloned().collect();
     category_names.sort();
-    
+
     // Display categorized expenses
     for category_name in category_names {
         if let Some(items) = categorized.get(&category_name) {
             let mut category_total = 0.0;
             result.push_str(&format!("**{}:**\n", category_name));
-            
+
             for (description, amount, timestamp) in items {
                 let date_str = format_timestamp(*timestamp);
-                result.push_str(&format!("  • {} - {:.2} ({})\n", description, amount, date_str));
+                result.push_str(&format!(
+                    "  • {} - {:.2} ({})\n",
+                    description, amount, date_str
+                ));
                 category_total += amount;
                 total += amount;
             }
-            
+
             result.push_str(&format!("  _Subtotal: {:.2}_\n\n", category_total));
         }
     }
-    
+
     // Display uncategorized expenses
     if !uncategorized.is_empty() {
         let mut uncategorized_total = 0.0;
         result.push_str("**Other:**\n");
-        
+
         for (description, amount, timestamp) in uncategorized {
             let date_str = format_timestamp(timestamp);
-            result.push_str(&format!("  • {} - {:.2} ({})\n", description, amount, date_str));
+            result.push_str(&format!(
+                "  • {} - {:.2} ({})\n",
+                description, amount, date_str
+            ));
             uncategorized_total += amount;
             total += amount;
         }
-        
+
         result.push_str(&format!("  _Subtotal: {:.2}_\n\n", uncategorized_total));
     }
 
@@ -206,7 +220,7 @@ pub fn format_expenses_list(
 
 /// Format Unix timestamp to a human-readable date string
 fn format_timestamp(timestamp: i64) -> String {
-    use chrono::{DateTime, Utc, TimeZone};
+    use chrono::{DateTime, TimeZone, Utc};
     let datetime: DateTime<Utc> = Utc.timestamp_opt(timestamp, 0).unwrap();
     datetime.format("%Y-%m-%d").to_string()
 }
@@ -224,14 +238,14 @@ pub fn extract_words(
         .flat_map(|patterns| patterns.iter())
         .filter_map(|pattern| regex::Regex::new(pattern).ok())
         .collect();
-    
+
     // Collect unique words from uncategorized expenses
     let mut words = std::collections::HashSet::new();
-    
+
     for description in expenses.keys() {
         // Check if this expense matches any category
         let matched = category_matchers.iter().any(|re| re.is_match(description));
-        
+
         if !matched {
             // Split description into words and collect them
             for word in description.split_whitespace() {
@@ -240,7 +254,7 @@ pub fn extract_words(
                     .to_lowercase()
                     .trim_matches(|c: char| !c.is_alphanumeric())
                     .to_string();
-                
+
                 // Only include words that are at least 2 characters long
                 if cleaned.len() >= 2 {
                     words.insert(cleaned);
@@ -248,7 +262,7 @@ pub fn extract_words(
             }
         }
     }
-    
+
     // Convert to sorted vector
     let mut result: Vec<String> = words.into_iter().collect();
     result.sort();
@@ -265,7 +279,7 @@ mod tests {
         let text = "2024-10-05 Coffee 5.50\n2024-10-06 Lunch 12.00";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC (message timestamp)
         let (expenses, commands) = parse_expenses(text, None, timestamp);
-        
+
         assert_eq!(expenses.len(), 2);
         assert_eq!(expenses[0].0, "Coffee".to_string());
         assert_eq!(expenses[0].1, 5.50);
@@ -282,7 +296,7 @@ mod tests {
         let text = "2024-10-05 Coffee 5.50\n2024-10-06 Tea 3.00";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC (message timestamp)
         let (expenses, commands) = parse_expenses(text, None, timestamp);
-        
+
         assert_eq!(expenses.len(), 2);
         assert_eq!(expenses[0].0, "Coffee".to_string());
         assert_eq!(expenses[1].0, "Tea".to_string());
@@ -299,7 +313,7 @@ mod tests {
         let text = "Coffee 5.50\nLunch 12.00";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, None, timestamp);
-        
+
         assert_eq!(expenses.len(), 2);
         assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
         assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
@@ -312,7 +326,7 @@ mod tests {
         let text = "2024-10-05 Coffee 5.50\nLunch 12.00\n2024-10-06 Dinner 15.00";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC (message timestamp)
         let (expenses, commands) = parse_expenses(text, None, timestamp);
-        
+
         assert_eq!(expenses.len(), 3);
         assert_eq!(expenses[0].0, "Coffee".to_string());
         assert_ne!(expenses[0].2, timestamp); // Should use parsed date
@@ -329,7 +343,7 @@ mod tests {
         let text = "@testbot Coffee 5.50\ntestbot Lunch 12.00\nBus ticket 2.75";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, Some("testbot"), timestamp);
-        
+
         assert_eq!(expenses.len(), 3);
         assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
         assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
@@ -343,7 +357,7 @@ mod tests {
         let text = "/help\nCoffee 5.50\n/report\nLunch 12.00";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, None, timestamp);
-        
+
         assert_eq!(expenses.len(), 2);
         assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
         assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
@@ -358,7 +372,7 @@ mod tests {
         let text = "@mybot Coffee 5.50\n/help\nmybot Lunch 12.00\nBus ticket 2.75\n/report";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, Some("mybot"), timestamp);
-        
+
         assert_eq!(expenses.len(), 3);
         assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
         assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
@@ -374,7 +388,7 @@ mod tests {
         let text = "@TESTBOT Coffee 5.50\nTestBot Lunch 12.00";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, Some("testbot"), timestamp);
-        
+
         assert_eq!(expenses.len(), 2);
         assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
         assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
@@ -387,7 +401,7 @@ mod tests {
         let text = "@mybot /help\nmybot /report\n/clear";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, Some("mybot"), timestamp);
-        
+
         assert_eq!(expenses.len(), 0);
         assert_eq!(commands.len(), 3);
         assert_eq!(commands[0], "/help");
@@ -401,23 +415,23 @@ mod tests {
         let text = "📋 /report";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let (expenses, commands) = parse_expenses(text, None, timestamp);
-        
+
         assert_eq!(expenses.len(), 0);
         assert_eq!(commands.len(), 1);
         assert_eq!(commands[0], "/report");
-        
+
         // Test multiple buttons
         let text2 = "🗑️ /clear";
         let (expenses2, commands2) = parse_expenses(text2, None, timestamp);
-        
+
         assert_eq!(expenses2.len(), 0);
         assert_eq!(commands2.len(), 1);
         assert_eq!(commands2[0], "/clear");
-        
+
         // Test with category command
         let text3 = "📂 /categories";
         let (expenses3, commands3) = parse_expenses(text3, None, timestamp);
-        
+
         assert_eq!(expenses3.len(), 0);
         assert_eq!(commands3.len(), 1);
         assert_eq!(commands3[0], "/categories");
@@ -432,16 +446,15 @@ mod tests {
         expenses.insert("Lunch at restaurant".to_string(), (12.00, timestamp));
         expenses.insert("Bus ticket".to_string(), (2.75, timestamp));
         expenses.insert("Taxi ride".to_string(), (15.00, timestamp));
-        
+
         // Create categories with patterns
         let mut categories = HashMap::new();
-        let mut food_patterns = Vec::new();
-        food_patterns.push("(?i)lunch".to_string());
+        let food_patterns = vec!["(?i)lunch".to_string()];
         categories.insert("Food".to_string(), food_patterns);
-        
+
         // Extract words from uncategorized expenses
         let words = extract_words(&expenses, &categories);
-        
+
         // "Lunch at restaurant" should be categorized as Food
         // So words should come from "Coffee at Starbucks", "Bus ticket", and "Taxi ride"
         assert!(words.contains(&"coffee".to_string()));
@@ -470,13 +483,12 @@ mod tests {
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         expenses.insert("Coffee".to_string(), (5.50, timestamp));
         expenses.insert("Lunch".to_string(), (12.00, timestamp));
-        
+
         // Create categories that match all expenses
         let mut categories = HashMap::new();
-        let mut food_patterns = Vec::new();
-        food_patterns.push("(?i).*".to_string()); // Matches everything
+        let food_patterns = vec!["(?i).*".to_string()]; // Matches everything
         categories.insert("Food".to_string(), food_patterns);
-        
+
         // Extract words - should be empty as all are categorized
         let words = extract_words(&expenses, &categories);
         assert_eq!(words.len(), 0);
@@ -489,20 +501,20 @@ mod tests {
         let timestamp1 = 1609459200; // 2021-01-01 00:00:00 UTC
         let timestamp2 = 1609545600; // 2021-01-02 00:00:00 UTC
         let timestamp3 = 1609632000; // 2021-01-03 00:00:00 UTC
-        
+
         expenses.insert("Lunch".to_string(), (12.00, timestamp2));
         expenses.insert("Coffee".to_string(), (5.50, timestamp1));
         expenses.insert("Dinner".to_string(), (25.00, timestamp3));
-        
+
         let result = format_expenses_chronological(&expenses);
-        
+
         // Check that expenses are listed in chronological order
         assert!(result.contains("📝 **Expenses (Chronological):**"));
         assert!(result.contains("2021-01-01 Coffee 5.50"));
         assert!(result.contains("2021-01-02 Lunch 12.00"));
         assert!(result.contains("2021-01-03 Dinner 25.00"));
         assert!(result.contains("💰 **Total: 42.50**"));
-        
+
         // Verify chronological order by checking positions
         let coffee_pos = result.find("Coffee").unwrap();
         let lunch_pos = result.find("Lunch").unwrap();

@@ -1,12 +1,12 @@
 use teloxide::{
-    prelude::*, 
+    prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, MessageId, ReplyMarkup},
     utils::command::BotCommands,
 };
 
-use crate::parser::{extract_words, format_expenses_list, format_expenses_chronological};
+use crate::parser::{extract_words, format_expenses_chronological, format_expenses_list};
 use crate::storage::{
-    CategoryStorage, ExpenseStorage, FilterSelectionStorage, add_category, add_category_filter, 
+    CategoryStorage, ExpenseStorage, FilterSelectionStorage, add_category, add_category_filter,
     clear_chat_expenses, get_chat_categories, get_chat_expenses, get_filter_selection,
 };
 
@@ -17,9 +17,7 @@ pub fn create_menu_keyboard() -> ReplyMarkup {
             KeyboardButton::new("� /list"),
             KeyboardButton::new("�📋 /report"),
         ],
-        vec![
-            KeyboardButton::new("🗑️ /clear"),
-        ],
+        vec![KeyboardButton::new("🗑️ /clear")],
         vec![
             KeyboardButton::new("📂 /categories"),
             KeyboardButton::new("💡 /help"),
@@ -28,7 +26,7 @@ pub fn create_menu_keyboard() -> ReplyMarkup {
     ReplyMarkup::Keyboard(
         teloxide::types::KeyboardMarkup::new(keyboard)
             .resize_keyboard()
-            .persistent()
+            .persistent(),
     )
 }
 
@@ -53,7 +51,11 @@ pub enum Command {
     Category { name: String },
     #[command(description = "list all categories")]
     Categories,
-    #[command(description = "add filter to category", rename = "add_filter", parse_with = "split")]
+    #[command(
+        description = "add filter to category",
+        rename = "add_filter",
+        parse_with = "split"
+    )]
     AddFilter { category: String, pattern: String },
 }
 
@@ -99,21 +101,17 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     bot.send_message(msg.chat.id, help_text)
         .reply_markup(keyboard)
         .await?;
-    
+
     // Send a follow-up message to set the persistent reply keyboard menu
     bot.send_message(msg.chat.id, "Menu buttons are now available ⬇️")
         .reply_markup(create_menu_keyboard())
         .await?;
-    
+
     Ok(())
 }
 
 /// List all expenses chronologically without category grouping
-pub async fn list_command(
-    bot: Bot,
-    msg: Message,
-    storage: ExpenseStorage,
-) -> ResponseResult<()> {
+pub async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     let chat_expenses = get_chat_expenses(&storage, chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
@@ -185,7 +183,10 @@ pub async fn add_filter_command(
     if !categories.contains_key(&category) {
         bot.send_message(
             chat_id,
-            format!("❌ Category '{}' does not exist. Create it first with /category {}", category, category),
+            format!(
+                "❌ Category '{}' does not exist. Create it first with /category {}",
+                category, category
+            ),
         )
         .await?;
         return Ok(());
@@ -195,7 +196,13 @@ pub async fn add_filter_command(
     // Validate regex pattern
     match regex::Regex::new(&pattern) {
         Ok(_) => {
-            add_category_filter(&category_storage, chat_id, category.clone(), pattern.clone()).await;
+            add_category_filter(
+                &category_storage,
+                chat_id,
+                category.clone(),
+                pattern.clone(),
+            )
+            .await;
             bot.send_message(
                 chat_id,
                 format!("✅ Filter '{}' added to category '{}'.", pattern, category),
@@ -279,8 +286,7 @@ pub async fn remove_category_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.edit_message_text(chat_id, message_id, text)
-            .await?;
+        bot.edit_message_text(chat_id, message_id, text).await?;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
@@ -299,8 +305,12 @@ pub async fn add_filter_menu(
     let categories = get_chat_categories(&category_storage, chat_id).await;
 
     if categories.is_empty() {
-        bot.edit_message_text(chat_id, message_id, "No categories available. Create a category first with /category <name>")
-            .await?;
+        bot.edit_message_text(
+            chat_id,
+            message_id,
+            "No categories available. Create a category first with /category <name>",
+        )
+        .await?;
     } else {
         let text = "� **Select category to add filter:**";
 
@@ -323,8 +333,7 @@ pub async fn add_filter_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.edit_message_text(chat_id, message_id, text)
-            .await?;
+        bot.edit_message_text(chat_id, message_id, text).await?;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
@@ -345,27 +354,28 @@ pub async fn show_filter_word_suggestions(
 ) -> ResponseResult<()> {
     let expenses = get_chat_expenses(&storage, chat_id).await;
     let categories = get_chat_categories(&category_storage, chat_id).await;
-    
+
     // Get currently selected words from storage
-    let selected_words = get_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
-    
+    let selected_words =
+        get_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
+
     // Extract words from uncategorized expenses
     let words = extract_words(&expenses, &categories);
-    
+
     // Build selected words display
     let selected_display = if selected_words.is_empty() {
         "(none selected)".to_string()
     } else {
         selected_words.join(" | ")
     };
-    
+
     let text = format!(
         "💡 **Select word(s) for filter '{}':**\n\nSelected: {}\n\nClick words to add/remove them. When done, click 'Apply Filter'.",
         category_name, selected_display
     );
-    
+
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
-    
+
     // Add buttons for each suggested word (limit to 20 most common ones, 4 per row)
     let mut row: Vec<InlineKeyboardButton> = Vec::new();
     for word in words.iter().take(20) {
@@ -376,25 +386,25 @@ pub async fn show_filter_word_suggestions(
         } else {
             word.clone()
         };
-        
+
         // Use short callback data without encoding state
         row.push(InlineKeyboardButton::callback(
             label,
             format!("toggle_word:{}:{}", category_name, word),
         ));
-        
+
         // Add row when we have 4 buttons
         if row.len() == 4 {
             buttons.push(row.clone());
             row.clear();
         }
     }
-    
+
     // Add remaining buttons if any
     if !row.is_empty() {
         buttons.push(row);
     }
-    
+
     // Add apply button if words are selected
     if !selected_words.is_empty() {
         buttons.push(vec![InlineKeyboardButton::callback(
@@ -402,27 +412,28 @@ pub async fn show_filter_word_suggestions(
             format!("apply_words:{}", category_name),
         )]);
     }
-    
+
     // Add custom filter button
-    buttons.push(vec![InlineKeyboardButton::switch_inline_query_current_chat(
-        "✏️ Custom Filter",
-        format!("/add_filter {} ", category_name),
-    )]);
-    
+    buttons.push(vec![
+        InlineKeyboardButton::switch_inline_query_current_chat(
+            "✏️ Custom Filter",
+            format!("/add_filter {} ", category_name),
+        ),
+    ]);
+
     // Add a back button
     buttons.push(vec![InlineKeyboardButton::callback(
         "↩️ Back",
         "cmd_add_filter",
     )]);
-    
+
     let keyboard = InlineKeyboardMarkup::new(buttons);
-    
-    bot.edit_message_text(chat_id, message_id, text)
-        .await?;
+
+    bot.edit_message_text(chat_id, message_id, text).await?;
     bot.edit_message_reply_markup(chat_id, message_id)
         .reply_markup(keyboard)
         .await?;
-    
+
     Ok(())
 }
 
@@ -467,8 +478,7 @@ pub async fn remove_filter_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.edit_message_text(chat_id, message_id, text)
-            .await?;
+        bot.edit_message_text(chat_id, message_id, text).await?;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
@@ -489,8 +499,12 @@ pub async fn show_category_filters_for_removal(
 
     if let Some(patterns) = categories.get(&category_name) {
         if patterns.is_empty() {
-            bot.edit_message_text(chat_id, message_id, format!("No filters in category '{}'.", category_name))
-                .await?;
+            bot.edit_message_text(
+                chat_id,
+                message_id,
+                format!("No filters in category '{}'.", category_name),
+            )
+            .await?;
         } else {
             let text = format!("�️ **Select filter to remove from '{}':**", category_name);
 
@@ -513,8 +527,7 @@ pub async fn show_category_filters_for_removal(
 
             let keyboard = InlineKeyboardMarkup::new(buttons);
 
-            bot.edit_message_text(chat_id, message_id, text)
-                .await?;
+            bot.edit_message_text(chat_id, message_id, text).await?;
             bot.edit_message_reply_markup(chat_id, message_id)
                 .reply_markup(keyboard)
                 .await?;
@@ -539,6 +552,8 @@ pub async fn answer(
         Command::Clear => clear_command(bot, msg, storage).await,
         Command::Category { name } => category_command(bot, msg, category_storage, name).await,
         Command::Categories => categories_command(bot, msg, category_storage).await,
-        Command::AddFilter { category, pattern } => add_filter_command(bot, msg, category_storage, category, pattern).await,
+        Command::AddFilter { category, pattern } => {
+            add_filter_command(bot, msg, category_storage, category, pattern).await
+        }
     }
 }
