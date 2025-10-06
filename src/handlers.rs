@@ -103,21 +103,6 @@ pub async fn handle_callback_query(
                     // Show word suggestions for a specific category
                     let category_name = data.strip_prefix("add_filter_cat:").unwrap().to_string();
                     show_filter_word_suggestions(bot, chat_id, storage.clone(), category_storage, category_name).await?;
-                } else if data.starts_with("add_filter_word:") {
-                    // Handle add_filter_word:CategoryName:Word format
-                    let parts: Vec<&str> = data.strip_prefix("add_filter_word:").unwrap().splitn(2, ':').collect();
-                    if parts.len() == 2 {
-                        let category_name = parts[0];
-                        let word = parts[1];
-                        // Add the word as a case-insensitive regex pattern
-                        let pattern = format!("(?i){}", regex::escape(word));
-                        crate::storage::add_category_filter(&category_storage, chat_id, category_name.to_string(), pattern.clone()).await;
-                        bot.send_message(
-                            chat_id,
-                            format!("✅ Filter '{}' added to category '{}'.", word, category_name)
-                        )
-                        .await?;
-                    }
                 } else if data.starts_with("remove_filter_cat:") {
                     // Show filters for a specific category
                     let category_name = data.strip_prefix("remove_filter_cat:").unwrap().to_string();
