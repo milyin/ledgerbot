@@ -4,7 +4,7 @@ use teloxide::{
     utils::command::BotCommands,
 };
 
-use crate::parser::format_expenses_list;
+use crate::parser::{extract_words, format_expenses_list};
 use crate::storage::{
     CategoryStorage, ExpenseStorage, add_category, add_category_filter, clear_chat_expenses, get_chat_categories,
     get_chat_expenses,
@@ -285,9 +285,9 @@ pub async fn add_filter_menu(
         let mut buttons: Vec<Vec<InlineKeyboardButton>> = categories
             .keys()
             .map(|name| {
-                vec![InlineKeyboardButton::switch_inline_query_current_chat(
+                vec![InlineKeyboardButton::callback(
                     format!("🔧 {}", name),
-                    format!("/add_filter {} ", name),
+                    format!("add_filter_cat:{}", name),
                 )]
             })
             .collect();
@@ -305,6 +305,65 @@ pub async fn add_filter_menu(
             .await?;
     }
 
+    Ok(())
+}
+
+/// Show word suggestions for adding filters to a category
+pub async fn show_filter_word_suggestions(
+    bot: Bot,
+    chat_id: ChatId,
+    storage: ExpenseStorage,
+    category_storage: CategoryStorage,
+    category_name: String,
+) -> ResponseResult<()> {
+    let expenses = get_chat_expenses(&storage, chat_id).await;
+    let categories = get_chat_categories(&category_storage, chat_id).await;
+    
+    // Extract words from uncategorized expenses
+    let words = extract_words(&expenses, &categories);
+    
+    let text = format!("💡 **Select a word to use as filter for '{}':**\n\nOr choose custom filter to enter your own regex pattern.", category_name);
+    
+    let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
+    
+    // Add buttons for each suggested word (limit to 20 most common ones, 4 per row)
+    let mut row: Vec<InlineKeyboardButton> = Vec::new();
+    for word in words.iter().take(20) {
+        row.push(InlineKeyboardButton::callback(
+            word.clone(),
+            format!("add_filter_word:{}:{}", category_name, word),
+        ));
+        
+        // Add row when we have 4 buttons
+        if row.len() == 4 {
+            buttons.push(row.clone());
+            row.clear();
+        }
+    }
+    
+    // Add remaining buttons if any
+    if !row.is_empty() {
+        buttons.push(row);
+    }
+    
+    // Add custom filter button
+    buttons.push(vec![InlineKeyboardButton::switch_inline_query_current_chat(
+        "✏️ Custom Filter",
+        format!("/add_filter {} ", category_name),
+    )]);
+    
+    // Add a back button
+    buttons.push(vec![InlineKeyboardButton::callback(
+        "↩️ Back",
+        "cmd_add_filter",
+    )]);
+    
+    let keyboard = InlineKeyboardMarkup::new(buttons);
+    
+    bot.send_message(chat_id, text)
+        .reply_markup(keyboard)
+        .await?;
+    
     Ok(())
 }
 
