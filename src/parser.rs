@@ -4,9 +4,8 @@ use std::collections::HashMap;
 use teloxide::utils::command::BotCommands;
 
 /// Parse expense lines and commands from a message text
-/// Returns a tuple of (expenses, commands) where:
-/// - expenses: vector of (description, amount, timestamp) tuples
-/// - commands: vector of parsed Command enums
+/// Returns a vector of parsed Command enums, where text lines matching expense patterns
+/// are converted to Command::Expense variants
 ///
 /// If bot_name is provided, lines starting with the bot name will have it stripped
 /// timestamp is the Unix timestamp of the message date
@@ -14,9 +13,15 @@ pub fn parse_expenses(
     text: &str,
     bot_name: Option<&str>,
     timestamp: i64,
-) -> (Vec<(String, f64, i64)>, Vec<Command>) {
-    let mut expenses = Vec::new();
+) -> Vec<Command> {
     let mut commands = Vec::new();
+    
+    // Convert timestamp to date string for expenses without explicit date
+    let default_date = {
+        use chrono::{DateTime, Utc};
+        let dt: DateTime<Utc> = DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
+        dt.format("%Y-%m-%d").to_string()
+    };
 
     // Regex pattern to match "<date> <text> <number>"
     // Date format: YYYY-MM-DD
@@ -79,32 +84,36 @@ pub fn parse_expenses(
 
         // Try to match pattern with date first: <date> <text> <sum>
         if let Some(captures) = re_with_date.captures(line) {
-            let date_str = captures[1].trim();
+            let date_str = captures[1].trim().to_string();
             let description = captures[2].trim().to_string();
-            if let Ok(amount) = captures[3].parse::<f64>() {
-                // Parse the date and convert to timestamp
-                if let Some(parsed_timestamp) = parse_date_to_timestamp(date_str) {
-                    expenses.push((description, amount, parsed_timestamp));
-                } else {
-                    // If date parsing fails, use message timestamp
-                    expenses.push((description, amount, timestamp));
-                }
-            }
+            let amount_str = captures[3].trim().to_string();
+            
+            // Create Command::Expense with explicit date
+            commands.push(Command::Expense {
+                date: Some(date_str),
+                description: Some(description),
+                amount: Some(amount_str),
+            });
         // If no date pattern matches, try pattern without date: <text> <sum>
         } else if let Some(captures) = re.captures(line) {
             let description = captures[1].trim().to_string();
-            if let Ok(amount) = captures[2].parse::<f64>() {
-                expenses.push((description, amount, timestamp));
-            }
+            let amount_str = captures[2].trim().to_string();
+            
+            // Create Command::Expense with default date from message timestamp
+            commands.push(Command::Expense {
+                date: Some(default_date.clone()),
+                description: Some(description),
+                amount: Some(amount_str),
+            });
         }
     }
 
-    (expenses, commands)
+    commands
 }
 
 /// Parse date string to Unix timestamp
 /// Supports format: YYYY-MM-DD
-fn parse_date_to_timestamp(date_str: &str) -> Option<i64> {
+pub fn parse_date_to_timestamp(date_str: &str) -> Option<i64> {
     use chrono::NaiveDate;
 
     // Parse YYYY-MM-DD format

@@ -9,7 +9,7 @@ use crate::commands::{
 };
 use crate::parser::parse_expenses;
 use crate::storage::{
-    CategoryStorage, ExpenseStorage, FilterSelectionStorage, add_expenses, clear_filter_selection,
+    CategoryStorage, ExpenseStorage, FilterSelectionStorage, clear_filter_selection,
     get_filter_selection, remove_category, remove_category_filter, set_filter_selection,
 };
 
@@ -31,12 +31,15 @@ pub async fn handle_text_message(
         // Use forward_date if available (for forwarded messages), otherwise use msg.date
         let timestamp = msg.forward_date().unwrap_or(msg.date).timestamp();
 
-        // Parse expenses and commands from the message, with bot name filtering and timestamp
-        let (parsed_expenses, parsed_commands) =
-            parse_expenses(text, bot_name.as_deref(), timestamp);
+        // Parse commands from the message, with bot name filtering and timestamp
+        // Text expenses are now converted to Command::Expense variants
+        let parsed_commands = parse_expenses(text, bot_name.as_deref(), timestamp);
         
-        log::info!("Parsed {} expenses and {} commands from chat {}",
-            parsed_expenses.len(), parsed_commands.len(), chat_id);
+        log::info!("Parsed {} commands from chat {}", parsed_commands.len(), chat_id);
+
+        // Track expenses for batch processing
+        let mut expense_count = 0;
+        let mut total_amount = 0.0;
 
         // Execute parsed commands (already parsed into Command enum)
         for cmd in parsed_commands {
@@ -47,6 +50,25 @@ pub async fn handle_text_message(
                 }
                 Command::Help => {
                     help_command(bot.clone(), msg.clone()).await?;
+                }
+                Command::Expense { date, description, amount } => {
+                    // Track expense for batch processing
+                    if let Some(ref amt_str) = amount {
+                        if let Ok(amt_val) = amt_str.parse::<f64>() {
+                            expense_count += 1;
+                            total_amount += amt_val;
+                        }
+                    }
+                    
+                    crate::commands::expense_command(
+                        bot.clone(),
+                        msg.clone(),
+                        storage.clone(),
+                        date,
+                        description,
+                        amount,
+                    )
+                    .await?;
                 }
                 Command::List => {
                     list_command(bot.clone(), msg.clone(), storage.clone()).await?;
@@ -115,14 +137,10 @@ pub async fn handle_text_message(
             }
         }
 
-        if !parsed_expenses.is_empty() {
-            // Store the expenses in chat-specific storage
-            add_expenses(&storage, chat_id, parsed_expenses.clone()).await;
-
+        if expense_count > 0 {
             // Update batch state for this chat
-            let total_parsed: f64 = parsed_expenses.iter().map(|(_, amount, _)| amount).sum();
             let is_first_message =
-                add_to_batch(&batch_storage, chat_id, parsed_expenses.len(), total_parsed).await;
+                add_to_batch(&batch_storage, chat_id, expense_count, total_amount).await;
 
             // Start timeout task only for the first message in batch
             if is_first_message {

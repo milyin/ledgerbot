@@ -37,6 +37,23 @@ fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<Strin
     }
 }
 
+/// Custom parser for three optional string parameters (date, description, amount)
+fn parse_three_optional_strings(s: String) -> Result<(Option<String>, Option<String>, Option<String>), ParseError> {
+    // Take only the first line to prevent multi-line capture
+    let first_line = s.lines().next().unwrap_or("").trim();
+    if first_line.is_empty() {
+        return Ok((None, None, None));
+    }
+
+    let parts: Vec<&str> = first_line.splitn(3, ' ').collect();
+    match parts.as_slice() {
+        [first] => Ok((Some(first.to_string()), None, None)),
+        [first, second] => Ok((Some(first.to_string()), Some(second.to_string()), None)),
+        [first, second, third] => Ok((Some(first.to_string()), Some(second.to_string()), Some(third.to_string()))),
+        _ => Ok((None, None, None)),
+    }
+}
+
 /// Create a persistent menu keyboard that shows on the left of the input field
 pub fn create_menu_keyboard() -> ReplyMarkup {
     let keyboard = vec![vec![
@@ -89,6 +106,15 @@ pub enum Command {
         pattern: Option<String>,
     },
     #[command(
+        description = "add expense with date, description and amount",
+        parse_with = parse_three_optional_strings
+    )]
+    Expense {
+        date: Option<String>,
+        description: Option<String>,
+        amount: Option<String>,
+    },
+    #[command(
         description = "remove expense category",
         rename = "remove_category",
         parse_with = parse_optional_string
@@ -135,6 +161,72 @@ pub async fn start_command(bot: Bot, msg: Message) -> ResponseResult<()> {
 
     Ok(())
 }
+
+/// Handle expense command with date, description, and amount
+pub async fn expense_command(
+    bot: Bot,
+    msg: Message,
+    storage: ExpenseStorage,
+    date: Option<String>,
+    description: Option<String>,
+    amount: Option<String>,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+    
+    // Get message timestamp for default date
+    let message_timestamp = msg.forward_date().unwrap_or(msg.date).timestamp();
+    
+    // Validate and parse parameters
+    match (description, amount) {
+        (Some(desc), Some(amt_str)) => {
+            // Parse amount
+            match amt_str.parse::<f64>() {
+                Ok(amount_val) => {
+                    // Determine timestamp
+                    let timestamp = if let Some(ref date_str) = date {
+                        // Try to parse the date
+                        crate::parser::parse_date_to_timestamp(date_str)
+                            .unwrap_or(message_timestamp)
+                    } else {
+                        message_timestamp
+                    };
+                    
+                    // Store the expense
+                    crate::storage::add_expenses(&storage, chat_id, vec![(desc.clone(), amount_val, timestamp)]).await;
+                    
+                    // Format date for display
+                    let date_display = if let Some(d) = date {
+                        d
+                    } else {
+                        use chrono::{DateTime, Utc};
+                        let dt: DateTime<Utc> = DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
+                        dt.format("%Y-%m-%d").to_string()
+                    };
+                    
+                    bot.send_message(
+                        chat_id,
+                        format!("✅ Expense added: {} {} {}", date_display, desc, amount_val)
+                    ).await?;
+                }
+                Err(_) => {
+                    bot.send_message(
+                        chat_id,
+                        format!("❌ Invalid amount: '{}'. Please provide a valid number.", amt_str)
+                    ).await?;
+                }
+            }
+        }
+        _ => {
+            bot.send_message(
+                chat_id,
+                "❌ Missing parameters. Usage: /expense <date> <description> <amount>\nOr: /expense <description> <amount> (uses current date)"
+            ).await?;
+        }
+    }
+    
+    Ok(())
+}
+
 /// List all expenses chronologically without category grouping
 pub async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
