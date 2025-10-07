@@ -29,7 +29,7 @@ pub async fn add_to_batch(
         }
         None => {
             // Start new batch for this chat
-            batch_guard.insert(chat_id, Vec::new());
+            batch_guard.insert(chat_id, commands);
             true
         }
     }

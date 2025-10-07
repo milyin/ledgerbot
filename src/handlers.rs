@@ -41,12 +41,13 @@ pub async fn handle_text_message(
             chat_id
         );
 
-        // Check if this is a multiline message
+        // Check if we should process this message in batch mode
         let is_multiline = text.lines().filter(|line| !line.trim().is_empty()).count() > 1;
+        let is_forwarded = msg.forward_date().is_some();
 
-        // For multiline messages, collect commands for batch execution
-        // For single-line messages, execute immediately
-        if is_multiline {
+        // For multiline or forwarded messages, collect commands for batch execution.
+        // For single-line, non-forwarded messages, execute immediately.
+        if is_multiline || is_forwarded {
             // Add to batch storage for deferred execution
             let is_first_message = add_to_batch(&batch_storage, chat_id, parsed_results).await;
 
