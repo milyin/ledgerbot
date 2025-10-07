@@ -1,10 +1,12 @@
 use regex::Regex;
 use std::collections::HashMap;
+use crate::commands::Command;
+use teloxide::utils::command::BotCommands;
 
 /// Parse expense lines and commands from a message text
 /// Returns a tuple of (expenses, commands) where:
 /// - expenses: vector of (description, amount, timestamp) tuples
-/// - commands: vector of command strings (without the leading '/')
+/// - commands: vector of parsed Command enums
 ///
 /// If bot_name is provided, lines starting with the bot name will have it stripped
 /// timestamp is the Unix timestamp of the message date
@@ -12,7 +14,7 @@ pub fn parse_expenses(
     text: &str,
     bot_name: Option<&str>,
     timestamp: i64,
-) -> (Vec<(String, f64, i64)>, Vec<String>) {
+) -> (Vec<(String, f64, i64)>, Vec<Command>) {
     let mut expenses = Vec::new();
     let mut commands = Vec::new();
 
@@ -58,9 +60,12 @@ pub fn parse_expenses(
             }
         }
 
-        // Collect lines starting with '/' as commands
+        // Collect lines starting with '/' as commands and parse them
         if line.starts_with('/') {
-            commands.push(line.to_string());
+            // Try to parse the command
+            if let Ok(cmd) = Command::parse(line, bot_name.unwrap_or("")) {
+                commands.push(cmd);
+            }
             continue;
         }
 
@@ -362,8 +367,8 @@ mod tests {
         assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
         assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
         assert_eq!(commands.len(), 2);
-        assert_eq!(commands[0], "/help");
-        assert_eq!(commands[1], "/report");
+        assert_eq!(commands[0], Command::Help);
+        assert_eq!(commands[1], Command::Report);
     }
 
     #[test]
@@ -378,8 +383,8 @@ mod tests {
         assert_eq!(expenses[1], ("Lunch".to_string(), 12.00, timestamp));
         assert_eq!(expenses[2], ("Bus ticket".to_string(), 2.75, timestamp));
         assert_eq!(commands.len(), 2);
-        assert_eq!(commands[0], "/help");
-        assert_eq!(commands[1], "/report");
+        assert_eq!(commands[0], Command::Help);
+        assert_eq!(commands[1], Command::Report);
     }
 
     #[test]
@@ -404,9 +409,9 @@ mod tests {
 
         assert_eq!(expenses.len(), 0);
         assert_eq!(commands.len(), 3);
-        assert_eq!(commands[0], "/help");
-        assert_eq!(commands[1], "/report");
-        assert_eq!(commands[2], "/clear");
+        assert_eq!(commands[0], Command::Help);
+        assert_eq!(commands[1], Command::Report);
+        assert_eq!(commands[2], Command::Clear);
     }
 
     #[test]
@@ -418,7 +423,7 @@ mod tests {
 
         assert_eq!(expenses.len(), 0);
         assert_eq!(commands.len(), 1);
-        assert_eq!(commands[0], "/report");
+        assert_eq!(commands[0], Command::Report);
 
         // Test multiple buttons
         let text2 = "🗑️ /clear";
@@ -426,7 +431,7 @@ mod tests {
 
         assert_eq!(expenses2.len(), 0);
         assert_eq!(commands2.len(), 1);
-        assert_eq!(commands2[0], "/clear");
+        assert_eq!(commands2[0], Command::Clear);
 
         // Test with category command
         let text3 = "📂 /categories";
@@ -434,7 +439,7 @@ mod tests {
 
         assert_eq!(expenses3.len(), 0);
         assert_eq!(commands3.len(), 1);
-        assert_eq!(commands3[0], "/categories");
+        assert_eq!(commands3[0], Command::Categories);
     }
 
     #[test]
@@ -569,28 +574,28 @@ mod tests {
         assert_eq!(commands.len(), 12);
         
         // Commands without parameters (7 unique + 1 duplicate)
-        assert_eq!(commands[0], "/start");
-        assert_eq!(commands[1], "/help");
-        assert_eq!(commands[2], "/list");
-        assert_eq!(commands[3], "/report");
-        assert_eq!(commands[4], "/clear");
-        assert_eq!(commands[5], "/categories");
-        assert_eq!(commands[6], "/clear_categories");
+        assert_eq!(commands[0], Command::Start);
+        assert_eq!(commands[1], Command::Help);
+        assert_eq!(commands[2], Command::List);
+        assert_eq!(commands[3], Command::Report);
+        assert_eq!(commands[4], Command::Clear);
+        assert_eq!(commands[5], Command::Categories);
+        assert_eq!(commands[6], Command::ClearCategories);
         
         // Commands with parameters (4 commands)
-        assert_eq!(commands[7], "/add_category Food");
-        assert_eq!(commands[8], "/add_filter Food (?i)lunch");
-        assert_eq!(commands[9], "/remove_category Transport");
-        assert_eq!(commands[10], "/remove_filter Food (?i)coffee");
+        assert_eq!(commands[7], Command::AddCategory { name: "Food".to_string() });
+        assert_eq!(commands[8], Command::AddFilter { category: "Food".to_string(), pattern: "(?i)lunch".to_string() });
+        assert_eq!(commands[9], Command::RemoveCategory { name: "Transport".to_string() });
+        assert_eq!(commands[10], Command::RemoveFilter { category: "Food".to_string(), pattern: "(?i)coffee".to_string() });
         
         // Duplicate command without parameters to verify repeatability
-        assert_eq!(commands[11], "/list");
+        assert_eq!(commands[11], Command::List);
     }
 
     #[test]
     fn test_parse_commands_with_missing_parameters() {
-        // Test that commands which should have parameters are still parsed
-        // even when passed without parameters (parser doesn't validate, just extracts)
+        // Test behavior when commands with required parameters are passed without them
+        // The BotCommands parser will parse them with empty string parameters
         let text = "\
             /add_category\n\
             /add_filter\n\
@@ -606,12 +611,12 @@ mod tests {
         assert_eq!(expenses.len(), 1);
         assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
 
-        // Check that all commands were extracted, even those without required parameters
-        assert_eq!(commands.len(), 5);
-        assert_eq!(commands[0], "/add_category");
-        assert_eq!(commands[1], "/add_filter");
-        assert_eq!(commands[2], "/remove_category");
-        assert_eq!(commands[3], "/remove_filter");
-        assert_eq!(commands[4], "/add_category Food");
+        // Commands with missing parameters are parsed with empty strings
+        // /add_filter and /remove_filter fail because they need 2 parameters
+        // but /add_category and /remove_category succeed with empty string parameter
+        assert_eq!(commands.len(), 3);
+        assert_eq!(commands[0], Command::AddCategory { name: "".to_string() });
+        assert_eq!(commands[1], Command::RemoveCategory { name: "".to_string() });
+        assert_eq!(commands[2], Command::AddCategory { name: "Food".to_string() });
     }
 }

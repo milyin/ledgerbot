@@ -1,6 +1,5 @@
 use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
-use teloxide::utils::command::BotCommands;
 
 use crate::batch::{BatchStorage, add_to_batch, send_batch_report};
 use crate::commands::{
@@ -36,79 +35,77 @@ pub async fn handle_text_message(
         let (parsed_expenses, parsed_commands) =
             parse_expenses(text, bot_name.as_deref(), timestamp);
 
-        // Execute parsed commands
-        for command_str in parsed_commands {
-            if let Ok(cmd) = Command::parse(&command_str, bot_name.as_deref().unwrap_or("")) {
-                // Execute the command
-                match cmd {
-                    Command::Help | Command::Start => {
-                        help_command(bot.clone(), msg.clone()).await?;
-                    }
-                    Command::List => {
-                        list_command(bot.clone(), msg.clone(), storage.clone()).await?;
-                    }
-                    Command::Report => {
-                        report_command(
-                            bot.clone(),
-                            msg.clone(),
-                            storage.clone(),
-                            category_storage.clone(),
-                        )
+        // Execute parsed commands (already parsed into Command enum)
+        for cmd in parsed_commands {
+            // Execute the command
+            match cmd {
+                Command::Help | Command::Start => {
+                    help_command(bot.clone(), msg.clone()).await?;
+                }
+                Command::List => {
+                    list_command(bot.clone(), msg.clone(), storage.clone()).await?;
+                }
+                Command::Report => {
+                    report_command(
+                        bot.clone(),
+                        msg.clone(),
+                        storage.clone(),
+                        category_storage.clone(),
+                    )
+                    .await?;
+                }
+                Command::Clear => {
+                    clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
+                }
+                Command::ClearCategories => {
+                    crate::commands::clear_categories_command(
+                        bot.clone(),
+                        msg.clone(),
+                        category_storage.clone(),
+                    )
+                    .await?;
+                }
+                Command::AddCategory { name } => {
+                    crate::commands::category_command(
+                        bot.clone(),
+                        msg.clone(),
+                        category_storage.clone(),
+                        name,
+                    )
+                    .await?;
+                }
+                Command::Categories => {
+                    categories_command(bot.clone(), msg.clone(), category_storage.clone())
                         .await?;
-                    }
-                    Command::Clear => {
-                        clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
-                    }
-                    Command::ClearCategories => {
-                        crate::commands::clear_categories_command(
-                            bot.clone(),
-                            msg.clone(),
-                            category_storage.clone(),
-                        )
-                        .await?;
-                    }
-                    Command::AddCategory { name } => {
-                        crate::commands::category_command(
-                            bot.clone(),
-                            msg.clone(),
-                            category_storage.clone(),
-                            name,
-                        )
-                        .await?;
-                    }
-                    Command::Categories => {
-                        categories_command(bot.clone(), msg.clone(), category_storage.clone())
-                            .await?;
-                    }
-                    Command::AddFilter { category, pattern } => {
-                        crate::commands::add_filter_command(
-                            bot.clone(),
-                            msg.clone(),
-                            category_storage.clone(),
-                            category,
-                            pattern,
-                        )
-                        .await?;
-                    }
-                    Command::RemoveCategory { name } => {
-                        crate::commands::remove_category_command(
-                            bot.clone(),
-                            msg.clone(),
-                            category_storage.clone(),
-                            name,
-                        )
-                        .await?;
-                    }
-                    Command::RemoveFilter { category, pattern } => {
-                        crate::commands::remove_filter_command(
-                            bot.clone(),
-                            msg.clone(),
-                            category_storage.clone(),
-                            category,
-                            pattern,
-                        )
-                        .await?;
-                    }
+                }
+                Command::AddFilter { category, pattern } => {
+                    crate::commands::add_filter_command(
+                        bot.clone(),
+                        msg.clone(),
+                        category_storage.clone(),
+                        category,
+                        pattern,
+                    )
+                    .await?;
+                }
+                Command::RemoveCategory { name } => {
+                    crate::commands::remove_category_command(
+                        bot.clone(),
+                        msg.clone(),
+                        category_storage.clone(),
+                        name,
+                    )
+                    .await?;
+                }
+                Command::RemoveFilter { category, pattern } => {
+                    crate::commands::remove_filter_command(
+                        bot.clone(),
+                        msg.clone(),
+                        category_storage.clone(),
+                        category,
+                        pattern,
+                    )
+                    .await?;
                 }
             }
         }

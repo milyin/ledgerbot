@@ -26,7 +26,7 @@ pub fn create_menu_keyboard() -> ReplyMarkup {
 }
 
 /// Bot commands
-#[derive(BotCommands, Clone)]
+#[derive(BotCommands, Clone, Debug, PartialEq)]
 #[command(
     rename_rule = "lowercase",
     description = "These commands are supported:"
