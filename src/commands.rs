@@ -112,15 +112,6 @@ pub enum Command {
         pattern: Option<String>,
     },
     #[command(
-        description = "add expense with date, description and amount",
-        parse_with = parse_three_optional_strings
-    )]
-    Expense {
-        date: Option<String>,
-        description: Option<String>,
-        amount: Option<String>,
-    },
-    #[command(
         description = "remove expense category",
         rename = "remove_category",
         parse_with = parse_optional_string
@@ -134,6 +125,15 @@ pub enum Command {
     RemoveFilter {
         category: Option<String>,
         pattern: Option<String>,
+    },
+    #[command(
+        description = "add expense with date, description and amount",
+        parse_with = parse_three_optional_strings
+    )]
+    Expense {
+        date: Option<String>,
+        description: Option<String>,
+        amount: Option<String>,
     },
 }
 

@@ -41,12 +41,60 @@ pub async fn handle_text_message(
             chat_id
         );
 
+        // Check if this is a multiline message
+        let is_multiline = text.lines().filter(|line| !line.trim().is_empty()).count() > 1;
+
         // Track expenses for batch processing
         let mut expense_count = 0;
         let mut total_amount = 0.0;
 
-        // Execute parsed commands (already parsed into Command enum)
-        for result in parsed_results {
+        // For multiline messages, collect commands for batch execution
+        // For single-line messages, execute immediately
+        if is_multiline {
+            // Collect commands and calculate statistics
+            for result in &parsed_results {
+                if let Ok(Command::Expense { amount, .. }) = result {
+                    if let Some(amt_str) = amount {
+                        if let Ok(amt_val) = amt_str.parse::<f64>() {
+                            expense_count += 1;
+                            total_amount += amt_val;
+                        }
+                    }
+                }
+            }
+
+            // Add to batch storage for deferred execution
+            let is_first_message = add_to_batch(
+                &batch_storage,
+                chat_id,
+                expense_count,
+                total_amount,
+                parsed_results,
+            )
+            .await;
+
+            // Start timeout task only for the first message in batch
+            if is_first_message {
+                let batch_clone = batch_storage.clone();
+                let bot_clone = bot.clone();
+                let storage_clone = storage.clone();
+                let category_storage_clone = category_storage.clone();
+                let msg_clone = msg.clone();
+                tokio::spawn(async move {
+                    send_batch_report(
+                        bot_clone,
+                        batch_clone,
+                        chat_id,
+                        storage_clone,
+                        category_storage_clone,
+                        msg_clone,
+                    )
+                    .await;
+                });
+            }
+        } else {
+            // Single-line message: execute immediately (existing behavior)
+            for result in parsed_results {
             match result {
                 Ok(cmd) => {
                     // Execute the command
@@ -155,19 +203,7 @@ pub async fn handle_text_message(
             }
         }
 
-        if expense_count > 0 {
-            // Update batch state for this chat
-            let is_first_message =
-                add_to_batch(&batch_storage, chat_id, expense_count, total_amount).await;
-
-            // Start timeout task only for the first message in batch
-            if is_first_message {
-                let batch_clone = batch_storage.clone();
-                let bot_clone = bot.clone();
-                tokio::spawn(async move {
-                    send_batch_report(bot_clone, batch_clone, chat_id).await;
-                });
-            }
+            // For single-line messages with expenses, we don't batch - already executed above
         }
     }
 
