@@ -583,10 +583,10 @@ mod tests {
         assert_eq!(commands[6], Command::ClearCategories);
         
         // Commands with parameters (4 commands)
-        assert_eq!(commands[7], Command::AddCategory { name: "Food".to_string() });
-        assert_eq!(commands[8], Command::AddFilter { category: "Food".to_string(), pattern: "(?i)lunch".to_string() });
-        assert_eq!(commands[9], Command::RemoveCategory { name: "Transport".to_string() });
-        assert_eq!(commands[10], Command::RemoveFilter { category: "Food".to_string(), pattern: "(?i)coffee".to_string() });
+        assert_eq!(commands[7], Command::AddCategory { name: Some("Food".to_string()) });
+        assert_eq!(commands[8], Command::AddFilter { category: Some("Food".to_string()), pattern: Some("(?i)lunch".to_string()) });
+        assert_eq!(commands[9], Command::RemoveCategory { name: Some("Transport".to_string()) });
+        assert_eq!(commands[10], Command::RemoveFilter { category: Some("Food".to_string()), pattern: Some("(?i)coffee".to_string()) });
         
         // Duplicate command without parameters to verify repeatability
         assert_eq!(commands[11], Command::List);
@@ -611,12 +611,13 @@ mod tests {
         assert_eq!(expenses.len(), 1);
         assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
 
-        // Commands with missing parameters are parsed with empty strings
-        // /add_filter and /remove_filter fail because they need 2 parameters
-        // but /add_category and /remove_category succeed with empty string parameter
-        assert_eq!(commands.len(), 3);
-        assert_eq!(commands[0], Command::AddCategory { name: "".to_string() });
-        assert_eq!(commands[1], Command::RemoveCategory { name: "".to_string() });
-        assert_eq!(commands[2], Command::AddCategory { name: "Food".to_string() });
+        // Commands with missing parameters are now parsed as None
+        // All commands now parse successfully with optional parameters
+        assert_eq!(commands.len(), 5);
+        assert_eq!(commands[0], Command::AddCategory { name: None });
+        assert_eq!(commands[1], Command::AddFilter { category: None, pattern: None });
+        assert_eq!(commands[2], Command::RemoveCategory { name: None });
+        assert_eq!(commands[3], Command::RemoveFilter { category: None, pattern: None });
+        assert_eq!(commands[4], Command::AddCategory { name: Some("Food".to_string()) });
     }
 }

@@ -240,8 +240,8 @@ pub async fn handle_callback_query(
                         bot.clone(),
                         msg.clone(),
                         category_storage.clone(),
-                        category_name,
-                        pattern,
+                        Some(category_name),
+                        Some(pattern),
                     )
                     .await?;
                 }

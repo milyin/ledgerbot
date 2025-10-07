@@ -1,7 +1,7 @@
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, MessageId, ReplyMarkup},
-    utils::command::BotCommands,
+    utils::command::{BotCommands, ParseError},
 };
 
 use crate::parser::{extract_words, format_expenses_chronological, format_expenses_list};
@@ -9,6 +9,30 @@ use crate::storage::{
     CategoryStorage, ExpenseStorage, FilterSelectionStorage, add_category, add_category_filter,
     clear_chat_expenses, get_chat_categories, get_chat_expenses, get_filter_selection,
 };
+
+/// Custom parser for optional single string parameter
+fn parse_optional_string(s: String) -> Result<(Option<String>,), ParseError> {
+    if s.trim().is_empty() {
+        Ok((None,))
+    } else {
+        Ok((Some(s.trim().to_string()),))
+    }
+}
+
+/// Custom parser for two optional string parameters
+fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<String>), ParseError> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return Ok((None, None));
+    }
+
+    let parts: Vec<&str> = trimmed.splitn(2, ' ').collect();
+    match parts.as_slice() {
+        [first] => Ok((Some(first.to_string()), None)),
+        [first, second] => Ok((Some(first.to_string()), Some(second.to_string()))),
+        _ => Ok((None, None)),
+    }
+}
 
 /// Create a persistent menu keyboard that shows on the left of the input field
 pub fn create_menu_keyboard() -> ReplyMarkup {
@@ -49,27 +73,33 @@ pub enum Command {
     #[command(
         description = "add expense category",
         rename = "add_category",
-        parse_with = "split"
+        parse_with = parse_optional_string
     )]
-    AddCategory { name: String },
+    AddCategory { name: Option<String> },
     #[command(
         description = "add filter to category",
         rename = "add_filter",
-        parse_with = "split"
+        parse_with = parse_two_optional_strings
     )]
-    AddFilter { category: String, pattern: String },
+    AddFilter {
+        category: Option<String>,
+        pattern: Option<String>,
+    },
     #[command(
         description = "remove expense category",
         rename = "remove_category",
-        parse_with = "split"
+        parse_with = parse_optional_string
     )]
-    RemoveCategory { name: String },
+    RemoveCategory { name: Option<String> },
     #[command(
         description = "remove filter from category",
         rename = "remove_filter",
-        parse_with = "split"
+        parse_with = parse_two_optional_strings
     )]
-    RemoveFilter { category: String, pattern: String },
+    RemoveFilter {
+        category: Option<String>,
+        pattern: Option<String>,
+    },
 }
 
 /// Display help message with inline keyboard buttons
@@ -177,27 +207,29 @@ pub async fn category_command(
     bot: Bot,
     msg: Message,
     category_storage: CategoryStorage,
-    name: String,
+    name: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
-    // Check if name is empty or just whitespace
-    if name.trim().is_empty() {
-        // Show the add category menu instead
-        let sent_msg = bot.send_message(chat_id, "➕ Add Category").await?;
-        add_category_menu(bot, chat_id, sent_msg.id).await?;
-        return Ok(());
+    // Check if name is provided
+    match name {
+        None => {
+            // Show the add category menu instead
+            let sent_msg = bot.send_message(chat_id, "➕ Add Category").await?;
+            add_category_menu(bot, chat_id, sent_msg.id).await?;
+        }
+        Some(name) => {
+            add_category(&category_storage, chat_id, name.clone()).await;
+            bot.send_message(
+                chat_id,
+                format!(
+                    "✅ Category '{}' created. Use /add_filter to add regex patterns.",
+                    name
+                ),
+            )
+            .await?;
+        }
     }
-
-    add_category(&category_storage, chat_id, name.clone()).await;
-    bot.send_message(
-        chat_id,
-        format!(
-            "✅ Category '{}' created. Use /add_filter to add regex patterns.",
-            name
-        ),
-    )
-    .await?;
 
     Ok(())
 }
@@ -207,54 +239,72 @@ pub async fn add_filter_command(
     bot: Bot,
     msg: Message,
     category_storage: CategoryStorage,
-    category: String,
-    pattern: String,
+    category: Option<String>,
+    pattern: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
-    // Check if category or pattern is empty or just whitespace
-    if category.trim().is_empty() || pattern.trim().is_empty() {
-        // Show the add filter menu instead
-        let sent_msg = bot.send_message(chat_id, "🔧 Add Filter").await?;
-        add_filter_menu(bot, chat_id, sent_msg.id, category_storage).await?;
-        return Ok(());
-    }
+    match (category, pattern) {
+        (Some(category), Some(pattern)) => {
+            let categories = get_chat_categories(&category_storage, chat_id).await;
 
-    let categories = get_chat_categories(&category_storage, chat_id).await;
+            // Check if category exists
+            if !categories.contains_key(&category) {
+                bot.send_message(
+                    chat_id,
+                    format!(
+                        "❌ Category '{}' does not exist. Create it first with /add_category {}",
+                        category, category
+                    ),
+                )
+                .await?;
+                return Ok(());
+            }
 
-    // Check if category exists
-    if !categories.contains_key(&category) {
-        bot.send_message(
-            chat_id,
-            format!(
-                "❌ Category '{}' does not exist. Create it first with /add_category {}",
-                category, category
-            ),
-        )
-        .await?;
-        return Ok(());
-    }
-
-    // Treat the pattern as a regexp directly without additional wrapping
-    // Validate regex pattern
-    match regex::Regex::new(&pattern) {
-        Ok(_) => {
-            add_category_filter(
-                &category_storage,
-                chat_id,
-                category.clone(),
-                pattern.clone(),
-            )
-            .await;
+            // Treat the pattern as a regexp directly without additional wrapping
+            // Validate regex pattern
+            match regex::Regex::new(&pattern) {
+                Ok(_) => {
+                    add_category_filter(
+                        &category_storage,
+                        chat_id,
+                        category.clone(),
+                        pattern.clone(),
+                    )
+                    .await;
+                    bot.send_message(
+                        chat_id,
+                        format!("✅ Filter '{}' added to category '{}'.", pattern, category),
+                    )
+                    .await?;
+                }
+                Err(e) => {
+                    bot.send_message(chat_id, format!("❌ Invalid regex pattern: {}", e))
+                        .await?;
+                }
+            }
+        }
+        (None, None) => {
+            // Show the add filter menu instead
+            let sent_msg = bot.send_message(chat_id, "🔧 Add Filter").await?;
+            add_filter_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+        }
+        (Some(category), None) => {
             bot.send_message(
                 chat_id,
-                format!("✅ Filter '{}' added to category '{}'.", pattern, category),
+                format!(
+                    "❌ Missing pattern. Usage: /add_filter {} <pattern>",
+                    category
+                ),
             )
             .await?;
         }
-        Err(e) => {
-            bot.send_message(chat_id, format!("❌ Invalid regex pattern: {}", e))
-                .await?;
+        (None, Some(_)) => {
+            bot.send_message(
+                chat_id,
+                "❌ Missing category. Usage: /add_filter <category> <pattern>",
+            )
+            .await?;
         }
     }
 
@@ -300,31 +350,32 @@ pub async fn remove_category_command(
     bot: Bot,
     msg: Message,
     category_storage: CategoryStorage,
-    name: String,
+    name: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
-    // Check if name is empty or just whitespace
-    if name.trim().is_empty() {
-        // Show the remove category menu instead
-        let sent_msg = bot.send_message(chat_id, "❌ Remove Category").await?;
-        remove_category_menu(bot, chat_id, sent_msg.id, category_storage).await?;
-        return Ok(());
+    match name {
+        None => {
+            // Show the remove category menu instead
+            let sent_msg = bot.send_message(chat_id, "❌ Remove Category").await?;
+            remove_category_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+        }
+        Some(name) => {
+            let categories = get_chat_categories(&category_storage, chat_id).await;
+
+            // Check if category exists
+            if !categories.contains_key(&name) {
+                bot.send_message(chat_id, format!("❌ Category '{}' does not exist.", name))
+                    .await?;
+                return Ok(());
+            }
+
+            // Remove the category
+            crate::storage::remove_category(&category_storage, chat_id, &name).await;
+            bot.send_message(chat_id, format!("✅ Category '{}' removed.", name))
+                .await?;
+        }
     }
-
-    let categories = get_chat_categories(&category_storage, chat_id).await;
-
-    // Check if category exists
-    if !categories.contains_key(&name) {
-        bot.send_message(chat_id, format!("❌ Category '{}' does not exist.", name))
-            .await?;
-        return Ok(());
-    }
-
-    // Remove the category
-    crate::storage::remove_category(&category_storage, chat_id, &name).await;
-    bot.send_message(chat_id, format!("✅ Category '{}' removed.", name))
-        .await?;
 
     Ok(())
 }
@@ -334,56 +385,75 @@ pub async fn remove_filter_command(
     bot: Bot,
     msg: Message,
     category_storage: CategoryStorage,
-    category: String,
-    pattern: String,
+    category: Option<String>,
+    pattern: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
-    // Check if category or pattern is empty or just whitespace
-    if category.trim().is_empty() || pattern.trim().is_empty() {
-        // Show the remove filter menu instead
-        let sent_msg = bot.send_message(chat_id, "🗑️ Remove Filter").await?;
-        remove_filter_menu(bot, chat_id, sent_msg.id, category_storage).await?;
-        return Ok(());
+    match (category, pattern) {
+        (Some(category), Some(pattern)) => {
+            let categories = get_chat_categories(&category_storage, chat_id).await;
+
+            // Check if category exists
+            if !categories.contains_key(&category) {
+                bot.send_message(
+                    chat_id,
+                    format!("❌ Category '{}' does not exist.", category),
+                )
+                .await?;
+                return Ok(());
+            }
+
+            // Check if filter exists in the category
+            if let Some(patterns) = categories.get(&category)
+                && !patterns.contains(&pattern)
+            {
+                bot.send_message(
+                    chat_id,
+                    format!(
+                        "❌ Filter '{}' not found in category '{}'.",
+                        pattern, category
+                    ),
+                )
+                .await?;
+                return Ok(());
+            }
+
+            // Remove the filter
+            crate::storage::remove_category_filter(&category_storage, chat_id, &category, &pattern)
+                .await;
+            bot.send_message(
+                chat_id,
+                format!(
+                    "✅ Filter '{}' removed from category '{}'.",
+                    pattern, category
+                ),
+            )
+            .await?;
+        }
+        (None, None) => {
+            // Show the remove filter menu instead
+            let sent_msg = bot.send_message(chat_id, "🗑️ Remove Filter").await?;
+            remove_filter_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+        }
+        (Some(category), None) => {
+            bot.send_message(
+                chat_id,
+                format!(
+                    "❌ Missing pattern. Usage: /remove_filter {} <pattern>",
+                    category
+                ),
+            )
+            .await?;
+        }
+        (None, Some(_)) => {
+            bot.send_message(
+                chat_id,
+                "❌ Missing category. Usage: /remove_filter <category> <pattern>",
+            )
+            .await?;
+        }
     }
-
-    let categories = get_chat_categories(&category_storage, chat_id).await;
-
-    // Check if category exists
-    if !categories.contains_key(&category) {
-        bot.send_message(
-            chat_id,
-            format!("❌ Category '{}' does not exist.", category),
-        )
-        .await?;
-        return Ok(());
-    }
-
-    // Check if filter exists in the category
-    if let Some(patterns) = categories.get(&category)
-        && !patterns.contains(&pattern)
-    {
-        bot.send_message(
-            chat_id,
-            format!(
-                "❌ Filter '{}' not found in category '{}'.",
-                pattern, category
-            ),
-        )
-        .await?;
-        return Ok(());
-    }
-
-    // Remove the filter
-    crate::storage::remove_category_filter(&category_storage, chat_id, &category, &pattern).await;
-    bot.send_message(
-        chat_id,
-        format!(
-            "✅ Filter '{}' removed from category '{}'.",
-            pattern, category
-        ),
-    )
-    .await?;
 
     Ok(())
 }
