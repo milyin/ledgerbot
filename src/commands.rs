@@ -38,7 +38,9 @@ fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<Strin
 }
 
 /// Custom parser for three optional string parameters (date, description, amount)
-fn parse_three_optional_strings(s: String) -> Result<(Option<String>, Option<String>, Option<String>), ParseError> {
+fn parse_three_optional_strings(
+    s: String,
+) -> Result<(Option<String>, Option<String>, Option<String>), ParseError> {
     // Take only the first line to prevent multi-line capture
     let first_line = s.lines().next().unwrap_or("").trim();
     if first_line.is_empty() {
@@ -49,7 +51,11 @@ fn parse_three_optional_strings(s: String) -> Result<(Option<String>, Option<Str
     match parts.as_slice() {
         [first] => Ok((Some(first.to_string()), None, None)),
         [first, second] => Ok((Some(first.to_string()), Some(second.to_string()), None)),
-        [first, second, third] => Ok((Some(first.to_string()), Some(second.to_string()), Some(third.to_string()))),
+        [first, second, third] => Ok((
+            Some(first.to_string()),
+            Some(second.to_string()),
+            Some(third.to_string()),
+        )),
         _ => Ok((None, None, None)),
     }
 }
@@ -172,10 +178,10 @@ pub async fn expense_command(
     amount: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    
+
     // Get message timestamp for default date
     let message_timestamp = msg.forward_date().unwrap_or(msg.date).timestamp();
-    
+
     // Validate and parse parameters
     match (description, amount) {
         (Some(desc), Some(amt_str)) => {
@@ -190,29 +196,40 @@ pub async fn expense_command(
                     } else {
                         message_timestamp
                     };
-                    
+
                     // Store the expense
-                    crate::storage::add_expenses(&storage, chat_id, vec![(desc.clone(), amount_val, timestamp)]).await;
-                    
+                    crate::storage::add_expenses(
+                        &storage,
+                        chat_id,
+                        vec![(desc.clone(), amount_val, timestamp)],
+                    )
+                    .await;
+
                     // Format date for display
                     let date_display = if let Some(d) = date {
                         d
                     } else {
                         use chrono::{DateTime, Utc};
-                        let dt: DateTime<Utc> = DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
+                        let dt: DateTime<Utc> =
+                            DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
                         dt.format("%Y-%m-%d").to_string()
                     };
-                    
+
                     bot.send_message(
                         chat_id,
-                        format!("✅ Expense added: {} {} {}", date_display, desc, amount_val)
-                    ).await?;
+                        format!("✅ Expense added: {} {} {}", date_display, desc, amount_val),
+                    )
+                    .await?;
                 }
                 Err(_) => {
                     bot.send_message(
                         chat_id,
-                        format!("❌ Invalid amount: '{}'. Please provide a valid number.", amt_str)
-                    ).await?;
+                        format!(
+                            "❌ Invalid amount: '{}'. Please provide a valid number.",
+                            amt_str
+                        ),
+                    )
+                    .await?;
                 }
             }
         }
@@ -223,7 +240,7 @@ pub async fn expense_command(
             ).await?;
         }
     }
-    
+
     Ok(())
 }
 

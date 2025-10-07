@@ -74,7 +74,7 @@ pub async fn add_category(
     // Acquire lock once and hold it for the entire operation to prevent race conditions
     let mut storage_guard = storage.lock().await;
     let chat_categories = storage_guard.entry(chat_id).or_default();
-    
+
     // Check if category already exists (while holding the lock)
     if chat_categories.contains_key(&category_name) {
         return Err(format!(

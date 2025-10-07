@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use teloxide::utils::command::BotCommands;
 
 /// Parse expense lines and commands from a message text
-/// Returns a vector of parsed Command enums, where text lines matching expense patterns
-/// are converted to Command::Expense variants
+/// Returns a vector of Results containing either successfully parsed Commands or error messages
+/// where text lines matching expense patterns are converted to Command::Expense variants
 ///
 /// If bot_name is provided, lines starting with the bot name will have it stripped
 /// timestamp is the Unix timestamp of the message date
@@ -13,9 +13,9 @@ pub fn parse_expenses(
     text: &str,
     bot_name: Option<&str>,
     timestamp: i64,
-) -> Vec<Command> {
+) -> Vec<Result<Command, String>> {
     let mut commands = Vec::new();
-    
+
     // Convert timestamp to date string for expenses without explicit date
     let default_date = {
         use chrono::{DateTime, Utc};
@@ -72,11 +72,10 @@ pub fn parse_expenses(
             // this line, which will parse only this command.
             match Command::parse(line, bot_name.unwrap_or("")) {
                 Ok(cmd) => {
-                    commands.push(cmd);
+                    commands.push(Ok(cmd));
                 }
-                Err(_e) => {
-                    // output error to the chat
-                    // crate::commands::output_error(bot.clone(), msg.clone(), e).await?;
+                Err(e) => {
+                    commands.push(Err(format!("Failed to parse command '{}': {}", line, e)));
                 }
             }
             continue;
@@ -87,24 +86,40 @@ pub fn parse_expenses(
             let date_str = captures[1].trim().to_string();
             let description = captures[2].trim().to_string();
             let amount_str = captures[3].trim().to_string();
-            
-            // Create Command::Expense with explicit date
-            commands.push(Command::Expense {
-                date: Some(date_str),
-                description: Some(description),
-                amount: Some(amount_str),
-            });
+
+            // Validate amount is a valid number
+            if amount_str.parse::<f64>().is_ok() {
+                // Create Command::Expense with explicit date
+                commands.push(Ok(Command::Expense {
+                    date: Some(date_str),
+                    description: Some(description),
+                    amount: Some(amount_str),
+                }));
+            } else {
+                commands.push(Err(format!(
+                    "Invalid amount '{}' in line: {}",
+                    amount_str, line
+                )));
+            }
         // If no date pattern matches, try pattern without date: <text> <sum>
         } else if let Some(captures) = re.captures(line) {
             let description = captures[1].trim().to_string();
             let amount_str = captures[2].trim().to_string();
-            
-            // Create Command::Expense with default date from message timestamp
-            commands.push(Command::Expense {
-                date: Some(default_date.clone()),
-                description: Some(description),
-                amount: Some(amount_str),
-            });
+
+            // Validate amount is a valid number
+            if amount_str.parse::<f64>().is_ok() {
+                // Create Command::Expense with default date from message timestamp
+                commands.push(Ok(Command::Expense {
+                    date: Some(default_date.clone()),
+                    description: Some(description),
+                    amount: Some(amount_str),
+                }));
+            } else {
+                commands.push(Err(format!(
+                    "Invalid amount '{}' in line: {}",
+                    amount_str, line
+                )));
+            }
         }
     }
 

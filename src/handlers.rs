@@ -33,106 +33,124 @@ pub async fn handle_text_message(
 
         // Parse commands from the message, with bot name filtering and timestamp
         // Text expenses are now converted to Command::Expense variants
-        let parsed_commands = parse_expenses(text, bot_name.as_deref(), timestamp);
-        
-        log::info!("Parsed {} commands from chat {}", parsed_commands.len(), chat_id);
+        let parsed_results = parse_expenses(text, bot_name.as_deref(), timestamp);
+
+        log::info!(
+            "Parsed {} results from chat {}",
+            parsed_results.len(),
+            chat_id
+        );
 
         // Track expenses for batch processing
         let mut expense_count = 0;
         let mut total_amount = 0.0;
 
         // Execute parsed commands (already parsed into Command enum)
-        for cmd in parsed_commands {
-            // Execute the command
-            match cmd {
-                Command::Start => {
-                    crate::commands::start_command(bot.clone(), msg.clone()).await?;
-                }
-                Command::Help => {
-                    help_command(bot.clone(), msg.clone()).await?;
-                }
-                Command::Expense { date, description, amount } => {
-                    // Track expense for batch processing
-                    if let Some(ref amt_str) = amount {
-                        if let Ok(amt_val) = amt_str.parse::<f64>() {
-                            expense_count += 1;
-                            total_amount += amt_val;
+        for result in parsed_results {
+            match result {
+                Ok(cmd) => {
+                    // Execute the command
+                    match cmd {
+                        Command::Start => {
+                            crate::commands::start_command(bot.clone(), msg.clone()).await?;
+                        }
+                        Command::Help => {
+                            help_command(bot.clone(), msg.clone()).await?;
+                        }
+                        Command::Expense {
+                            date,
+                            description,
+                            amount,
+                        } => {
+                            // Track expense for batch processing
+                            if let Some(ref amt_str) = amount {
+                                if let Ok(amt_val) = amt_str.parse::<f64>() {
+                                    expense_count += 1;
+                                    total_amount += amt_val;
+                                }
+                            }
+
+                            crate::commands::expense_command(
+                                bot.clone(),
+                                msg.clone(),
+                                storage.clone(),
+                                date,
+                                description,
+                                amount,
+                            )
+                            .await?;
+                        }
+                        Command::List => {
+                            list_command(bot.clone(), msg.clone(), storage.clone()).await?;
+                        }
+                        Command::Report => {
+                            report_command(
+                                bot.clone(),
+                                msg.clone(),
+                                storage.clone(),
+                                category_storage.clone(),
+                            )
+                            .await?;
+                        }
+                        Command::Clear => {
+                            clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
+                        }
+                        Command::ClearCategories => {
+                            crate::commands::clear_categories_command(
+                                bot.clone(),
+                                msg.clone(),
+                                category_storage.clone(),
+                            )
+                            .await?;
+                        }
+                        Command::AddCategory { name } => {
+                            crate::commands::category_command(
+                                bot.clone(),
+                                msg.clone(),
+                                category_storage.clone(),
+                                name,
+                            )
+                            .await?;
+                        }
+                        Command::Categories => {
+                            categories_command(bot.clone(), msg.clone(), category_storage.clone())
+                                .await?;
+                        }
+                        Command::AddFilter { category, pattern } => {
+                            crate::commands::add_filter_command(
+                                bot.clone(),
+                                msg.clone(),
+                                category_storage.clone(),
+                                category,
+                                pattern,
+                            )
+                            .await?;
+                        }
+                        Command::RemoveCategory { name } => {
+                            crate::commands::remove_category_command(
+                                bot.clone(),
+                                msg.clone(),
+                                category_storage.clone(),
+                                name,
+                            )
+                            .await?;
+                        }
+                        Command::RemoveFilter { category, pattern } => {
+                            crate::commands::remove_filter_command(
+                                bot.clone(),
+                                msg.clone(),
+                                category_storage.clone(),
+                                category,
+                                pattern,
+                            )
+                            .await?;
                         }
                     }
-                    
-                    crate::commands::expense_command(
-                        bot.clone(),
-                        msg.clone(),
-                        storage.clone(),
-                        date,
-                        description,
-                        amount,
-                    )
-                    .await?;
                 }
-                Command::List => {
-                    list_command(bot.clone(), msg.clone(), storage.clone()).await?;
-                }
-                Command::Report => {
-                    report_command(
-                        bot.clone(),
-                        msg.clone(),
-                        storage.clone(),
-                        category_storage.clone(),
-                    )
-                    .await?;
-                }
-                Command::Clear => {
-                    clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
-                }
-                Command::ClearCategories => {
-                    crate::commands::clear_categories_command(
-                        bot.clone(),
-                        msg.clone(),
-                        category_storage.clone(),
-                    )
-                    .await?;
-                }
-                Command::AddCategory { name } => {
-                    crate::commands::category_command(
-                        bot.clone(),
-                        msg.clone(),
-                        category_storage.clone(),
-                        name,
-                    )
-                    .await?;
-                }
-                Command::Categories => {
-                    categories_command(bot.clone(), msg.clone(), category_storage.clone()).await?;
-                }
-                Command::AddFilter { category, pattern } => {
-                    crate::commands::add_filter_command(
-                        bot.clone(),
-                        msg.clone(),
-                        category_storage.clone(),
-                        category,
-                        pattern,
-                    )
-                    .await?;
-                }
-                Command::RemoveCategory { name } => {
-                    crate::commands::remove_category_command(
-                        bot.clone(),
-                        msg.clone(),
-                        category_storage.clone(),
-                        name,
-                    )
-                    .await?;
-                }
-                Command::RemoveFilter { category, pattern } => {
-                    crate::commands::remove_filter_command(
-                        bot.clone(),
-                        msg.clone(),
-                        category_storage.clone(),
-                        category,
-                        pattern,
-                    )
-                    .await?;
+                Err(err_msg) => {
+                    // Send error message to user
+                    log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
+                    bot.send_message(chat_id, format!("❌ {}", err_msg)).await?;
                 }
             }
         }
