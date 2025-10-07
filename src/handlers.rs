@@ -34,12 +34,18 @@ pub async fn handle_text_message(
         // Parse expenses and commands from the message, with bot name filtering and timestamp
         let (parsed_expenses, parsed_commands) =
             parse_expenses(text, bot_name.as_deref(), timestamp);
+        
+        log::info!("Parsed {} expenses and {} commands from chat {}",
+            parsed_expenses.len(), parsed_commands.len(), chat_id);
 
         // Execute parsed commands (already parsed into Command enum)
         for cmd in parsed_commands {
             // Execute the command
             match cmd {
-                Command::Help | Command::Start => {
+                Command::Start => {
+                    crate::commands::start_command(bot.clone(), msg.clone()).await?;
+                }
+                Command::Help => {
                     help_command(bot.clone(), msg.clone()).await?;
                 }
                 Command::List => {

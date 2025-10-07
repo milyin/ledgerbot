@@ -12,21 +12,24 @@ use crate::storage::{
 
 /// Custom parser for optional single string parameter
 fn parse_optional_string(s: String) -> Result<(Option<String>,), ParseError> {
-    if s.trim().is_empty() {
+    // Take only the first line to prevent multi-line capture
+    let first_line = s.lines().next().unwrap_or("").trim();
+    if first_line.is_empty() {
         Ok((None,))
     } else {
-        Ok((Some(s.trim().to_string()),))
+        Ok((Some(first_line.to_string()),))
     }
 }
 
 /// Custom parser for two optional string parameters
 fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<String>), ParseError> {
-    let trimmed = s.trim();
-    if trimmed.is_empty() {
+    // Take only the first line to prevent multi-line capture
+    let first_line = s.lines().next().unwrap_or("").trim();
+    if first_line.is_empty() {
         return Ok((None, None));
     }
 
-    let parts: Vec<&str> = trimmed.splitn(2, ' ').collect();
+    let parts: Vec<&str> = first_line.splitn(2, ' ').collect();
     match parts.as_slice() {
         [first] => Ok((Some(first.to_string()), None)),
         [first, second] => Ok((Some(first.to_string()), Some(second.to_string()))),

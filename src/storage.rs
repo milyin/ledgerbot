@@ -63,19 +63,6 @@ pub async fn get_chat_categories(
     storage_guard.get(&chat_id).cloned().unwrap_or_default()
 }
 
-/// Check if a category exists for a specific chat
-pub async fn category_exists(
-    storage: &CategoryStorage,
-    chat_id: ChatId,
-    category_name: &str,
-) -> bool {
-    let storage_guard = storage.lock().await;
-    storage_guard
-        .get(&chat_id)
-        .map(|categories| categories.contains_key(category_name))
-        .unwrap_or(false)
-}
-
 /// Add a category for a specific chat
 /// Returns Ok(()) if the category was newly created
 /// Returns Err with a message if the category already exists
@@ -84,8 +71,12 @@ pub async fn add_category(
     chat_id: ChatId,
     category_name: String,
 ) -> Result<(), String> {
-    // Check if category already exists
-    if category_exists(storage, chat_id, &category_name).await {
+    // Acquire lock once and hold it for the entire operation to prevent race conditions
+    let mut storage_guard = storage.lock().await;
+    let chat_categories = storage_guard.entry(chat_id).or_default();
+    
+    // Check if category already exists (while holding the lock)
+    if chat_categories.contains_key(&category_name) {
         return Err(format!(
             "Category '{}' already exists. Use /add_filter to add more patterns or /categories to view all.",
             category_name
@@ -93,8 +84,6 @@ pub async fn add_category(
     }
 
     // Add the new category
-    let mut storage_guard = storage.lock().await;
-    let chat_categories = storage_guard.entry(chat_id).or_default();
     chat_categories.insert(category_name.clone(), Vec::new());
 
     Ok(())

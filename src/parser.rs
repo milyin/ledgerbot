@@ -62,9 +62,17 @@ pub fn parse_expenses(
 
         // Collect lines starting with '/' as commands and parse them
         if line.starts_with('/') {
-            // Try to parse the command
-            if let Ok(cmd) = Command::parse(line, bot_name.unwrap_or("")) {
-                commands.push(cmd);
+            // Command::parse expects to parse from the start of text and will consume
+            // everything after the command. To parse line-by-line, we call it with just
+            // this line, which will parse only this command.
+            match Command::parse(line, bot_name.unwrap_or("")) {
+                Ok(cmd) => {
+                    commands.push(cmd);
+                }
+                Err(e) => {
+                    // output error to the chat
+                    crate::commands::output_error(bot.clone(), msg.clone(), e).await?;
+                }
             }
             continue;
         }

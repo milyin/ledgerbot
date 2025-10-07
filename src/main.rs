@@ -9,7 +9,6 @@ use clap::Parser;
 use teloxide::prelude::*;
 
 use batch::create_batch_storage;
-use commands::{Command, answer};
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
 use storage::{create_category_storage, create_filter_selection_storage, create_storage};
@@ -40,7 +39,8 @@ async fn main() {
     let handler = dptree::entry()
         .branch(
             Update::filter_message()
-                .branch(dptree::entry().filter_command::<Command>().endpoint(answer))
+                // Route all text messages (including commands) to handle_text_message
+                // which can parse and execute multiple commands from a single message
                 .branch(
                     dptree::filter(|msg: Message| msg.text().is_some())
                         .endpoint(handle_text_message),
