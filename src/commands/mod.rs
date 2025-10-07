@@ -1,6 +1,8 @@
 mod help;
+mod list;
 
 pub use help::help_command;
+pub use list::list_command;
 
 use chrono::NaiveDate;
 use teloxide::{
@@ -9,7 +11,7 @@ use teloxide::{
     utils::{command::{BotCommands, ParseError}, markdown::escape},
 };
 
-use crate::parser::{extract_words, format_expenses_chronological, format_expenses_list};
+use crate::parser::{extract_words, format_expenses_list};
 use crate::storage::{
     CategoryStorage, ExpenseStorage, FilterSelectionStorage, FilterPageStorage, add_category, add_category_filter,
     add_expense, clear_chat_expenses, get_chat_categories, get_chat_expenses, get_filter_selection,
@@ -246,18 +248,6 @@ pub async fn expense_command(
         }
     }
 
-    Ok(())
-}
-
-/// List all expenses chronologically without category grouping
-pub async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-    let chat_expenses = get_chat_expenses(&storage, chat_id).await;
-    let expenses_list = format_expenses_chronological(&chat_expenses);
-
-    bot.send_message(chat_id, expenses_list)
-        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-        .await?;
     Ok(())
 }
 

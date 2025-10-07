@@ -76,32 +76,6 @@ pub fn parse_expenses(
     commands
 }
 
-/// Format expenses as a chronological list without category grouping
-/// Output format: "date description price"
-pub fn format_expenses_chronological(expenses: &[Expense]) -> String {
-    if expenses.is_empty() {
-        return "No expenses recorded yet.".to_string();
-    }
-
-    // Sort by timestamp (chronological order)
-    let mut sorted_expenses = expenses.to_vec();
-    sorted_expenses.sort_by_key(|e| e.timestamp);
-
-    let mut result = String::new();
-
-    for expense in sorted_expenses {
-        let date_str = format_timestamp(expense.timestamp);
-        result.push_str(&format!(
-            "{} {} {}\n",
-            escape(&date_str),
-            escape(&expense.description),
-            escape(&expense.amount.to_string())
-        ));
-    }
-
-    result
-}
-
 /// Format expenses as a readable list with total, grouped by categories
 pub fn format_expenses_list(
     expenses: &[Expense],
@@ -627,54 +601,6 @@ mod tests {
         assert_eq!(words.len(), 0);
     }
 
-    #[test]
-    fn test_format_expenses_chronological() {
-        // Create test expenses with different timestamps
-        let timestamp1 = 1609459200; // 2021-01-01 00:00:00 UTC
-        let timestamp2 = 1609545600; // 2021-01-02 00:00:00 UTC
-        let timestamp3 = 1609632000; // 2021-01-03 00:00:00 UTC
-
-        let expenses = vec![
-            Expense {
-                description: "Lunch".to_string(),
-                amount: 12.00,
-                timestamp: timestamp2,
-            },
-            Expense {
-                description: "Coffee".to_string(),
-                amount: 5.50,
-                timestamp: timestamp1,
-            },
-            Expense {
-                description: "Dinner".to_string(),
-                amount: 25.00,
-                timestamp: timestamp3,
-            },
-        ];
-
-        let result = format_expenses_chronological(&expenses);
-
-        // Check that expenses are listed in chronological order
-        // Function returns plain format: "date description amount"
-        assert!(result.contains("2021-01-01 Coffee 5.50"));
-        assert!(result.contains("2021-01-02 Lunch 12.00"));
-        assert!(result.contains("2021-01-03 Dinner 25.00"));
-
-        // Verify chronological order by checking positions
-        let coffee_pos = result.find("Coffee").unwrap();
-        let lunch_pos = result.find("Lunch").unwrap();
-        let dinner_pos = result.find("Dinner").unwrap();
-        assert!(coffee_pos < lunch_pos);
-        assert!(lunch_pos < dinner_pos);
-    }
-
-    #[test]
-    fn test_format_expenses_chronological_empty() {
-        // Test with no expenses
-        let expenses = Vec::new();
-        let result = format_expenses_chronological(&expenses);
-        assert_eq!(result, "No expenses recorded yet.");
-    }
 
     #[test]
     fn test_parse_expenses_all_available_commands() {
