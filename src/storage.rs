@@ -22,6 +22,10 @@ pub type CategoryStorage = Arc<Mutex<HashMap<ChatId, HashMap<String, Vec<String>
 /// Maps (ChatId, CategoryName) to selected words
 pub type FilterSelectionStorage = Arc<Mutex<HashMap<(ChatId, String), Vec<String>>>>;
 
+/// Storage for page offsets during filter word browsing
+/// Maps (ChatId, CategoryName) to current page offset
+pub type FilterPageStorage = Arc<Mutex<HashMap<(ChatId, String), usize>>>;
+
 /// Get expenses for a specific chat
 pub async fn get_chat_expenses(
     storage: &ExpenseStorage,
@@ -164,6 +168,49 @@ pub fn create_category_storage() -> CategoryStorage {
 /// Create a new filter selection storage
 pub fn create_filter_selection_storage() -> FilterSelectionStorage {
     Arc::new(Mutex::new(HashMap::new()))
+}
+
+/// Create a new filter page storage
+pub fn create_filter_page_storage() -> FilterPageStorage {
+    Arc::new(Mutex::new(HashMap::new()))
+}
+
+/// Get current page offset for filter word browsing
+pub async fn get_filter_page_offset(
+    storage: &FilterPageStorage,
+    chat_id: ChatId,
+    category: &str,
+) -> usize {
+    let storage_guard = storage.lock().await;
+    storage_guard
+        .get(&(chat_id, category.to_string()))
+        .copied()
+        .unwrap_or(0)
+}
+
+/// Set page offset for filter word browsing
+pub async fn set_filter_page_offset(
+    storage: &FilterPageStorage,
+    chat_id: ChatId,
+    category: String,
+    offset: usize,
+) {
+    let mut storage_guard = storage.lock().await;
+    if offset == 0 {
+        storage_guard.remove(&(chat_id, category));
+    } else {
+        storage_guard.insert((chat_id, category), offset);
+    }
+}
+
+/// Clear page offset for filter word browsing
+pub async fn clear_filter_page_offset(
+    storage: &FilterPageStorage,
+    chat_id: ChatId,
+    category: &str,
+) {
+    let mut storage_guard = storage.lock().await;
+    storage_guard.remove(&(chat_id, category.to_string()));
 }
 
 /// Get selected words for a filter being created

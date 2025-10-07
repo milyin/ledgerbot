@@ -2,13 +2,14 @@ use chrono::NaiveDate;
 use teloxide::{
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, MessageId, ReplyMarkup},
-    utils::command::{BotCommands, ParseError},
+    utils::{command::{BotCommands, ParseError}, markdown::escape},
 };
 
 use crate::parser::{extract_words, format_expenses_chronological, format_expenses_list};
 use crate::storage::{
-    CategoryStorage, ExpenseStorage, FilterSelectionStorage, add_category, add_category_filter,
+    CategoryStorage, ExpenseStorage, FilterSelectionStorage, FilterPageStorage, add_category, add_category_filter,
     add_expense, clear_chat_expenses, get_chat_categories, get_chat_expenses, get_filter_selection,
+    get_filter_page_offset,
 };
 
 /// Custom parser for optional single string parameter
@@ -165,14 +166,14 @@ pub enum Command {
 pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     let help_text = format!(
         "To add expenses forward messages or send text with lines in format:\n\
-        `[<yyyy-mm-dd>] <description> <amount>`\n\n\
+        <code>[&lt;yyyy-mm-dd&gt;] &lt;description&gt; &lt;amount&gt;</code>\n\n\
         {commands}",
         commands = Command::descriptions()
     );
 
     // Send message with both inline keyboard (for buttons in message) and reply keyboard (menu button)
     bot.send_message(msg.chat.id, help_text)
-        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+        .parse_mode(teloxide::types::ParseMode::Html)
         .await?;
     Ok(())
 }
@@ -680,6 +681,7 @@ pub async fn show_filter_word_suggestions(
     storage: ExpenseStorage,
     category_storage: CategoryStorage,
     filter_selection_storage: FilterSelectionStorage,
+    filter_page_storage: FilterPageStorage,
     category_name: String,
 ) -> ResponseResult<()> {
     let expenses = get_chat_expenses(&storage, chat_id).await;
@@ -689,26 +691,43 @@ pub async fn show_filter_word_suggestions(
     let selected_words =
         get_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
 
+    // Get current page offset
+    let page_offset = get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
+
     // Extract words from uncategorized expenses
     let words = extract_words(&expenses, &categories);
 
+    // Pagination constants
+    const WORDS_PER_PAGE: usize = 20;
+    let total_words = words.len();
+    let total_pages = total_words.div_ceil(WORDS_PER_PAGE);
+    let current_page = page_offset / WORDS_PER_PAGE + 1;
+
+    // Get words for current page
+    let page_words: Vec<&String> = words
+        .iter()
+        .skip(page_offset)
+        .take(WORDS_PER_PAGE)
+        .collect();
+
     // Build selected words display
     let selected_display = if selected_words.is_empty() {
-        "(none selected)".to_string()
+        escape("(none selected)")
     } else {
-        selected_words.join(" | ")
+        escape(&selected_words.join(" | "))
     };
 
+    let escaped_category = escape(&category_name);
     let text = format!(
-        "💡 **Select word(s) for filter '{}':**\n\nSelected: {}\n\nClick words to add/remove them. When done, click 'Apply Filter'.",
-        category_name, selected_display
+        "💡 *Select word\\(s\\) for filter '{}'*\n\n*Selected:* {}\n\nPage {}/{} \\({} words total\\)\n\nClick words to add/remove them\\. When done, click 'Apply Filter'\\.",
+        escaped_category, selected_display, current_page, total_pages, total_words
     );
 
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
 
-    // Add buttons for each suggested word (limit to 20 most common ones, 4 per row)
+    // Add buttons for each suggested word on current page (4 per row)
     let mut row: Vec<InlineKeyboardButton> = Vec::new();
-    for word in words.iter().take(20) {
+    for word in page_words {
         // Check if this word is selected
         let is_selected = selected_words.contains(word);
         let label = if is_selected {
@@ -735,31 +754,48 @@ pub async fn show_filter_word_suggestions(
         buttons.push(row);
     }
 
-    // Add apply button if words are selected
-    if !selected_words.is_empty() {
-        buttons.push(vec![InlineKeyboardButton::callback(
-            "✅ Apply Filter",
-            format!("apply_words:{}", category_name),
-        )]);
+    // Add pagination buttons if there are multiple pages
+    if total_pages > 1 {
+        let mut page_row: Vec<InlineKeyboardButton> = Vec::new();
+        
+        // Previous page button
+        if page_offset > 0 {
+            page_row.push(InlineKeyboardButton::callback(
+                "◀️ Prev",
+                format!("page_prev:{}", category_name),
+            ));
+        }
+        
+        // Next page button
+        if page_offset + WORDS_PER_PAGE < total_words {
+            page_row.push(InlineKeyboardButton::callback(
+                "Next ▶️",
+                format!("page_next:{}", category_name),
+            ));
+        }
+        
+        if !page_row.is_empty() {
+            buttons.push(page_row);
+        }
     }
 
-    // Add custom filter button
+    // Add control buttons in one row (Apply Filter and Back)
     buttons.push(vec![
-        InlineKeyboardButton::switch_inline_query_current_chat(
-            "✏️ Custom Filter",
-            format!("/add_filter {} ", category_name),
+        InlineKeyboardButton::callback(
+            "✅ Apply Filter",
+            format!("apply_words:{}", category_name),
+        ),
+        InlineKeyboardButton::callback(
+            "↩️ Back",
+            "cmd_add_filter",
         ),
     ]);
 
-    // Add a back button
-    buttons.push(vec![InlineKeyboardButton::callback(
-        "↩️ Back",
-        "cmd_add_filter",
-    )]);
-
     let keyboard = InlineKeyboardMarkup::new(buttons);
 
-    bot.edit_message_text(chat_id, message_id, text).await?;
+    bot.edit_message_text(chat_id, message_id, text)
+        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+        .await?;
     bot.edit_message_reply_markup(chat_id, message_id)
         .reply_markup(keyboard)
         .await?;

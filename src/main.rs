@@ -11,7 +11,7 @@ use teloxide::prelude::*;
 use batch::create_batch_storage;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storage::{create_category_storage, create_filter_selection_storage, create_storage};
+use storage::{create_category_storage, create_filter_selection_storage, create_filter_page_storage, create_storage};
 
 #[tokio::main]
 async fn main() {
@@ -35,6 +35,9 @@ async fn main() {
     // Initialize filter selection storage
     let filter_selection_storage = create_filter_selection_storage();
 
+    // Initialize filter page storage
+    let filter_page_storage = create_filter_page_storage();
+
     // Create handler using modern teloxide patterns
     let handler = dptree::entry()
         .branch(
@@ -53,7 +56,8 @@ async fn main() {
             storage,
             category_storage,
             batch_storage,
-            filter_selection_storage
+            filter_selection_storage,
+            filter_page_storage
         ])
         .enable_ctrlc_handler()
         .build()

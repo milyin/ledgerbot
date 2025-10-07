@@ -9,8 +9,9 @@ use crate::commands::{
 };
 use crate::parser::parse_expenses;
 use crate::storage::{
-    CategoryStorage, ExpenseStorage, FilterSelectionStorage, clear_filter_selection,
-    get_filter_selection, remove_category, remove_category_filter, set_filter_selection,
+    CategoryStorage, ExpenseStorage, FilterSelectionStorage, FilterPageStorage, clear_filter_selection,
+    clear_filter_page_offset, get_filter_page_offset, get_filter_selection, remove_category, 
+    remove_category_filter, set_filter_page_offset, set_filter_selection,
 };
 
 /// Handle text messages containing potential expense data
@@ -113,6 +114,7 @@ pub async fn handle_callback_query(
     storage: ExpenseStorage,
     category_storage: CategoryStorage,
     filter_selection_storage: FilterSelectionStorage,
+    filter_page_storage: FilterPageStorage,
 ) -> ResponseResult<()> {
     if let Some(data) = &q.data {
         // Answer the callback query to remove the loading state
@@ -134,8 +136,9 @@ pub async fn handle_callback_query(
             } else if data.starts_with("add_filter_cat:") {
                 // Show word suggestions for a specific category
                 let category_name = data.strip_prefix("add_filter_cat:").unwrap().to_string();
-                // Clear any previous selection
+                // Clear any previous selection and page offset
                 clear_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
+                clear_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
                 show_filter_word_suggestions(
                     bot,
                     chat_id,
@@ -143,6 +146,7 @@ pub async fn handle_callback_query(
                     storage.clone(),
                     category_storage,
                     filter_selection_storage.clone(),
+                    filter_page_storage.clone(),
                     category_name,
                 )
                 .await?;
@@ -186,10 +190,57 @@ pub async fn handle_callback_query(
                         storage.clone(),
                         category_storage,
                         filter_selection_storage.clone(),
+                        filter_page_storage.clone(),
                         category_name,
                     )
                     .await?;
                 }
+            } else if data.starts_with("page_prev:") {
+                // Handle page_prev:CategoryName format
+                let category_name = data.strip_prefix("page_prev:").unwrap().to_string();
+                
+                // Get current page offset and decrease by 20
+                let current_offset = get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
+                let new_offset = current_offset.saturating_sub(20);
+                
+                // Update page offset
+                set_filter_page_offset(&filter_page_storage, chat_id, category_name.clone(), new_offset).await;
+                
+                // Refresh the display
+                show_filter_word_suggestions(
+                    bot,
+                    chat_id,
+                    message.id(),
+                    storage.clone(),
+                    category_storage,
+                    filter_selection_storage.clone(),
+                    filter_page_storage.clone(),
+                    category_name,
+                )
+                .await?;
+            } else if data.starts_with("page_next:") {
+                // Handle page_next:CategoryName format
+                let category_name = data.strip_prefix("page_next:").unwrap().to_string();
+                
+                // Get current page offset and increase by 20
+                let current_offset = get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
+                let new_offset = current_offset + 20;
+                
+                // Update page offset
+                set_filter_page_offset(&filter_page_storage, chat_id, category_name.clone(), new_offset).await;
+                
+                // Refresh the display
+                show_filter_word_suggestions(
+                    bot,
+                    chat_id,
+                    message.id(),
+                    storage.clone(),
+                    category_storage,
+                    filter_selection_storage.clone(),
+                    filter_page_storage.clone(),
+                    category_name,
+                )
+                .await?;
             } else if data.starts_with("apply_words:") {
                 // Handle apply_words:CategoryName format
                 let category_name = data.strip_prefix("apply_words:").unwrap().to_string();
@@ -204,8 +255,10 @@ pub async fn handle_callback_query(
                         selected_words.iter().map(|w| regex::escape(w)).collect();
                     let pattern = format!("(?i)({})", escaped_words.join("|"));
 
-                    // Clear the selection
+                    // Clear the selection and page offset
                     clear_filter_selection(&filter_selection_storage, chat_id, &category_name)
+                        .await;
+                    clear_filter_page_offset(&filter_page_storage, chat_id, &category_name)
                         .await;
 
                     // Call add_filter_command with the combined pattern

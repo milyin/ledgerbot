@@ -164,7 +164,7 @@ pub fn format_expenses_list(
             for expense in items {
                 let date_str = format_timestamp(expense.timestamp);
                 result.push_str(&format!(
-                    "  • {} {} {}\\.2\n",
+                    "  • {} {} {}\n",
                     escape(&date_str),
                     escape(&expense.description),
                     escape(&expense.amount.to_string()),
@@ -174,7 +174,7 @@ pub fn format_expenses_list(
             }
 
             result.push_str(&format!(
-                "  *Subtotal: {}\\.2*\n\n",
+                "  *Subtotal: {}*\n\n",
                 escape(&category_total.to_string())
             ));
         }
