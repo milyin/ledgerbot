@@ -734,36 +734,3 @@ pub async fn show_category_filters_for_removal(
 
     Ok(())
 }
-
-/// Unified command handler
-pub async fn answer(
-    bot: Bot,
-    msg: Message,
-    cmd: Command,
-    storage: ExpenseStorage,
-    category_storage: CategoryStorage,
-) -> ResponseResult<()> {
-    match cmd {
-        Command::Start => start_command(bot, msg).await,
-        Command::Help => help_command(bot, msg).await,
-        Command::List => list_command(bot, msg, storage).await,
-        Command::Report => report_command(bot, msg, storage, category_storage.clone()).await,
-        Command::Clear => clear_command(bot, msg, storage).await,
-        Command::AddCategory { name } => {
-            category_command(bot, msg, category_storage.clone(), name).await
-        }
-        Command::Categories => categories_command(bot, msg, category_storage.clone()).await,
-        Command::ClearCategories => {
-            clear_categories_command(bot, msg, category_storage.clone()).await
-        }
-        Command::AddFilter { category, pattern } => {
-            add_filter_command(bot, msg, category_storage.clone(), category, pattern).await
-        }
-        Command::RemoveCategory { name } => {
-            remove_category_command(bot, msg, category_storage.clone(), name).await
-        }
-        Command::RemoveFilter { category, pattern } => {
-            remove_filter_command(bot, msg, category_storage, category, pattern).await
-        }
-    }
-}

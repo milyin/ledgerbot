@@ -69,9 +69,9 @@ pub fn parse_expenses(
                 Ok(cmd) => {
                     commands.push(cmd);
                 }
-                Err(e) => {
+                Err(_e) => {
                     // output error to the chat
-                    crate::commands::output_error(bot.clone(), msg.clone(), e).await?;
+                    // crate::commands::output_error(bot.clone(), msg.clone(), e).await?;
                 }
             }
             continue;
