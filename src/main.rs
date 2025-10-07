@@ -1,7 +1,6 @@
 mod batch;
 mod commands;
 mod config;
-mod emojis;
 mod handlers;
 mod parser;
 mod storage;

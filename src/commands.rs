@@ -44,6 +44,8 @@ pub enum Command {
     Clear,
     #[command(description = "list all categories with filters in command format")]
     Categories,
+    #[command(description = "clear all categories", rename = "clear_categories")]
+    ClearCategories,
     #[command(description = "add expense category", rename = "add_category", parse_with = "split")]
     AddCategory { name: String },
     #[command(
@@ -129,6 +131,20 @@ pub async fn clear_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> R
     clear_chat_expenses(&storage, chat_id).await;
 
     bot.send_message(chat_id, "🗑️ All expenses cleared!")
+        .await?;
+    Ok(())
+}
+
+/// Clear all categories
+pub async fn clear_categories_command(
+    bot: Bot,
+    msg: Message,
+    category_storage: CategoryStorage,
+) -> ResponseResult<()> {
+    let chat_id = msg.chat.id;
+    crate::storage::clear_chat_categories(&category_storage, chat_id).await;
+
+    bot.send_message(chat_id, "🗑️ All categories cleared!")
         .await?;
     Ok(())
 }
@@ -652,6 +668,7 @@ pub async fn answer(
         Command::Clear => clear_command(bot, msg, storage).await,
         Command::AddCategory { name } => category_command(bot, msg, category_storage.clone(), name).await,
         Command::Categories => categories_command(bot, msg, category_storage.clone()).await,
+        Command::ClearCategories => clear_categories_command(bot, msg, category_storage.clone()).await,
         Command::AddFilter { category, pattern } => {
             add_filter_command(bot, msg, category_storage.clone(), category, pattern).await
         }

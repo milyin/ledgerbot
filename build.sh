@@ -42,6 +42,7 @@ else
   BUILD_DIR="debug"
 fi
 
+strip target/x86_64-unknown-linux-gnu/$BUILD_DIR/ledgerbot
 scp target/x86_64-unknown-linux-gnu/$BUILD_DIR/ledgerbot ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/ledgerbot
 
 # make ls command to show the deployed binary details

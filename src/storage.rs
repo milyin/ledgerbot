@@ -43,6 +43,12 @@ pub async fn clear_chat_expenses(storage: &ExpenseStorage, chat_id: ChatId) {
     storage_guard.remove(&chat_id);
 }
 
+/// Clear all categories for a specific chat
+pub async fn clear_chat_categories(storage: &CategoryStorage, chat_id: ChatId) {
+    let mut storage_guard = storage.lock().await;
+    storage_guard.remove(&chat_id);
+}
+
 /// Create a new expense storage
 pub fn create_storage() -> ExpenseStorage {
     Arc::new(Mutex::new(HashMap::new()))

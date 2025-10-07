@@ -4,7 +4,6 @@ use teloxide::prelude::*;
 use tokio::sync::Mutex;
 
 use crate::config::BATCH_TIMEOUT_SECONDS;
-use crate::emojis;
 
 /// Batch processing state for a chat
 #[derive(Clone)]
@@ -66,13 +65,14 @@ pub async fn send_batch_report(bot: Bot, batch_storage: BatchStorage, target_cha
 
     if let Some(state) = batch_data {
         let report = format!(
-            "{} **Batch Summary Report**\n\n\
-            {} Messages processed: {}\n\
-            {} Records parsed: {}\n\
-            {} Total amount: {:.2}\n\n\
+            "Batch Summary Report**\n\n\
+            Messages processed: {}\n\
+            Records parsed: {}\n\
+            Total amount: {:.2}\n\n\
             Use `/list` or `/report` to see all expenses.",
-            emojis::CHART, emojis::MESSAGE, state.messages_count,
-            emojis::DOCUMENT, state.records_count, emojis::MONEY, state.total_sum
+            state.messages_count,
+            state.records_count,
+            state.total_sum
         );
 
         if let Err(e) = bot.send_message(target_chat_id, report).await {

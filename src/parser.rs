@@ -1,8 +1,6 @@
 use regex::Regex;
 use std::collections::HashMap;
 
-use crate::emojis;
-
 /// Parse expense lines and commands from a message text
 /// Returns a tuple of (expenses, commands) where:
 /// - expenses: vector of (description, amount, timestamp) tuples
@@ -133,7 +131,7 @@ pub fn format_expenses_list(
         return "No expenses recorded yet.".to_string();
     }
 
-    let mut result = format!("{} **Current Expenses:**\n\n", emojis::CHART);
+    let mut result = String::new();
     let mut total = 0.0;
 
     // Build regex matchers for each category (from all patterns)
@@ -182,7 +180,7 @@ pub fn format_expenses_list(
     for category_name in category_names {
         if let Some(items) = categorized.get(&category_name) {
             let mut category_total = 0.0;
-            result.push_str(&format!("**{}:**\n", category_name));
+            result.push_str(&format!("{}:\n", category_name));
 
             for (description, amount, timestamp) in items {
                 let date_str = format_timestamp(*timestamp);
@@ -194,14 +192,14 @@ pub fn format_expenses_list(
                 total += amount;
             }
 
-            result.push_str(&format!("  _Subtotal: {:.2}_\n\n", category_total));
+            result.push_str(&format!("  Subtotal: {:.2}_\n\n", category_total));
         }
     }
 
     // Display uncategorized expenses
     if !uncategorized.is_empty() {
         let mut uncategorized_total = 0.0;
-        result.push_str("**Other:**\n");
+        result.push_str("Other:\n");
 
         for (description, amount, timestamp) in uncategorized {
             let date_str = format_timestamp(timestamp);
@@ -213,10 +211,10 @@ pub fn format_expenses_list(
             total += amount;
         }
 
-        result.push_str(&format!("  _Subtotal: {:.2}_\n\n", uncategorized_total));
+        result.push_str(&format!("  Subtotal: {:.2}_\n\n", uncategorized_total));
     }
 
-    result.push_str(&format!("{} **Total: {:.2}**", emojis::MONEY, total));
+    result.push_str(&format!("Total: {:.2}", total));
     result
 }
 
