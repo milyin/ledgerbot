@@ -330,6 +330,9 @@ pub async fn handle_callback_query(
                     "cmd_back_to_help" => {
                         help_command(bot, msg).await?;
                     }
+                    "noop" => {
+                        // Inactive button - do nothing
+                    }
                     _ => {}
                 }
             }

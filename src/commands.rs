@@ -754,42 +754,60 @@ pub async fn show_filter_word_suggestions(
         buttons.push(row);
     }
 
-    // Add pagination buttons if there are multiple pages
-    if total_pages > 1 {
-        let mut page_row: Vec<InlineKeyboardButton> = Vec::new();
-        
-        // Previous page button
-        if page_offset > 0 {
-            page_row.push(InlineKeyboardButton::callback(
-                "◀️ Prev",
-                format!("page_prev:{}", category_name),
-            ));
-        }
-        
-        // Next page button
-        if page_offset + WORDS_PER_PAGE < total_words {
-            page_row.push(InlineKeyboardButton::callback(
-                "Next ▶️",
-                format!("page_next:{}", category_name),
-            ));
-        }
-        
-        if !page_row.is_empty() {
-            buttons.push(page_row);
-        }
+    // Add all control buttons in a single row: Left, Right, Apply, Back
+    let mut control_row: Vec<InlineKeyboardButton> = Vec::new();
+    
+    // Previous page button (always shown, inactive if on first page)
+    if page_offset > 0 {
+        control_row.push(InlineKeyboardButton::callback(
+            "◀️",
+            format!("page_prev:{}", category_name),
+        ));
+    } else {
+        // Inactive button with dummy callback data
+        control_row.push(InlineKeyboardButton::callback(
+            "◁",
+            "noop",
+        ));
     }
-
-    // Add control buttons in one row (Apply Filter and Back)
-    buttons.push(vec![
-        InlineKeyboardButton::callback(
-            "✅ Apply Filter",
-            format!("apply_words:{}", category_name),
-        ),
-        InlineKeyboardButton::callback(
-            "↩️ Back",
-            "cmd_add_filter",
-        ),
-    ]);
+    
+    // Next page button (always shown, inactive if on last page)
+    if page_offset + WORDS_PER_PAGE < total_words {
+        control_row.push(InlineKeyboardButton::callback(
+            "▶️",
+            format!("page_next:{}", category_name),
+        ));
+    } else {
+        // Inactive button with dummy callback data
+        control_row.push(InlineKeyboardButton::callback(
+            "️▷",
+            "noop",
+        ));
+    }
+    
+    // Apply button - puts /add_filter command with generated regexp in input box
+    let apply_command = if !selected_words.is_empty() {
+        // Escape each word and combine with case-insensitive OR pattern
+        let escaped_words: Vec<String> = selected_words.iter().map(|w| regex::escape(w)).collect();
+        let pattern = format!("(?i)({})", escaped_words.join("|"));
+        format!("/add_filter {} {}", category_name, pattern)
+    } else {
+        // No words selected, just put category name
+        format!("/add_filter {} ", category_name)
+    };
+    
+    control_row.push(InlineKeyboardButton::switch_inline_query_current_chat(
+        "✅ Apply",
+        apply_command,
+    ));
+    
+    // Back button
+    control_row.push(InlineKeyboardButton::callback(
+        "↩️ Back",
+        "cmd_add_filter",
+    ));
+    
+    buttons.push(control_row);
 
     let keyboard = InlineKeyboardMarkup::new(buttons);
 
