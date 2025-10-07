@@ -1,11 +1,18 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use teloxide::types::ChatId;
 use tokio::sync::Mutex;
 
-/// Per-chat storage for expenses - each chat has its own expense HashMap
-/// Maps description to (amount, unix_timestamp)
-pub type ExpenseStorage = Arc<Mutex<HashMap<ChatId, HashMap<String, (f64, i64)>>>>;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Expense {
+    pub timestamp: i64,
+    pub description: String,
+    pub amount: f64,
+}
+
+/// Per-chat storage for expenses - each chat has its own expense list
+pub type ExpenseStorage = Arc<Mutex<HashMap<ChatId, Vec<Expense>>>>;
 
 /// Per-chat storage for categories - each chat has its own category mappings
 /// Maps category name to a list of regex patterns
@@ -19,7 +26,7 @@ pub type FilterSelectionStorage = Arc<Mutex<HashMap<(ChatId, String), Vec<String
 pub async fn get_chat_expenses(
     storage: &ExpenseStorage,
     chat_id: ChatId,
-) -> HashMap<String, (f64, i64)> {
+) -> Vec<Expense> {
     let storage_guard = storage.lock().await;
     storage_guard.get(&chat_id).cloned().unwrap_or_default()
 }
@@ -33,7 +40,11 @@ pub async fn add_expenses(
     let mut storage_guard = storage.lock().await;
     let chat_expenses = storage_guard.entry(chat_id).or_default();
     for (description, amount, timestamp) in expenses {
-        chat_expenses.insert(description, (amount, timestamp));
+        chat_expenses.push(Expense {
+            description,
+            amount,
+            timestamp,
+        });
     }
 }
 

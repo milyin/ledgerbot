@@ -1,4 +1,5 @@
 use crate::commands::Command;
+use crate::storage::Expense;
 use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
 use teloxide::utils::command::BotCommands;
@@ -60,10 +61,8 @@ pub fn parse_expenses(
         // Parse the line as a command
         match Command::parse(&command_line, bot_name.unwrap_or("")) {
             Ok(mut cmd) => {
-                if let Command::Expense { date, .. } = &mut cmd {
-                    if date.is_none() {
-                        *date = Some(message_date);
-                    }
+                if let Command::Expense { date: date @ None, .. } = &mut cmd {
+                    *date = Some(message_date);
                 }
                 commands.push(Ok(cmd));
             }
@@ -78,22 +77,23 @@ pub fn parse_expenses(
 
 /// Format expenses as a chronological list without category grouping
 /// Output format: "date description price"
-pub fn format_expenses_chronological(expenses: &HashMap<String, (f64, i64)>) -> String {
+pub fn format_expenses_chronological(expenses: &[Expense]) -> String {
     if expenses.is_empty() {
         return "No expenses recorded yet.".to_string();
     }
 
-    // Convert HashMap to Vec for sorting
-    let mut expense_vec: Vec<(&String, &(f64, i64))> = expenses.iter().collect();
-
     // Sort by timestamp (chronological order)
-    expense_vec.sort_by_key(|(_, (_, timestamp))| timestamp);
+    let mut sorted_expenses = expenses.to_vec();
+    sorted_expenses.sort_by_key(|e| e.timestamp);
 
     let mut result = String::new();
 
-    for (description, (amount, timestamp)) in expense_vec {
-        let date_str = format_timestamp(*timestamp);
-        result.push_str(&format!("{} {} {:.2}\n", date_str, description, amount));
+    for expense in sorted_expenses {
+        let date_str = format_timestamp(expense.timestamp);
+        result.push_str(&format!(
+            "{} {} {:.2}\n",
+            date_str, expense.description, expense.amount
+        ));
     }
 
     result
@@ -101,7 +101,7 @@ pub fn format_expenses_chronological(expenses: &HashMap<String, (f64, i64)>) -> 
 
 /// Format expenses as a readable list with total, grouped by categories
 pub fn format_expenses_list(
-    expenses: &HashMap<String, (f64, i64)>,
+    expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
 ) -> String {
     if expenses.is_empty() {
@@ -124,28 +124,27 @@ pub fn format_expenses_list(
         .collect();
 
     // Group expenses by category
-    let mut categorized: HashMap<String, Vec<(String, f64, i64)>> = HashMap::new();
-    let mut uncategorized: Vec<(String, f64, i64)> = Vec::new();
+    let mut categorized: HashMap<String, Vec<Expense>> = HashMap::new();
+    let mut uncategorized: Vec<Expense> = Vec::new();
 
-    for (description, (amount, timestamp)) in expenses.iter() {
+    for expense in expenses.iter() {
         let mut matched = false;
 
         // Try to match against each category
         for (category_name, regexes) in &category_matchers {
             // Check if description matches any of the patterns in this category
-            if regexes.iter().any(|re| re.is_match(description)) {
-                categorized.entry(category_name.clone()).or_default().push((
-                    description.clone(),
-                    *amount,
-                    *timestamp,
-                ));
+            if regexes.iter().any(|re| re.is_match(&expense.description)) {
+                categorized
+                    .entry(category_name.clone())
+                    .or_default()
+                    .push(expense.clone());
                 matched = true;
                 break; // Each expense goes into first matching category
             }
         }
 
         if !matched {
-            uncategorized.push((description.clone(), *amount, *timestamp));
+            uncategorized.push(expense.clone());
         }
     }
 
@@ -159,14 +158,14 @@ pub fn format_expenses_list(
             let mut category_total = 0.0;
             result.push_str(&format!("{}:\n", category_name));
 
-            for (description, amount, timestamp) in items {
-                let date_str = format_timestamp(*timestamp);
+            for expense in items {
+                let date_str = format_timestamp(expense.timestamp);
                 result.push_str(&format!(
                     "  • {} - {:.2} ({})\n",
-                    description, amount, date_str
+                    expense.description, expense.amount, date_str
                 ));
-                category_total += amount;
-                total += amount;
+                category_total += expense.amount;
+                total += expense.amount;
             }
 
             result.push_str(&format!("  Subtotal: {:.2}_\n\n", category_total));
@@ -178,14 +177,14 @@ pub fn format_expenses_list(
         let mut uncategorized_total = 0.0;
         result.push_str("Other:\n");
 
-        for (description, amount, timestamp) in uncategorized {
-            let date_str = format_timestamp(timestamp);
+        for expense in uncategorized {
+            let date_str = format_timestamp(expense.timestamp);
             result.push_str(&format!(
                 "  • {} - {:.2} ({})\n",
-                description, amount, date_str
+                expense.description, expense.amount, date_str
             ));
-            uncategorized_total += amount;
-            total += amount;
+            uncategorized_total += expense.amount;
+            total += expense.amount;
         }
 
         result.push_str(&format!("  Subtotal: {:.2}_\n\n", uncategorized_total));
@@ -206,7 +205,7 @@ fn format_timestamp(timestamp: i64) -> String {
 /// Returns a sorted vector of unique words (lowercased) from expense descriptions
 /// that don't match any category patterns
 pub fn extract_words(
-    expenses: &HashMap<String, (f64, i64)>,
+    expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
 ) -> Vec<String> {
     // Build regex matchers for each category (from all patterns)
@@ -219,13 +218,15 @@ pub fn extract_words(
     // Collect unique words from uncategorized expenses
     let mut words = std::collections::HashSet::new();
 
-    for description in expenses.keys() {
+    for expense in expenses.iter() {
         // Check if this expense matches any category
-        let matched = category_matchers.iter().any(|re| re.is_match(description));
+        let matched = category_matchers
+            .iter()
+            .any(|re| re.is_match(&expense.description));
 
         if !matched {
             // Split description into words and collect them
-            for word in description.split_whitespace() {
+            for word in expense.description.split_whitespace() {
                 // Clean the word: lowercase, remove punctuation
                 let cleaned = word
                     .to_lowercase()
@@ -533,12 +534,29 @@ mod tests {
     #[test]
     fn test_extract_words() {
         // Create test expenses
-        let mut expenses = HashMap::new();
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
-        expenses.insert("Coffee at Starbucks".to_string(), (5.50, timestamp));
-        expenses.insert("Lunch at restaurant".to_string(), (12.00, timestamp));
-        expenses.insert("Bus ticket".to_string(), (2.75, timestamp));
-        expenses.insert("Taxi ride".to_string(), (15.00, timestamp));
+        let expenses = vec![
+            Expense {
+                description: "Coffee at Starbucks".to_string(),
+                amount: 5.50,
+                timestamp,
+            },
+            Expense {
+                description: "Lunch at restaurant".to_string(),
+                amount: 12.00,
+                timestamp,
+            },
+            Expense {
+                description: "Bus ticket".to_string(),
+                amount: 2.75,
+                timestamp,
+            },
+            Expense {
+                description: "Taxi ride".to_string(),
+                amount: 15.00,
+                timestamp,
+            },
+        ];
 
         // Create categories with patterns
         let mut categories = HashMap::new();
@@ -563,7 +581,7 @@ mod tests {
     #[test]
     fn test_extract_words_empty() {
         // Test with no expenses
-        let expenses = HashMap::new();
+        let expenses = Vec::new();
         let categories = HashMap::new();
         let words = extract_words(&expenses, &categories);
         assert_eq!(words.len(), 0);
@@ -572,10 +590,19 @@ mod tests {
     #[test]
     fn test_extract_words_all_categorized() {
         // Create test expenses
-        let mut expenses = HashMap::new();
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
-        expenses.insert("Coffee".to_string(), (5.50, timestamp));
-        expenses.insert("Lunch".to_string(), (12.00, timestamp));
+        let expenses = vec![
+            Expense {
+                description: "Coffee".to_string(),
+                amount: 5.50,
+                timestamp,
+            },
+            Expense {
+                description: "Lunch".to_string(),
+                amount: 12.00,
+                timestamp,
+            },
+        ];
 
         // Create categories that match all expenses
         let mut categories = HashMap::new();
@@ -590,14 +617,27 @@ mod tests {
     #[test]
     fn test_format_expenses_chronological() {
         // Create test expenses with different timestamps
-        let mut expenses = HashMap::new();
         let timestamp1 = 1609459200; // 2021-01-01 00:00:00 UTC
         let timestamp2 = 1609545600; // 2021-01-02 00:00:00 UTC
         let timestamp3 = 1609632000; // 2021-01-03 00:00:00 UTC
 
-        expenses.insert("Lunch".to_string(), (12.00, timestamp2));
-        expenses.insert("Coffee".to_string(), (5.50, timestamp1));
-        expenses.insert("Dinner".to_string(), (25.00, timestamp3));
+        let expenses = vec![
+            Expense {
+                description: "Lunch".to_string(),
+                amount: 12.00,
+                timestamp: timestamp2,
+            },
+            Expense {
+                description: "Coffee".to_string(),
+                amount: 5.50,
+                timestamp: timestamp1,
+            },
+            Expense {
+                description: "Dinner".to_string(),
+                amount: 25.00,
+                timestamp: timestamp3,
+            },
+        ];
 
         let result = format_expenses_chronological(&expenses);
 
@@ -618,7 +658,7 @@ mod tests {
     #[test]
     fn test_format_expenses_chronological_empty() {
         // Test with no expenses
-        let expenses = HashMap::new();
+        let expenses = Vec::new();
         let result = format_expenses_chronological(&expenses);
         assert_eq!(result, "No expenses recorded yet.");
     }
