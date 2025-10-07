@@ -75,8 +75,7 @@ pub async fn handle_text_message(
                     .await?;
                 }
                 Command::Categories => {
-                    categories_command(bot.clone(), msg.clone(), category_storage.clone())
-                        .await?;
+                    categories_command(bot.clone(), msg.clone(), category_storage.clone()).await?;
                 }
                 Command::AddFilter { category, pattern } => {
                     crate::commands::add_filter_command(

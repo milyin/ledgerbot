@@ -218,17 +218,21 @@ pub async fn category_command(
             let sent_msg = bot.send_message(chat_id, "➕ Add Category").await?;
             add_category_menu(bot, chat_id, sent_msg.id).await?;
         }
-        Some(name) => {
-            add_category(&category_storage, chat_id, name.clone()).await;
-            bot.send_message(
-                chat_id,
-                format!(
-                    "✅ Category '{}' created. Use /add_filter to add regex patterns.",
-                    name
-                ),
-            )
-            .await?;
-        }
+        Some(name) => match add_category(&category_storage, chat_id, name.clone()).await {
+            Ok(()) => {
+                bot.send_message(
+                    chat_id,
+                    format!(
+                        "✅ Category '{}' created. Use /add_filter to add regex patterns.",
+                        name
+                    ),
+                )
+                .await?;
+            }
+            Err(err_msg) => {
+                bot.send_message(chat_id, format!("ℹ️ {}", err_msg)).await?;
+            }
+        },
     }
 
     Ok(())

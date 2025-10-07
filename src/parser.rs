@@ -1,6 +1,6 @@
+use crate::commands::Command;
 use regex::Regex;
 use std::collections::HashMap;
-use crate::commands::Command;
 use teloxide::utils::command::BotCommands;
 
 /// Parse expense lines and commands from a message text
@@ -539,10 +539,10 @@ mod tests {
     fn test_parse_expenses_all_available_commands() {
         // Test that all available commands can be extracted from text
         // This includes both commands WITHOUT parameters and commands WITH parameters:
-        // 
+        //
         // Commands WITHOUT parameters:
         //   /start, /help, /list, /report, /clear, /categories, /clear_categories
-        // 
+        //
         // Commands WITH parameters:
         //   /add_category <name>
         //   /add_filter <category> <pattern>
@@ -572,7 +572,7 @@ mod tests {
 
         // Check that all commands were extracted (total 12)
         assert_eq!(commands.len(), 12);
-        
+
         // Commands without parameters (7 unique + 1 duplicate)
         assert_eq!(commands[0], Command::Start);
         assert_eq!(commands[1], Command::Help);
@@ -581,13 +581,35 @@ mod tests {
         assert_eq!(commands[4], Command::Clear);
         assert_eq!(commands[5], Command::Categories);
         assert_eq!(commands[6], Command::ClearCategories);
-        
+
         // Commands with parameters (4 commands)
-        assert_eq!(commands[7], Command::AddCategory { name: Some("Food".to_string()) });
-        assert_eq!(commands[8], Command::AddFilter { category: Some("Food".to_string()), pattern: Some("(?i)lunch".to_string()) });
-        assert_eq!(commands[9], Command::RemoveCategory { name: Some("Transport".to_string()) });
-        assert_eq!(commands[10], Command::RemoveFilter { category: Some("Food".to_string()), pattern: Some("(?i)coffee".to_string()) });
-        
+        assert_eq!(
+            commands[7],
+            Command::AddCategory {
+                name: Some("Food".to_string())
+            }
+        );
+        assert_eq!(
+            commands[8],
+            Command::AddFilter {
+                category: Some("Food".to_string()),
+                pattern: Some("(?i)lunch".to_string())
+            }
+        );
+        assert_eq!(
+            commands[9],
+            Command::RemoveCategory {
+                name: Some("Transport".to_string())
+            }
+        );
+        assert_eq!(
+            commands[10],
+            Command::RemoveFilter {
+                category: Some("Food".to_string()),
+                pattern: Some("(?i)coffee".to_string())
+            }
+        );
+
         // Duplicate command without parameters to verify repeatability
         assert_eq!(commands[11], Command::List);
     }
@@ -615,9 +637,26 @@ mod tests {
         // All commands now parse successfully with optional parameters
         assert_eq!(commands.len(), 5);
         assert_eq!(commands[0], Command::AddCategory { name: None });
-        assert_eq!(commands[1], Command::AddFilter { category: None, pattern: None });
+        assert_eq!(
+            commands[1],
+            Command::AddFilter {
+                category: None,
+                pattern: None
+            }
+        );
         assert_eq!(commands[2], Command::RemoveCategory { name: None });
-        assert_eq!(commands[3], Command::RemoveFilter { category: None, pattern: None });
-        assert_eq!(commands[4], Command::AddCategory { name: Some("Food".to_string()) });
+        assert_eq!(
+            commands[3],
+            Command::RemoveFilter {
+                category: None,
+                pattern: None
+            }
+        );
+        assert_eq!(
+            commands[4],
+            Command::AddCategory {
+                name: Some("Food".to_string())
+            }
+        );
     }
 }
