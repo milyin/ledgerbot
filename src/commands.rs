@@ -847,3 +847,100 @@ pub async fn show_category_filters_for_removal(
 
     Ok(())
 }
+
+/// Execute a single command (helper function for batch processing and text message handling)
+pub async fn execute_command(
+    bot: Bot,
+    msg: Message,
+    storage: crate::storage::ExpenseStorage,
+    category_storage: crate::storage::CategoryStorage,
+    cmd: Command,
+    silent: bool,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    match cmd {
+        Command::Start => {
+            start_command(bot.clone(), msg.clone()).await?;
+        }
+        Command::Help => {
+            help_command(bot.clone(), msg.clone()).await?;
+        }
+        Command::Expense {
+            date,
+            description,
+            amount,
+        } => {
+            expense_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone(),
+                date,
+                description,
+                amount,
+                silent,
+            )
+            .await?;
+        }
+        Command::List => {
+            list_command(bot.clone(), msg.clone(), storage.clone()).await?;
+        }
+        Command::Report => {
+            report_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone(),
+                category_storage.clone(),
+            )
+            .await?;
+        }
+        Command::Clear => {
+            clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
+        }
+        Command::ClearCategories => {
+            clear_categories_command(bot.clone(), msg.clone(), category_storage.clone())
+                .await?;
+        }
+        Command::AddCategory { name } => {
+            category_command(
+                bot.clone(),
+                msg.clone(),
+                category_storage.clone(),
+                name,
+            )
+            .await?;
+        }
+        Command::Categories => {
+            categories_command(bot.clone(), msg.clone(), category_storage.clone())
+                .await?;
+        }
+        Command::AddFilter { category, pattern } => {
+            add_filter_command(
+                bot.clone(),
+                msg.clone(),
+                category_storage.clone(),
+                category,
+                pattern,
+            )
+            .await?;
+        }
+        Command::RemoveCategory { name } => {
+            remove_category_command(
+                bot.clone(),
+                msg.clone(),
+                category_storage.clone(),
+                name,
+            )
+            .await?;
+        }
+        Command::RemoveFilter { category, pattern } => {
+            remove_filter_command(
+                bot.clone(),
+                msg.clone(),
+                category_storage.clone(),
+                category,
+                pattern,
+            )
+            .await?;
+        }
+    }
+    Ok(())
+}

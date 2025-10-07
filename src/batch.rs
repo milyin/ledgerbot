@@ -3,7 +3,7 @@ use std::sync::Arc;
 use teloxide::prelude::*;
 use tokio::sync::Mutex;
 
-use crate::commands::Command;
+use crate::commands::{Command, execute_command};
 use crate::config::BATCH_TIMEOUT_SECONDS;
 
 /// Per-chat batch storage - each chat has its own batch state
@@ -110,101 +110,4 @@ pub async fn execute_batch(
             log::error!("Failed to send batch report: {}", e);
         }
     }
-}
-
-/// Execute a single command (helper function for batch processing)
-async fn execute_command(
-    bot: Bot,
-    msg: Message,
-    storage: crate::storage::ExpenseStorage,
-    category_storage: crate::storage::CategoryStorage,
-    cmd: Command,
-    silent: bool
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    match cmd {
-        Command::Start => {
-            crate::commands::start_command(bot.clone(), msg.clone()).await?;
-        }
-        Command::Help => {
-            crate::commands::help_command(bot.clone(), msg.clone()).await?;
-        }
-        Command::Expense {
-            date,
-            description,
-            amount,
-        } => {
-            crate::commands::expense_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone(),
-                date,
-                description,
-                amount,
-                silent
-            )
-            .await?;
-        }
-        Command::List => {
-            crate::commands::list_command(bot.clone(), msg.clone(), storage.clone()).await?;
-        }
-        Command::Report => {
-            crate::commands::report_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone(),
-                category_storage.clone(),
-            )
-            .await?;
-        }
-        Command::Clear => {
-            crate::commands::clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
-        }
-        Command::ClearCategories => {
-            crate::commands::clear_categories_command(bot.clone(), msg.clone(), category_storage.clone())
-                .await?;
-        }
-        Command::AddCategory { name } => {
-            crate::commands::category_command(
-                bot.clone(),
-                msg.clone(),
-                category_storage.clone(),
-                name,
-            )
-            .await?;
-        }
-        Command::Categories => {
-            crate::commands::categories_command(bot.clone(), msg.clone(), category_storage.clone())
-                .await?;
-        }
-        Command::AddFilter { category, pattern } => {
-            crate::commands::add_filter_command(
-                bot.clone(),
-                msg.clone(),
-                category_storage.clone(),
-                category,
-                pattern,
-            )
-            .await?;
-        }
-        Command::RemoveCategory { name } => {
-            crate::commands::remove_category_command(
-                bot.clone(),
-                msg.clone(),
-                category_storage.clone(),
-                name,
-            )
-            .await?;
-        }
-        Command::RemoveFilter { category, pattern } => {
-            crate::commands::remove_filter_command(
-                bot.clone(),
-                msg.clone(),
-                category_storage.clone(),
-                category,
-                pattern,
-            )
-            .await?;
-        }
-    }
-    Ok(())
 }

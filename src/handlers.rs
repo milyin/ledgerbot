@@ -3,9 +3,9 @@ use teloxide::types::CallbackQuery;
 
 use crate::batch::{BatchStorage, add_to_batch, execute_batch};
 use crate::commands::{
-    Command, add_filter_menu, categories_command, clear_command, help_command, list_command,
-    remove_category_menu, remove_filter_menu, report_command, show_category_filters_for_removal,
-    show_filter_word_suggestions,
+    add_filter_menu, categories_command, clear_command, execute_command, help_command,
+    list_command, remove_category_menu, remove_filter_menu, report_command,
+    show_category_filters_for_removal, show_filter_word_suggestions,
 };
 use crate::parser::parse_expenses;
 use crate::storage::{
@@ -77,106 +77,32 @@ pub async fn handle_text_message(
         } else {
             // Single-line message: execute immediately (existing behavior)
             for result in parsed_results {
-            match result {
-                Ok(cmd) => {
-                    // Execute the command
-                    match cmd {
-                        Command::Start => {
-                            crate::commands::start_command(bot.clone(), msg.clone()).await?;
-                        }
-                        Command::Help => {
-                            help_command(bot.clone(), msg.clone()).await?;
-                        }
-                        Command::Expense {
-                            date,
-                            description,
-                            amount,
-                        } => {
-                            crate::commands::expense_command(
-                                bot.clone(),
-                                msg.clone(),
-                                storage.clone(),
-                                date,
-                                description,
-                                amount,
-                                false
-                            )
-                            .await?;
-                        }
-                        Command::List => {
-                            list_command(bot.clone(), msg.clone(), storage.clone()).await?;
-                        }
-                        Command::Report => {
-                            report_command(
-                                bot.clone(),
-                                msg.clone(),
-                                storage.clone(),
-                                category_storage.clone(),
-                            )
-                            .await?;
-                        }
-                        Command::Clear => {
-                            clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
-                        }
-                        Command::ClearCategories => {
-                            crate::commands::clear_categories_command(
-                                bot.clone(),
-                                msg.clone(),
-                                category_storage.clone(),
-                            )
-                            .await?;
-                        }
-                        Command::AddCategory { name } => {
-                            crate::commands::category_command(
-                                bot.clone(),
-                                msg.clone(),
-                                category_storage.clone(),
-                                name,
-                            )
-                            .await?;
-                        }
-                        Command::Categories => {
-                            categories_command(bot.clone(), msg.clone(), category_storage.clone())
+                match result {
+                    Ok(cmd) => {
+                        // Execute the command using the shared execute_command function
+                        let exec_result = execute_command(
+                            bot.clone(),
+                            msg.clone(),
+                            storage.clone(),
+                            category_storage.clone(),
+                            cmd,
+                            false,
+                        )
+                        .await;
+                        if let Err(e) = exec_result {
+                            log::error!("Failed to execute command: {}", e);
+                            bot.send_message(chat_id, format!("❌ Error: {}", e))
                                 .await?;
                         }
-                        Command::AddFilter { category, pattern } => {
-                            crate::commands::add_filter_command(
-                                bot.clone(),
-                                msg.clone(),
-                                category_storage.clone(),
-                                category,
-                                pattern,
-                            )
+                    }
+                    Err(err_msg) => {
+                        // Send error message to user
+                        log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
+                        bot.send_message(chat_id, format!("❌ {}", err_msg))
                             .await?;
-                        }
-                        Command::RemoveCategory { name } => {
-                            crate::commands::remove_category_command(
-                                bot.clone(),
-                                msg.clone(),
-                                category_storage.clone(),
-                                name,
-                            )
-                            .await?;
-                        }
-                        Command::RemoveFilter { category, pattern } => {
-                            crate::commands::remove_filter_command(
-                                bot.clone(),
-                                msg.clone(),
-                                category_storage.clone(),
-                                category,
-                                pattern,
-                            )
-                            .await?;
-                        }
                     }
                 }
-                Err(err_msg) => {
-                    // Send error message to user
-                    log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
-                    bot.send_message(chat_id, format!("❌ {}", err_msg)).await?;
-                }
             }
-        }
 
             // For single-line messages with expenses, we don't batch - already executed above
         }
