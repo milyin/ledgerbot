@@ -165,13 +165,15 @@ pub enum Command {
 pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     let help_text = format!(
         "To add expenses forward messages or send text with lines in format:\n\
-        `[<yyyy-mm-dd>] <description> <amount>\n\n\
+        `[<yyyy-mm-dd>] <description> <amount>`\n\n\
         {commands}",
         commands = Command::descriptions()
     );
 
     // Send message with both inline keyboard (for buttons in message) and reply keyboard (menu button)
-    bot.send_message(msg.chat.id, help_text).await?;
+    bot.send_message(msg.chat.id, help_text)
+        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+        .await?;
     Ok(())
 }
 
@@ -264,7 +266,9 @@ pub async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> Re
     let chat_expenses = get_chat_expenses(&storage, chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
 
-    bot.send_message(chat_id, expenses_list).await?;
+    bot.send_message(chat_id, expenses_list)
+        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+        .await?;
     Ok(())
 }
 
@@ -280,7 +284,9 @@ pub async fn report_command(
     let chat_categories = get_chat_categories(&category_storage, chat_id).await;
     let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
 
-    bot.send_message(chat_id, expenses_list).await?;
+    bot.send_message(chat_id, expenses_list)
+        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+        .await?;
     Ok(())
 }
 

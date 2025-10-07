@@ -3,6 +3,7 @@ use crate::storage::Expense;
 use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
 use teloxide::utils::command::BotCommands;
+use teloxide::utils::markdown::escape;
 
 /// Parse expense lines and commands from a message text
 /// Returns a vector of Results containing either successfully parsed Commands or error messages
@@ -91,8 +92,10 @@ pub fn format_expenses_chronological(expenses: &[Expense]) -> String {
     for expense in sorted_expenses {
         let date_str = format_timestamp(expense.timestamp);
         result.push_str(&format!(
-            "{} {} {:.2}\n",
-            date_str, expense.description, expense.amount
+            "{} {} {}\\.2\n",
+            escape(&date_str),
+            escape(&expense.description),
+            escape(&expense.amount.to_string())
         ));
     }
 
@@ -156,41 +159,51 @@ pub fn format_expenses_list(
     for category_name in category_names {
         if let Some(items) = categorized.get(&category_name) {
             let mut category_total = 0.0;
-            result.push_str(&format!("{}:\n", category_name));
+            result.push_str(&format!("*{}*:\n", escape(&category_name)));
 
             for expense in items {
                 let date_str = format_timestamp(expense.timestamp);
                 result.push_str(&format!(
-                    "  • {} - {:.2} ({})\n",
-                    expense.description, expense.amount, date_str
+                    "  • {} {} {}\\.2\n",
+                    escape(&date_str),
+                    escape(&expense.description),
+                    escape(&expense.amount.to_string()),
                 ));
                 category_total += expense.amount;
                 total += expense.amount;
             }
 
-            result.push_str(&format!("  Subtotal: {:.2}_\n\n", category_total));
+            result.push_str(&format!(
+                "  *Subtotal: {}\\.2*\n\n",
+                escape(&category_total.to_string())
+            ));
         }
     }
 
     // Display uncategorized expenses
     if !uncategorized.is_empty() {
         let mut uncategorized_total = 0.0;
-        result.push_str("Other:\n");
+        result.push_str("*Other:*\n");
 
         for expense in uncategorized {
             let date_str = format_timestamp(expense.timestamp);
             result.push_str(&format!(
-                "  • {} - {:.2} ({})\n",
-                expense.description, expense.amount, date_str
+                "  • {} {} {}\\.2\n",
+                escape(&date_str),
+                escape(&expense.description),
+                escape(&expense.amount.to_string()),
             ));
             uncategorized_total += expense.amount;
             total += expense.amount;
         }
 
-        result.push_str(&format!("  Subtotal: {:.2}_\n\n", uncategorized_total));
+        result.push_str(&format!(
+            "  *Subtotal: {}\\.2*\n\n",
+            escape(&uncategorized_total.to_string())
+        ));
     }
 
-    result.push_str(&format!("Total: {:.2}", total));
+    result.push_str(&format!("*Total: {}\\.2*", escape(&total.to_string())));
     result
 }
 
