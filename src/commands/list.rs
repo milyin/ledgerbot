@@ -25,7 +25,7 @@ pub async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> Re
 
 /// Format expenses as a chronological list without category grouping
 /// Output format: "date description price"
-pub fn format_expenses_chronological(expenses: &[Expense]) -> String {
+fn format_expenses_chronological(expenses: &[Expense]) -> String {
     if expenses.is_empty() {
         return "No expenses recorded yet.".to_string();
     }
