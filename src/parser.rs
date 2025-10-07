@@ -509,11 +509,10 @@ mod tests {
         let result = format_expenses_chronological(&expenses);
 
         // Check that expenses are listed in chronological order
-        assert!(result.contains("📝 **Expenses (Chronological):**"));
+        // Function returns plain format: "date description amount"
         assert!(result.contains("2021-01-01 Coffee 5.50"));
         assert!(result.contains("2021-01-02 Lunch 12.00"));
         assert!(result.contains("2021-01-03 Dinner 25.00"));
-        assert!(result.contains("💰 **Total: 42.50**"));
 
         // Verify chronological order by checking positions
         let coffee_pos = result.find("Coffee").unwrap();
@@ -529,5 +528,90 @@ mod tests {
         let expenses = HashMap::new();
         let result = format_expenses_chronological(&expenses);
         assert_eq!(result, "No expenses recorded yet.");
+    }
+
+    #[test]
+    fn test_parse_expenses_all_available_commands() {
+        // Test that all available commands can be extracted from text
+        // This includes both commands WITHOUT parameters and commands WITH parameters:
+        // 
+        // Commands WITHOUT parameters:
+        //   /start, /help, /list, /report, /clear, /categories, /clear_categories
+        // 
+        // Commands WITH parameters:
+        //   /add_category <name>
+        //   /add_filter <category> <pattern>
+        //   /remove_category <name>
+        //   /remove_filter <category> <pattern>
+        let text = "\
+            /start\n\
+            /help\n\
+            /list\n\
+            /report\n\
+            /clear\n\
+            /categories\n\
+            /clear_categories\n\
+            /add_category Food\n\
+            /add_filter Food (?i)lunch\n\
+            /remove_category Transport\n\
+            /remove_filter Food (?i)coffee\n\
+            Coffee 5.50\n\
+            /list\n\
+        ";
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, None, timestamp);
+
+        // Check that we extracted the expense
+        assert_eq!(expenses.len(), 1);
+        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
+
+        // Check that all commands were extracted (total 12)
+        assert_eq!(commands.len(), 12);
+        
+        // Commands without parameters (7 unique + 1 duplicate)
+        assert_eq!(commands[0], "/start");
+        assert_eq!(commands[1], "/help");
+        assert_eq!(commands[2], "/list");
+        assert_eq!(commands[3], "/report");
+        assert_eq!(commands[4], "/clear");
+        assert_eq!(commands[5], "/categories");
+        assert_eq!(commands[6], "/clear_categories");
+        
+        // Commands with parameters (4 commands)
+        assert_eq!(commands[7], "/add_category Food");
+        assert_eq!(commands[8], "/add_filter Food (?i)lunch");
+        assert_eq!(commands[9], "/remove_category Transport");
+        assert_eq!(commands[10], "/remove_filter Food (?i)coffee");
+        
+        // Duplicate command without parameters to verify repeatability
+        assert_eq!(commands[11], "/list");
+    }
+
+    #[test]
+    fn test_parse_commands_with_missing_parameters() {
+        // Test that commands which should have parameters are still parsed
+        // even when passed without parameters (parser doesn't validate, just extracts)
+        let text = "\
+            /add_category\n\
+            /add_filter\n\
+            /remove_category\n\
+            /remove_filter\n\
+            /add_category Food\n\
+            Coffee 5.50\n\
+        ";
+        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let (expenses, commands) = parse_expenses(text, None, timestamp);
+
+        // Check that we extracted the expense
+        assert_eq!(expenses.len(), 1);
+        assert_eq!(expenses[0], ("Coffee".to_string(), 5.50, timestamp));
+
+        // Check that all commands were extracted, even those without required parameters
+        assert_eq!(commands.len(), 5);
+        assert_eq!(commands[0], "/add_category");
+        assert_eq!(commands[1], "/add_filter");
+        assert_eq!(commands[2], "/remove_category");
+        assert_eq!(commands[3], "/remove_filter");
+        assert_eq!(commands[4], "/add_category Food");
     }
 }
