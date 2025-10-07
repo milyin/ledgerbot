@@ -70,9 +70,7 @@ pub async fn send_batch_report(bot: Bot, batch_storage: BatchStorage, target_cha
             Records parsed: {}\n\
             Total amount: {:.2}\n\n\
             Use `/list` or `/report` to see all expenses.",
-            state.messages_count,
-            state.records_count,
-            state.total_sum
+            state.messages_count, state.records_count, state.total_sum
         );
 
         if let Err(e) = bot.send_message(target_chat_id, report).await {

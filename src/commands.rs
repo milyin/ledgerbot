@@ -46,7 +46,11 @@ pub enum Command {
     Categories,
     #[command(description = "clear all categories", rename = "clear_categories")]
     ClearCategories,
-    #[command(description = "add expense category", rename = "add_category", parse_with = "split")]
+    #[command(
+        description = "add expense category",
+        rename = "add_category",
+        parse_with = "split"
+    )]
     AddCategory { name: String },
     #[command(
         description = "add filter to category",
@@ -78,8 +82,7 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     );
 
     // Send message with both inline keyboard (for buttons in message) and reply keyboard (menu button)
-    bot.send_message(msg.chat.id, help_text)
-        .await?;
+    bot.send_message(msg.chat.id, help_text).await?;
     Ok(())
 }
 
@@ -157,12 +160,9 @@ pub async fn add_category_menu(
 ) -> ResponseResult<()> {
     let text = "➕ **Add a new category:**\n\nClick the button below and type the category name.";
 
-    let keyboard = InlineKeyboardMarkup::new(vec![
-        vec![InlineKeyboardButton::switch_inline_query_current_chat(
-            "➕ Add Category",
-            "/add_category ",
-        )],
-    ]);
+    let keyboard = InlineKeyboardMarkup::new(vec![vec![
+        InlineKeyboardButton::switch_inline_query_current_chat("➕ Add Category", "/add_category "),
+    ]]);
 
     bot.edit_message_text(chat_id, message_id, text).await?;
     bot.edit_message_reply_markup(chat_id, message_id)
@@ -316,11 +316,8 @@ pub async fn remove_category_command(
 
     // Check if category exists
     if !categories.contains_key(&name) {
-        bot.send_message(
-            chat_id,
-            format!("❌ Category '{}' does not exist.", name),
-        )
-        .await?;
+        bot.send_message(chat_id, format!("❌ Category '{}' does not exist.", name))
+            .await?;
         return Ok(());
     }
 
@@ -363,22 +360,28 @@ pub async fn remove_filter_command(
     }
 
     // Check if filter exists in the category
-    if let Some(patterns) = categories.get(&category) {
-        if !patterns.contains(&pattern) {
-            bot.send_message(
-                chat_id,
-                format!("❌ Filter '{}' not found in category '{}'.", pattern, category),
-            )
-            .await?;
-            return Ok(());
-        }
+    if let Some(patterns) = categories.get(&category)
+        && !patterns.contains(&pattern)
+    {
+        bot.send_message(
+            chat_id,
+            format!(
+                "❌ Filter '{}' not found in category '{}'.",
+                pattern, category
+            ),
+        )
+        .await?;
+        return Ok(());
     }
 
     // Remove the filter
     crate::storage::remove_category_filter(&category_storage, chat_id, &category, &pattern).await;
     bot.send_message(
         chat_id,
-        format!("✅ Filter '{}' removed from category '{}'.", pattern, category),
+        format!(
+            "✅ Filter '{}' removed from category '{}'.",
+            pattern, category
+        ),
     )
     .await?;
 
@@ -621,7 +624,10 @@ pub async fn show_category_filters_for_removal(
             )
             .await?;
         } else {
-            let text = format!("�️ **Select filter to remove from '{}':**\n\nClick a button to place the command in your input box.", category_name);
+            let text = format!(
+                "�️ **Select filter to remove from '{}':**\n\nClick a button to place the command in your input box.",
+                category_name
+            );
 
             // Create buttons for each filter using switch_inline_query_current_chat
             let mut buttons: Vec<Vec<InlineKeyboardButton>> = patterns
@@ -666,9 +672,13 @@ pub async fn answer(
         Command::List => list_command(bot, msg, storage).await,
         Command::Report => report_command(bot, msg, storage, category_storage.clone()).await,
         Command::Clear => clear_command(bot, msg, storage).await,
-        Command::AddCategory { name } => category_command(bot, msg, category_storage.clone(), name).await,
+        Command::AddCategory { name } => {
+            category_command(bot, msg, category_storage.clone(), name).await
+        }
         Command::Categories => categories_command(bot, msg, category_storage.clone()).await,
-        Command::ClearCategories => clear_categories_command(bot, msg, category_storage.clone()).await,
+        Command::ClearCategories => {
+            clear_categories_command(bot, msg, category_storage.clone()).await
+        }
         Command::AddFilter { category, pattern } => {
             add_filter_command(bot, msg, category_storage.clone(), category, pattern).await
         }
