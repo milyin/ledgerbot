@@ -2,16 +2,19 @@ use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
 
 use crate::batch::{BatchStorage, add_to_batch, execute_batch};
-use crate::commands::{
-    add_filter_menu, categories_command, clear_command, execute_command, help_command,
-    list_command, remove_category_menu, remove_filter_menu, report_command,
-    show_category_filters_for_removal, show_filter_word_suggestions,
+use crate::commands::categories::{
+    categories_command, remove_category_menu, show_category_filters_for_removal,
 };
+use crate::commands::expenses::{clear_command, list_command};
+use crate::commands::filters::{add_filter_command, add_filter_menu, remove_filter_menu};
+use crate::commands::help::help_command;
+use crate::commands::report::report_command;
+use crate::commands::{execute_command, show_filter_word_suggestions};
 use crate::parser::parse_expenses;
 use crate::storage::{
-    CategoryStorage, ExpenseStorage, FilterSelectionStorage, FilterPageStorage, clear_filter_selection,
-    clear_filter_page_offset, get_filter_page_offset, get_filter_selection, remove_category, 
-    remove_category_filter, set_filter_page_offset, set_filter_selection,
+    CategoryStorage, ExpenseStorage, FilterPageStorage, FilterSelectionStorage,
+    clear_filter_page_offset, clear_filter_selection, get_filter_page_offset, get_filter_selection,
+    remove_category, remove_category_filter, set_filter_page_offset, set_filter_selection,
 };
 
 /// Handle text messages containing potential expense data
@@ -198,14 +201,21 @@ pub async fn handle_callback_query(
             } else if data.starts_with("page_prev:") {
                 // Handle page_prev:CategoryName format
                 let category_name = data.strip_prefix("page_prev:").unwrap().to_string();
-                
+
                 // Get current page offset and decrease by 20
-                let current_offset = get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
+                let current_offset =
+                    get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
                 let new_offset = current_offset.saturating_sub(20);
-                
+
                 // Update page offset
-                set_filter_page_offset(&filter_page_storage, chat_id, category_name.clone(), new_offset).await;
-                
+                set_filter_page_offset(
+                    &filter_page_storage,
+                    chat_id,
+                    category_name.clone(),
+                    new_offset,
+                )
+                .await;
+
                 // Refresh the display
                 show_filter_word_suggestions(
                     bot,
@@ -221,14 +231,21 @@ pub async fn handle_callback_query(
             } else if data.starts_with("page_next:") {
                 // Handle page_next:CategoryName format
                 let category_name = data.strip_prefix("page_next:").unwrap().to_string();
-                
+
                 // Get current page offset and increase by 20
-                let current_offset = get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
+                let current_offset =
+                    get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
                 let new_offset = current_offset + 20;
-                
+
                 // Update page offset
-                set_filter_page_offset(&filter_page_storage, chat_id, category_name.clone(), new_offset).await;
-                
+                set_filter_page_offset(
+                    &filter_page_storage,
+                    chat_id,
+                    category_name.clone(),
+                    new_offset,
+                )
+                .await;
+
                 // Refresh the display
                 show_filter_word_suggestions(
                     bot,
@@ -258,11 +275,10 @@ pub async fn handle_callback_query(
                     // Clear the selection and page offset
                     clear_filter_selection(&filter_selection_storage, chat_id, &category_name)
                         .await;
-                    clear_filter_page_offset(&filter_page_storage, chat_id, &category_name)
-                        .await;
+                    clear_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
 
                     // Call add_filter_command with the combined pattern
-                    crate::commands::add_filter_command(
+                    add_filter_command(
                         bot.clone(),
                         msg.clone(),
                         category_storage.clone(),

@@ -27,10 +27,7 @@ pub type FilterSelectionStorage = Arc<Mutex<HashMap<(ChatId, String), Vec<String
 pub type FilterPageStorage = Arc<Mutex<HashMap<(ChatId, String), usize>>>;
 
 /// Get expenses for a specific chat
-pub async fn get_chat_expenses(
-    storage: &ExpenseStorage,
-    chat_id: ChatId,
-) -> Vec<Expense> {
+pub async fn get_chat_expenses(storage: &ExpenseStorage, chat_id: ChatId) -> Vec<Expense> {
     let storage_guard = storage.lock().await;
     storage_guard.get(&chat_id).cloned().unwrap_or_default()
 }

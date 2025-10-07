@@ -11,7 +11,10 @@ use teloxide::prelude::*;
 use batch::create_batch_storage;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storage::{create_category_storage, create_filter_selection_storage, create_filter_page_storage, create_storage};
+use storage::{
+    create_category_storage, create_filter_page_storage, create_filter_selection_storage,
+    create_storage,
+};
 
 #[tokio::main]
 async fn main() {

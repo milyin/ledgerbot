@@ -1,8 +1,17 @@
 use std::collections::HashMap;
 
-use teloxide::{payloads::SendMessageSetters, prelude::{Requester, ResponseResult}, types::Message, utils::markdown::escape, Bot};
+use teloxide::{
+    Bot,
+    payloads::SendMessageSetters,
+    prelude::{Requester, ResponseResult},
+    types::Message,
+    utils::markdown::escape,
+};
 
-use crate::{parser::format_timestamp, storage::{get_chat_categories, get_chat_expenses, CategoryStorage, Expense, ExpenseStorage}};
+use crate::{
+    parser::format_timestamp,
+    storage::{CategoryStorage, Expense, ExpenseStorage, get_chat_categories, get_chat_expenses},
+};
 
 /// Report all expenses grouped by categories
 pub async fn report_command(
@@ -23,10 +32,7 @@ pub async fn report_command(
 }
 
 /// Format expenses as a readable list with total, grouped by categories
-fn format_expenses_list(
-    expenses: &[Expense],
-    categories: &HashMap<String, Vec<String>>,
-) -> String {
+fn format_expenses_list(expenses: &[Expense], categories: &HashMap<String, Vec<String>>) -> String {
     if expenses.is_empty() {
         return "No expenses recorded yet.".to_string();
     }
@@ -126,4 +132,3 @@ fn format_expenses_list(
     result.push_str(&format!("*Total: {}*", escape(&total.to_string())));
     result
 }
-

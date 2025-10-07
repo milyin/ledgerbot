@@ -3,7 +3,6 @@ use crate::storage::Expense;
 use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
 use teloxide::utils::command::BotCommands;
-use teloxide::utils::markdown::escape;
 
 /// Parse expense lines and commands from a message text
 /// Returns a vector of Results containing either successfully parsed Commands or error messages
@@ -62,7 +61,10 @@ pub fn parse_expenses(
         // Parse the line as a command
         match Command::parse(&command_line, bot_name.unwrap_or("")) {
             Ok(mut cmd) => {
-                if let Command::Expense { date: date @ None, .. } = &mut cmd {
+                if let Command::Expense {
+                    date: date @ None, ..
+                } = &mut cmd
+                {
                     *date = Some(message_date);
                 }
                 commands.push(Ok(cmd));
@@ -75,7 +77,6 @@ pub fn parse_expenses(
 
     commands
 }
-
 
 /// Format Unix timestamp to a human-readable date string
 pub fn format_timestamp(timestamp: i64) -> String {
@@ -496,7 +497,6 @@ mod tests {
         let words = extract_words(&expenses, &categories);
         assert_eq!(words.len(), 0);
     }
-
 
     #[test]
     fn test_parse_expenses_all_available_commands() {
