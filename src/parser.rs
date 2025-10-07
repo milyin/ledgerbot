@@ -1,5 +1,5 @@
 use crate::commands::Command;
-use regex::Regex;
+use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
 use teloxide::utils::command::BotCommands;
 
@@ -15,21 +15,7 @@ pub fn parse_expenses(
     timestamp: i64,
 ) -> Vec<Result<Command, String>> {
     let mut commands = Vec::new();
-
-    // Convert timestamp to date string for expenses without explicit date
-    let default_date = {
-        use chrono::{DateTime, Utc};
-        let dt: DateTime<Utc> = DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
-        dt.format("%Y-%m-%d").to_string()
-    };
-
-    // Regex pattern to match "<date> <text> <number>"
-    // Date format: YYYY-MM-DD
-    let re_with_date = Regex::new(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)\s+(\d+(?:\.\d+)?)$").unwrap();
-
-    // Regex pattern to match "<any text> <number>"
-    // This captures text followed by a space and then a number (integer or decimal)
-    let re = Regex::new(r"^(.+?)\s+(\d+(?:\.\d+)?)$").unwrap();
+    let message_date = Utc.timestamp_opt(timestamp, 0).unwrap().date_naive();
 
     for line in text.lines() {
         let mut line = line.trim();
@@ -65,75 +51,29 @@ pub fn parse_expenses(
             }
         }
 
-        // Collect lines starting with '/' as commands and parse them
-        if line.starts_with('/') {
-            // Command::parse expects to parse from the start of text and will consume
-            // everything after the command. To parse line-by-line, we call it with just
-            // this line, which will parse only this command.
-            match Command::parse(line, bot_name.unwrap_or("")) {
-                Ok(cmd) => {
-                    commands.push(Ok(cmd));
+        let command_line = if !line.starts_with('/') {
+            format!("/expense {}", line)
+        } else {
+            line.to_string()
+        };
+
+        // Parse the line as a command
+        match Command::parse(&command_line, bot_name.unwrap_or("")) {
+            Ok(mut cmd) => {
+                if let Command::Expense { date, .. } = &mut cmd {
+                    if date.is_none() {
+                        *date = Some(message_date);
+                    }
                 }
-                Err(e) => {
-                    commands.push(Err(format!("Failed to parse command '{}': {}", line, e)));
-                }
+                commands.push(Ok(cmd));
             }
-            continue;
-        }
-
-        // Try to match pattern with date first: <date> <text> <sum>
-        if let Some(captures) = re_with_date.captures(line) {
-            let date_str = captures[1].trim().to_string();
-            let description = captures[2].trim().to_string();
-            let amount_str = captures[3].trim().to_string();
-
-            // Validate amount is a valid number
-            if amount_str.parse::<f64>().is_ok() {
-                // Create Command::Expense with explicit date
-                commands.push(Ok(Command::Expense {
-                    date: Some(date_str),
-                    description: Some(description),
-                    amount: Some(amount_str),
-                }));
-            } else {
-                commands.push(Err(format!(
-                    "Invalid amount '{}' in line: {}",
-                    amount_str, line
-                )));
-            }
-        // If no date pattern matches, try pattern without date: <text> <sum>
-        } else if let Some(captures) = re.captures(line) {
-            let description = captures[1].trim().to_string();
-            let amount_str = captures[2].trim().to_string();
-
-            // Validate amount is a valid number
-            if amount_str.parse::<f64>().is_ok() {
-                // Create Command::Expense with default date from message timestamp
-                commands.push(Ok(Command::Expense {
-                    date: Some(default_date.clone()),
-                    description: Some(description),
-                    amount: Some(amount_str),
-                }));
-            } else {
-                commands.push(Err(format!(
-                    "Invalid amount '{}' in line: {}",
-                    amount_str, line
-                )));
+            Err(e) => {
+                commands.push(Err(format!("Failed to parse command '{}': {}", line, e)));
             }
         }
     }
 
     commands
-}
-
-/// Parse date string to Unix timestamp
-/// Supports format: YYYY-MM-DD
-pub fn parse_date_to_timestamp(date_str: &str) -> Option<i64> {
-    use chrono::NaiveDate;
-
-    // Parse YYYY-MM-DD format
-    let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d").ok()?;
-    Some(date.and_hms_opt(0, 0, 0)?.and_utc().timestamp())
 }
 
 /// Format expenses as a chronological list without category grouping
@@ -309,6 +249,7 @@ pub fn extract_words(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
 
     #[test]
     fn test_parse_expenses_with_date() {
@@ -322,17 +263,17 @@ mod tests {
         // Check first expense
         assert!(
             matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2024-10-05".to_string())
+            if date == &NaiveDate::from_ymd_opt(2024, 10, 5)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         // Check second expense
         assert!(
             matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2024-10-06".to_string())
+            if date == &NaiveDate::from_ymd_opt(2024, 10, 6)
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string()))
+            && amount == &Some(12.00))
         );
     }
 
@@ -348,17 +289,17 @@ mod tests {
         // Check first expense
         assert!(
             matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2024-10-05".to_string())
+            if date == &NaiveDate::from_ymd_opt(2024, 10, 5)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         // Check second expense
         assert!(
             matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2024-10-06".to_string())
+            if date == &NaiveDate::from_ymd_opt(2024, 10, 6)
             && description == &Some("Tea".to_string())
-            && amount == &Some("3.00".to_string()))
+            && amount == &Some(3.00))
         );
     }
 
@@ -374,17 +315,17 @@ mod tests {
         // Check first expense (should use message timestamp as 2021-01-01)
         assert!(
             matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         // Check second expense
         assert!(
             matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string()))
+            && amount == &Some(12.00))
         );
     }
 
@@ -400,25 +341,25 @@ mod tests {
         // Check first expense with explicit date
         assert!(
             matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2024-10-05".to_string())
+            if date == &NaiveDate::from_ymd_opt(2024, 10, 5)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         // Check second expense without date (should use message timestamp)
         assert!(
             matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string()))
+            && amount == &Some(12.00))
         );
 
         // Check third expense with explicit date
         assert!(
             matches!(&results[2], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2024-10-06".to_string())
+            if date == &NaiveDate::from_ymd_opt(2024, 10, 6)
             && description == &Some("Dinner".to_string())
-            && amount == &Some("15.00".to_string()))
+            && amount == &Some(15.00))
         );
     }
 
@@ -434,23 +375,23 @@ mod tests {
         // Check all expenses are parsed correctly with bot name removed
         assert!(
             matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         assert!(
             matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string()))
+            && amount == &Some(12.00))
         );
 
         assert!(
             matches!(&results[2], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Bus ticket".to_string())
-            && amount == &Some("2.75".to_string()))
+            && amount == &Some(2.75))
         );
     }
 
@@ -469,9 +410,9 @@ mod tests {
         // Check first expense
         assert!(
             matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         // Check second command
@@ -480,9 +421,9 @@ mod tests {
         // Check second expense
         assert!(
             matches!(&results[3], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string()))
+            && amount == &Some(12.00))
         );
     }
 
@@ -498,9 +439,9 @@ mod tests {
         // Check first expense
         assert!(
             matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         // Check first command
@@ -509,17 +450,17 @@ mod tests {
         // Check second expense
         assert!(
             matches!(&results[2], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string()))
+            && amount == &Some(12.00))
         );
 
         // Check third expense
         assert!(
             matches!(&results[3], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Bus ticket".to_string())
-            && amount == &Some("2.75".to_string()))
+            && amount == &Some(2.75))
         );
 
         // Check second command
@@ -537,16 +478,16 @@ mod tests {
 
         assert!(
             matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         assert!(
             matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string()))
+            && amount == &Some(12.00))
         );
     }
 
@@ -747,9 +688,9 @@ mod tests {
         // Check the expense
         assert!(
             matches!(&results[11], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
 
         // Duplicate command without parameters to verify repeatability
@@ -796,9 +737,9 @@ mod tests {
         // Check the expense
         assert!(
             matches!(&results[5], Ok(Command::Expense { date, description, amount })
-            if date == &Some("2021-01-01".to_string())
+            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string()))
+            && amount == &Some(5.50))
         );
     }
 }

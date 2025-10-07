@@ -61,9 +61,10 @@ pub async fn execute_batch(
         for result in state {
             match result {
                 Ok(cmd) => {
-                    if let Command::Expense { ref amount, .. } = cmd
-                        && let Some(amt_str) = amount
-                        && let Ok(amt_val) = amt_str.parse::<f64>()
+                    if let Command::Expense {
+                        amount: Some(amt_val),
+                        ..
+                    } = cmd
                     {
                         expense_count += 1;
                         total_amount += amt_val;

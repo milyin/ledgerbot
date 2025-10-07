@@ -37,6 +37,22 @@ pub async fn add_expenses(
     }
 }
 
+/// Add a single expense
+pub async fn add_expense(
+    storage: &ExpenseStorage,
+    chat_id: ChatId,
+    description: &str,
+    amount: f64,
+    timestamp: i64,
+) {
+    add_expenses(
+        storage,
+        chat_id,
+        vec![(description.to_string(), amount, timestamp)],
+    )
+    .await;
+}
+
 /// Clear all expenses for a specific chat
 pub async fn clear_chat_expenses(storage: &ExpenseStorage, chat_id: ChatId) {
     let mut storage_guard = storage.lock().await;
