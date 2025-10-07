@@ -29,10 +29,7 @@ pub async fn add_to_batch(
         }
         None => {
             // Start new batch for this chat
-            batch_guard.insert(
-                chat_id,
-                Vec::new(),
-            );
+            batch_guard.insert(chat_id, Vec::new());
             true
         }
     }
@@ -64,13 +61,12 @@ pub async fn execute_batch(
         for result in state {
             match result {
                 Ok(cmd) => {
-                    if let Command::Expense { ref amount, .. } = cmd {
-                        if let Some(amt_str) = amount {
-                            if let Ok(amt_val) = amt_str.parse::<f64>() {
-                                expense_count += 1;
-                                total_amount += amt_val;
-                            }
-                        }
+                    if let Command::Expense { ref amount, .. } = cmd
+                        && let Some(amt_str) = amount
+                        && let Ok(amt_val) = amt_str.parse::<f64>()
+                    {
+                        expense_count += 1;
+                        total_amount += amt_val;
                     }
                     let exec_result = execute_command(
                         bot.clone(),
@@ -78,7 +74,7 @@ pub async fn execute_batch(
                         storage.clone(),
                         category_storage.clone(),
                         cmd,
-                        true
+                        true,
                     )
                     .await;
                     if let Err(e) = exec_result {
@@ -87,7 +83,11 @@ pub async fn execute_batch(
                 }
                 Err(err_msg) => {
                     // Send error message to user
-                    log::warn!("Parse error in batch for chat {}: {}", target_chat_id, err_msg);
+                    log::warn!(
+                        "Parse error in batch for chat {}: {}",
+                        target_chat_id,
+                        err_msg
+                    );
                     if let Err(e) = bot
                         .send_message(target_chat_id, format!("❌ {}", err_msg))
                         .await

@@ -318,18 +318,22 @@ mod tests {
         let results = parse_expenses(text, None, timestamp);
 
         assert_eq!(results.len(), 2);
-        
+
         // Check first expense
-        assert!(matches!(&results[0], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[0], Ok(Command::Expense { date, description, amount })
             if date == &Some("2024-10-05".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
-        
+            && amount == &Some("5.50".to_string()))
+        );
+
         // Check second expense
-        assert!(matches!(&results[1], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[1], Ok(Command::Expense { date, description, amount })
             if date == &Some("2024-10-06".to_string())
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string())));
+            && amount == &Some("12.00".to_string()))
+        );
     }
 
     #[test]
@@ -340,18 +344,22 @@ mod tests {
         let results = parse_expenses(text, None, timestamp);
 
         assert_eq!(results.len(), 2);
-        
+
         // Check first expense
-        assert!(matches!(&results[0], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[0], Ok(Command::Expense { date, description, amount })
             if date == &Some("2024-10-05".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
-        
+            && amount == &Some("5.50".to_string()))
+        );
+
         // Check second expense
-        assert!(matches!(&results[1], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[1], Ok(Command::Expense { date, description, amount })
             if date == &Some("2024-10-06".to_string())
             && description == &Some("Tea".to_string())
-            && amount == &Some("3.00".to_string())));
+            && amount == &Some("3.00".to_string()))
+        );
     }
 
     #[test]
@@ -362,18 +370,22 @@ mod tests {
         let results = parse_expenses(text, None, timestamp);
 
         assert_eq!(results.len(), 2);
-        
+
         // Check first expense (should use message timestamp as 2021-01-01)
-        assert!(matches!(&results[0], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[0], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
-        
+            && amount == &Some("5.50".to_string()))
+        );
+
         // Check second expense
-        assert!(matches!(&results[1], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[1], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string())));
+            && amount == &Some("12.00".to_string()))
+        );
     }
 
     #[test]
@@ -384,24 +396,30 @@ mod tests {
         let results = parse_expenses(text, None, timestamp);
 
         assert_eq!(results.len(), 3);
-        
+
         // Check first expense with explicit date
-        assert!(matches!(&results[0], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[0], Ok(Command::Expense { date, description, amount })
             if date == &Some("2024-10-05".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
-        
+            && amount == &Some("5.50".to_string()))
+        );
+
         // Check second expense without date (should use message timestamp)
-        assert!(matches!(&results[1], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[1], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string())));
-        
+            && amount == &Some("12.00".to_string()))
+        );
+
         // Check third expense with explicit date
-        assert!(matches!(&results[2], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[2], Ok(Command::Expense { date, description, amount })
             if date == &Some("2024-10-06".to_string())
             && description == &Some("Dinner".to_string())
-            && amount == &Some("15.00".to_string())));
+            && amount == &Some("15.00".to_string()))
+        );
     }
 
     #[test]
@@ -412,22 +430,28 @@ mod tests {
         let results = parse_expenses(text, Some("testbot"), timestamp);
 
         assert_eq!(results.len(), 3);
-        
+
         // Check all expenses are parsed correctly with bot name removed
-        assert!(matches!(&results[0], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[0], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
-        
-        assert!(matches!(&results[1], Ok(Command::Expense { date, description, amount })
+            && amount == &Some("5.50".to_string()))
+        );
+
+        assert!(
+            matches!(&results[1], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string())));
-        
-        assert!(matches!(&results[2], Ok(Command::Expense { date, description, amount })
+            && amount == &Some("12.00".to_string()))
+        );
+
+        assert!(
+            matches!(&results[2], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Bus ticket".to_string())
-            && amount == &Some("2.75".to_string())));
+            && amount == &Some("2.75".to_string()))
+        );
     }
 
     #[test]
@@ -438,24 +462,28 @@ mod tests {
         let results = parse_expenses(text, None, timestamp);
 
         assert_eq!(results.len(), 4);
-        
+
         // Check first command
         assert!(matches!(&results[0], Ok(Command::Help)));
-        
+
         // Check first expense
-        assert!(matches!(&results[1], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[1], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
-        
+            && amount == &Some("5.50".to_string()))
+        );
+
         // Check second command
         assert!(matches!(&results[2], Ok(Command::Report)));
-        
+
         // Check second expense
-        assert!(matches!(&results[3], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[3], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string())));
+            && amount == &Some("12.00".to_string()))
+        );
     }
 
     #[test]
@@ -466,28 +494,34 @@ mod tests {
         let results = parse_expenses(text, Some("mybot"), timestamp);
 
         assert_eq!(results.len(), 5);
-        
+
         // Check first expense
-        assert!(matches!(&results[0], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[0], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
-        
+            && amount == &Some("5.50".to_string()))
+        );
+
         // Check first command
         assert!(matches!(&results[1], Ok(Command::Help)));
-        
+
         // Check second expense
-        assert!(matches!(&results[2], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[2], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string())));
-        
+            && amount == &Some("12.00".to_string()))
+        );
+
         // Check third expense
-        assert!(matches!(&results[3], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[3], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Bus ticket".to_string())
-            && amount == &Some("2.75".to_string())));
-        
+            && amount == &Some("2.75".to_string()))
+        );
+
         // Check second command
         assert!(matches!(&results[4], Ok(Command::Report)));
     }
@@ -500,16 +534,20 @@ mod tests {
         let results = parse_expenses(text, Some("testbot"), timestamp);
 
         assert_eq!(results.len(), 2);
-        
-        assert!(matches!(&results[0], Ok(Command::Expense { date, description, amount })
+
+        assert!(
+            matches!(&results[0], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
-        
-        assert!(matches!(&results[1], Ok(Command::Expense { date, description, amount })
+            && amount == &Some("5.50".to_string()))
+        );
+
+        assert!(
+            matches!(&results[1], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Lunch".to_string())
-            && amount == &Some("12.00".to_string())));
+            && amount == &Some("12.00".to_string()))
+        );
     }
 
     #[test]
@@ -520,7 +558,7 @@ mod tests {
         let results = parse_expenses(text, Some("mybot"), timestamp);
 
         assert_eq!(results.len(), 3);
-        
+
         assert!(matches!(&results[0], Ok(Command::Help)));
         assert!(matches!(&results[1], Ok(Command::Report)));
         assert!(matches!(&results[2], Ok(Command::Clear)));
@@ -690,23 +728,29 @@ mod tests {
         // Commands with parameters (4 commands)
         assert!(matches!(&results[7], Ok(Command::AddCategory { name })
             if name == &Some("Food".to_string())));
-        
-        assert!(matches!(&results[8], Ok(Command::AddFilter { category, pattern })
+
+        assert!(
+            matches!(&results[8], Ok(Command::AddFilter { category, pattern })
             if category == &Some("Food".to_string())
-            && pattern == &Some("(?i)lunch".to_string())));
-        
+            && pattern == &Some("(?i)lunch".to_string()))
+        );
+
         assert!(matches!(&results[9], Ok(Command::RemoveCategory { name })
             if name == &Some("Transport".to_string())));
-        
-        assert!(matches!(&results[10], Ok(Command::RemoveFilter { category, pattern })
+
+        assert!(
+            matches!(&results[10], Ok(Command::RemoveFilter { category, pattern })
             if category == &Some("Food".to_string())
-            && pattern == &Some("(?i)coffee".to_string())));
+            && pattern == &Some("(?i)coffee".to_string()))
+        );
 
         // Check the expense
-        assert!(matches!(&results[11], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[11], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
+            && amount == &Some("5.50".to_string()))
+        );
 
         // Duplicate command without parameters to verify repeatability
         assert!(matches!(&results[12], Ok(Command::List)));
@@ -733,22 +777,28 @@ mod tests {
         // Commands with missing parameters are now parsed as None
         // All commands now parse successfully with optional parameters
         assert!(matches!(&results[0], Ok(Command::AddCategory { name }) if name.is_none()));
-        
-        assert!(matches!(&results[1], Ok(Command::AddFilter { category, pattern })
-            if category.is_none() && pattern.is_none()));
-        
+
+        assert!(
+            matches!(&results[1], Ok(Command::AddFilter { category, pattern })
+            if category.is_none() && pattern.is_none())
+        );
+
         assert!(matches!(&results[2], Ok(Command::RemoveCategory { name }) if name.is_none()));
-        
-        assert!(matches!(&results[3], Ok(Command::RemoveFilter { category, pattern })
-            if category.is_none() && pattern.is_none()));
-        
+
+        assert!(
+            matches!(&results[3], Ok(Command::RemoveFilter { category, pattern })
+            if category.is_none() && pattern.is_none())
+        );
+
         assert!(matches!(&results[4], Ok(Command::AddCategory { name })
             if name == &Some("Food".to_string())));
 
         // Check the expense
-        assert!(matches!(&results[5], Ok(Command::Expense { date, description, amount })
+        assert!(
+            matches!(&results[5], Ok(Command::Expense { date, description, amount })
             if date == &Some("2021-01-01".to_string())
             && description == &Some("Coffee".to_string())
-            && amount == &Some("5.50".to_string())));
+            && amount == &Some("5.50".to_string()))
+        );
     }
 }

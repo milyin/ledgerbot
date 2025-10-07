@@ -38,9 +38,8 @@ fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<Strin
 }
 
 /// Custom parser for three optional string parameters (date, description, amount)
-fn parse_three_optional_strings(
-    s: String,
-) -> Result<(Option<String>, Option<String>, Option<String>), ParseError> {
+pub type ThreeOptStrings = (Option<String>, Option<String>, Option<String>);
+fn parse_three_optional_strings(s: String) -> Result<ThreeOptStrings, ParseError> {
     // Take only the first line to prevent multi-line capture
     let first_line = s.lines().next().unwrap_or("").trim();
     if first_line.is_empty() {
@@ -896,21 +895,13 @@ pub async fn execute_command(
             clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
         }
         Command::ClearCategories => {
-            clear_categories_command(bot.clone(), msg.clone(), category_storage.clone())
-                .await?;
+            clear_categories_command(bot.clone(), msg.clone(), category_storage.clone()).await?;
         }
         Command::AddCategory { name } => {
-            category_command(
-                bot.clone(),
-                msg.clone(),
-                category_storage.clone(),
-                name,
-            )
-            .await?;
+            category_command(bot.clone(), msg.clone(), category_storage.clone(), name).await?;
         }
         Command::Categories => {
-            categories_command(bot.clone(), msg.clone(), category_storage.clone())
-                .await?;
+            categories_command(bot.clone(), msg.clone(), category_storage.clone()).await?;
         }
         Command::AddFilter { category, pattern } => {
             add_filter_command(
@@ -923,13 +914,8 @@ pub async fn execute_command(
             .await?;
         }
         Command::RemoveCategory { name } => {
-            remove_category_command(
-                bot.clone(),
-                msg.clone(),
-                category_storage.clone(),
-                name,
-            )
-            .await?;
+            remove_category_command(bot.clone(), msg.clone(), category_storage.clone(), name)
+                .await?;
         }
         Command::RemoveFilter { category, pattern } => {
             remove_filter_command(

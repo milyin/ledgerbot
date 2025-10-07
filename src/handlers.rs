@@ -48,12 +48,7 @@ pub async fn handle_text_message(
         // For single-line messages, execute immediately
         if is_multiline {
             // Add to batch storage for deferred execution
-            let is_first_message = add_to_batch(
-                &batch_storage,
-                chat_id,
-                parsed_results,
-            )
-            .await;
+            let is_first_message = add_to_batch(&batch_storage, chat_id, parsed_results).await;
 
             // Start timeout task only for the first message in batch
             if is_first_message {
@@ -98,8 +93,7 @@ pub async fn handle_text_message(
                     Err(err_msg) => {
                         // Send error message to user
                         log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
-                        bot.send_message(chat_id, format!("❌ {}", err_msg))
-                            .await?;
+                        bot.send_message(chat_id, format!("❌ {}", err_msg)).await?;
                     }
                 }
             }
