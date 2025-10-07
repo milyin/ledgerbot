@@ -6,17 +6,8 @@ use tokio::sync::Mutex;
 use crate::commands::Command;
 use crate::config::BATCH_TIMEOUT_SECONDS;
 
-/// Batch processing state for a chat
-#[derive(Clone)]
-pub struct BatchState {
-    pub messages_count: usize,
-    pub records_count: usize,
-    pub total_sum: f64,
-    pub commands: Vec<Result<Command, String>>, // Store commands for deferred execution
-}
-
 /// Per-chat batch storage - each chat has its own batch state
-pub type BatchStorage = Arc<Mutex<HashMap<ChatId, BatchState>>>;
+pub type BatchStorage = Arc<Mutex<HashMap<ChatId, Vec<Result<Command, String>>>>>;
 
 /// Create a new batch storage
 pub fn create_batch_storage() -> BatchStorage {
@@ -27,30 +18,20 @@ pub fn create_batch_storage() -> BatchStorage {
 pub async fn add_to_batch(
     batch_storage: &BatchStorage,
     chat_id: ChatId,
-    message_count: usize,
-    total: f64,
     commands: Vec<Result<Command, String>>,
 ) -> bool {
     let mut batch_guard = batch_storage.lock().await;
     match batch_guard.get_mut(&chat_id) {
         Some(state) => {
             // Update existing batch for this chat
-            state.messages_count += 1;
-            state.records_count += message_count;
-            state.total_sum += total;
-            state.commands.extend(commands);
+            state.extend(commands);
             false
         }
         None => {
             // Start new batch for this chat
             batch_guard.insert(
                 chat_id,
-                BatchState {
-                    messages_count: 1,
-                    records_count: message_count,
-                    total_sum: total,
-                    commands,
-                },
+                Vec::new(),
             );
             true
         }
@@ -58,7 +39,7 @@ pub async fn add_to_batch(
 }
 
 /// Send batch report after timeout and execute stored commands
-pub async fn send_batch_report(
+pub async fn execute_batch(
     bot: Bot,
     batch_storage: BatchStorage,
     target_chat_id: ChatId,
@@ -75,17 +56,29 @@ pub async fn send_batch_report(
         batch_guard.remove(&target_chat_id)
     };
 
+    let mut expense_count: usize = 0;
+    let mut total_amount: f64 = 0.0;
+
     if let Some(state) = batch_data {
         // Execute all stored commands
-        for result in state.commands {
+        for result in state {
             match result {
                 Ok(cmd) => {
+                    if let Command::Expense { ref amount, .. } = cmd {
+                        if let Some(amt_str) = amount {
+                            if let Ok(amt_val) = amt_str.parse::<f64>() {
+                                expense_count += 1;
+                                total_amount += amt_val;
+                            }
+                        }
+                    }
                     let exec_result = execute_command(
                         bot.clone(),
                         msg.clone(),
                         storage.clone(),
                         category_storage.clone(),
                         cmd,
+                        true
                     )
                     .await;
                     if let Err(e) = exec_result {
@@ -107,11 +100,10 @@ pub async fn send_batch_report(
 
         let report = format!(
             "✅ **Batch Summary Report**\n\n\
-            Messages processed: {}\n\
-            Records parsed: {}\n\
+            Expense records parsed: {}\n\
             Total amount: {:.2}\n\n\
             Use `/list` or `/report` to see all expenses.",
-            state.messages_count, state.records_count, state.total_sum
+            expense_count, total_amount
         );
 
         if let Err(e) = bot.send_message(target_chat_id, report).await {
@@ -127,6 +119,7 @@ async fn execute_command(
     storage: crate::storage::ExpenseStorage,
     category_storage: crate::storage::CategoryStorage,
     cmd: Command,
+    silent: bool
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match cmd {
         Command::Start => {
@@ -147,6 +140,7 @@ async fn execute_command(
                 date,
                 description,
                 amount,
+                silent
             )
             .await?;
         }

@@ -1,7 +1,7 @@
 use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
 
-use crate::batch::{BatchStorage, add_to_batch, send_batch_report};
+use crate::batch::{BatchStorage, add_to_batch, execute_batch};
 use crate::commands::{
     Command, add_filter_menu, categories_command, clear_command, help_command, list_command,
     remove_category_menu, remove_filter_menu, report_command, show_category_filters_for_removal,
@@ -44,31 +44,13 @@ pub async fn handle_text_message(
         // Check if this is a multiline message
         let is_multiline = text.lines().filter(|line| !line.trim().is_empty()).count() > 1;
 
-        // Track expenses for batch processing
-        let mut expense_count = 0;
-        let mut total_amount = 0.0;
-
         // For multiline messages, collect commands for batch execution
         // For single-line messages, execute immediately
         if is_multiline {
-            // Collect commands and calculate statistics
-            for result in &parsed_results {
-                if let Ok(Command::Expense { amount, .. }) = result {
-                    if let Some(amt_str) = amount {
-                        if let Ok(amt_val) = amt_str.parse::<f64>() {
-                            expense_count += 1;
-                            total_amount += amt_val;
-                        }
-                    }
-                }
-            }
-
             // Add to batch storage for deferred execution
             let is_first_message = add_to_batch(
                 &batch_storage,
                 chat_id,
-                expense_count,
-                total_amount,
                 parsed_results,
             )
             .await;
@@ -81,7 +63,7 @@ pub async fn handle_text_message(
                 let category_storage_clone = category_storage.clone();
                 let msg_clone = msg.clone();
                 tokio::spawn(async move {
-                    send_batch_report(
+                    execute_batch(
                         bot_clone,
                         batch_clone,
                         chat_id,
@@ -110,14 +92,6 @@ pub async fn handle_text_message(
                             description,
                             amount,
                         } => {
-                            // Track expense for batch processing
-                            if let Some(ref amt_str) = amount {
-                                if let Ok(amt_val) = amt_str.parse::<f64>() {
-                                    expense_count += 1;
-                                    total_amount += amt_val;
-                                }
-                            }
-
                             crate::commands::expense_command(
                                 bot.clone(),
                                 msg.clone(),
@@ -125,6 +99,7 @@ pub async fn handle_text_message(
                                 date,
                                 description,
                                 amount,
+                                false
                             )
                             .await?;
                         }

@@ -176,6 +176,7 @@ pub async fn expense_command(
     date: Option<String>,
     description: Option<String>,
     amount: Option<String>,
+    silent: bool,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
@@ -205,21 +206,24 @@ pub async fn expense_command(
                     )
                     .await;
 
-                    // Format date for display
-                    let date_display = if let Some(d) = date {
-                        d
-                    } else {
-                        use chrono::{DateTime, Utc};
-                        let dt: DateTime<Utc> =
-                            DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
-                        dt.format("%Y-%m-%d").to_string()
-                    };
+                    // Send confirmation message only if not silent
+                    if !silent {
+                        // Format date for display
+                        let date_display = if let Some(d) = date {
+                            d
+                        } else {
+                            use chrono::{DateTime, Utc};
+                            let dt: DateTime<Utc> =
+                                DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
+                            dt.format("%Y-%m-%d").to_string()
+                        };
 
-                    bot.send_message(
-                        chat_id,
-                        format!("✅ Expense added: {} {} {}", date_display, desc, amount_val),
-                    )
-                    .await?;
+                        bot.send_message(
+                            chat_id,
+                            format!("✅ Expense added: {} {} {}", date_display, desc, amount_val),
+                        )
+                        .await?;
+                    }
                 }
                 Err(_) => {
                     bot.send_message(
