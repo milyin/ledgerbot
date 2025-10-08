@@ -1,7 +1,13 @@
 use clap::Parser;
 
-pub const PREDEFINED_BOT_TOKEN: Option<&str> = option_env!("PREDEFINED_BOT_TOKEN");
-pub const BOT_TOKEN_HELP: &str = if PREDEFINED_BOT_TOKEN.is_some() {
+pub const PREDEFINED_BOT_TOKEN_RELEASE: Option<&str> = option_env!("PREDEFINED_BOT_TOKEN_RELEASE");
+pub const PREDEFINED_BOT_TOKEN_DEBUG: Option<&str> = option_env!("PREDEFINED_BOT_TOKEN_DEBUG");
+pub const PREDEFINED_BOT_TOKEN: Option<&str> = if cfg!(debug_assertions) {
+    PREDEFINED_BOT_TOKEN_DEBUG
+} else {
+    PREDEFINED_BOT_TOKEN_RELEASE
+};
+pub const BOT_TOKEN_HELP: &str = if PREDEFINED_BOT_TOKEN_RELEASE.is_some() {
     "Environment variable name containing the bot token. If not set, uses precompiled token"
 } else {
     "Environment variable name containing the bot token (required)"

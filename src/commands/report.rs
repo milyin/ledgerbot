@@ -84,51 +84,39 @@ fn format_expenses_list(expenses: &[Expense], categories: &HashMap<String, Vec<S
     // Display categorized expenses
     for category_name in category_names {
         if let Some(items) = categorized.get(&category_name) {
-            let mut category_total = 0.0;
-            result.push_str(&format!("*{}*:\n", escape(&category_name)));
-
-            for expense in items {
-                let date_str = format_timestamp(expense.timestamp);
-                result.push_str(&format!(
-                    "  • {} {} {}\n",
-                    escape(&date_str),
-                    escape(&expense.description),
-                    escape(&expense.amount.to_string()),
-                ));
-                category_total += expense.amount;
-                total += expense.amount;
-            }
-
-            result.push_str(&format!(
-                "  *Subtotal: {}*\n\n",
-                escape(&category_total.to_string())
-            ));
+            total += format_category_section(&mut result, &category_name, items);
         }
     }
 
     // Display uncategorized expenses
     if !uncategorized.is_empty() {
-        let mut uncategorized_total = 0.0;
-        result.push_str("*Other:*\n");
-
-        for expense in uncategorized {
-            let date_str = format_timestamp(expense.timestamp);
-            result.push_str(&format!(
-                "  • {} {} {}\n",
-                escape(&date_str),
-                escape(&expense.description),
-                escape(&expense.amount.to_string()),
-            ));
-            uncategorized_total += expense.amount;
-            total += expense.amount;
-        }
-
-        result.push_str(&format!(
-            "  *Subtotal: {}*\n\n",
-            escape(&uncategorized_total.to_string())
-        ));
+        total += format_category_section(&mut result, "Other", &uncategorized);
     }
 
     result.push_str(&format!("*Total: {}*", escape(&total.to_string())));
     result
+}
+
+/// Helper function to format a single category section with its expenses
+fn format_category_section(result: &mut String, category_name: &str, expenses: &[Expense]) -> f64 {
+    let mut category_total = 0.0;
+    result.push_str(&format!("*{}*:\n", escape(category_name)));
+
+    for expense in expenses {
+        let date_str = format_timestamp(expense.timestamp);
+        result.push_str(&format!(
+            "  • {} {} {}\n",
+            escape(&date_str),
+            escape(&expense.description),
+            escape(&expense.amount.to_string()),
+        ));
+        category_total += expense.amount;
+    }
+
+    result.push_str(&format!(
+        "  *Subtotal: {}*\n\n",
+        escape(&category_total.to_string())
+    ));
+
+    category_total
 }
