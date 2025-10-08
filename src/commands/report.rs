@@ -108,7 +108,7 @@ pub async fn report_command(
     let chat_id = msg.chat.id;
     let chat_expenses = get_chat_expenses(&storage, chat_id).await;
     let chat_categories = get_chat_categories(&category_storage, chat_id).await;
-    
+
     // Check for category conflicts before generating report
     if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
         bot.send_message(chat_id, conflict_message)
@@ -116,7 +116,7 @@ pub async fn report_command(
             .await?;
         return Ok(());
     }
-    
+
     let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
 
     bot.send_message(chat_id, expenses_list)

@@ -193,11 +193,11 @@ pub async fn handle_callback_query(
     let Some(message) = q.message else {
         return Ok(());
     };
-    
+
     let Some(msg) = message.regular_message() else {
         return Ok(());
     };
-    
+
     let msg = msg.clone();
     let chat_id = msg.chat.id;
 
@@ -205,7 +205,7 @@ pub async fn handle_callback_query(
     let Some(data_str) = &q.data else {
         return Ok(());
     };
-    
+
     let callback_data = match CallbackData::from_str(data_str) {
         Ok(data) => data,
         Err(err) => {

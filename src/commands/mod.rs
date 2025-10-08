@@ -228,10 +228,7 @@ pub async fn show_filter_word_suggestions(
         ));
     } else {
         // Inactive button with dummy callback data
-        control_row.push(InlineKeyboardButton::callback(
-            "◁",
-            CallbackData::Noop,
-        ));
+        control_row.push(InlineKeyboardButton::callback("◁", CallbackData::Noop));
     }
 
     // Next page button (always shown, inactive if on last page)
@@ -242,10 +239,7 @@ pub async fn show_filter_word_suggestions(
         ));
     } else {
         // Inactive button with dummy callback data
-        control_row.push(InlineKeyboardButton::callback(
-            "️▷",
-            CallbackData::Noop,
-        ));
+        control_row.push(InlineKeyboardButton::callback("️▷", CallbackData::Noop));
     }
 
     // Apply button - puts /add_filter command with generated regexp in input box
