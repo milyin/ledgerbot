@@ -3,26 +3,19 @@ use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
 
 use crate::batch::{BatchStorage, add_to_batch, execute_batch};
-use crate::commands::categories::{
-    categories_command, remove_category_menu, show_category_filters_for_removal,
-};
-use crate::commands::expenses::{clear_command, list_command};
+use crate::commands::categories::show_category_filters_for_removal;
 use crate::commands::filters::{add_filter_menu, remove_filter_menu};
-use crate::commands::help::help_command;
-use crate::commands::report::report_command;
 use crate::commands::{execute_command, show_filter_word_suggestions};
 use crate::parser::parse_expenses;
 use crate::storage::{
     CategoryStorage, ExpenseStorage, FilterPageStorage, FilterSelectionStorage,
     clear_filter_page_offset, clear_filter_selection, get_filter_page_offset, get_filter_selection,
-    remove_category, remove_category_filter, set_filter_page_offset, set_filter_selection,
+    set_filter_page_offset, set_filter_selection,
 };
 
 /// Represents all possible callback data from inline keyboard buttons
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallbackData {
-    /// Remove a category by name
-    RemoveCategory(String),
     /// Show filter word suggestions for a category
     AddFilterCategory(String),
     /// Toggle a word in filter selection
@@ -33,24 +26,10 @@ pub enum CallbackData {
     PageNext(String),
     /// Show filters for removal in a category
     RemoveFilterCategory(String),
-    /// Remove a specific filter
-    RemoveFilter { category: String, pattern: String },
-    /// Command: List expenses
-    CmdList,
-    /// Command: Show report
-    CmdReport,
-    /// Command: Clear expenses
-    CmdClear,
-    /// Command: List categories
-    CmdCategories,
-    /// Command: Remove category menu
-    CmdRemoveCategory,
     /// Command: Add filter menu
     CmdAddFilter,
     /// Command: Remove filter menu
     CmdRemoveFilter,
-    /// Command: Back to help
-    CmdBackToHelp,
     /// No operation (inactive button)
     Noop,
 }
@@ -59,9 +38,7 @@ impl FromStr for CallbackData {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(category) = s.strip_prefix("remove_cat:") {
-            Ok(CallbackData::RemoveCategory(category.to_string()))
-        } else if let Some(category) = s.strip_prefix("add_filter_cat:") {
+        if let Some(category) = s.strip_prefix("add_filter_cat:") {
             Ok(CallbackData::AddFilterCategory(category.to_string()))
         } else if let Some(rest) = s.strip_prefix("toggle_word:") {
             let parts: Vec<&str> = rest.splitn(2, ':').collect();
@@ -79,26 +56,10 @@ impl FromStr for CallbackData {
             Ok(CallbackData::PageNext(category.to_string()))
         } else if let Some(category) = s.strip_prefix("remove_filter_cat:") {
             Ok(CallbackData::RemoveFilterCategory(category.to_string()))
-        } else if let Some(rest) = s.strip_prefix("remove_filter:") {
-            let parts: Vec<&str> = rest.splitn(2, ':').collect();
-            if parts.len() == 2 {
-                Ok(CallbackData::RemoveFilter {
-                    category: parts[0].to_string(),
-                    pattern: parts[1].to_string(),
-                })
-            } else {
-                Err(format!("Invalid remove_filter format: {}", s))
-            }
         } else {
             match s {
-                "cmd_list" => Ok(CallbackData::CmdList),
-                "cmd_report" => Ok(CallbackData::CmdReport),
-                "cmd_clear" => Ok(CallbackData::CmdClear),
-                "cmd_categories" => Ok(CallbackData::CmdCategories),
-                "cmd_remove_category" => Ok(CallbackData::CmdRemoveCategory),
                 "cmd_add_filter" => Ok(CallbackData::CmdAddFilter),
                 "cmd_remove_filter" => Ok(CallbackData::CmdRemoveFilter),
-                "cmd_back_to_help" => Ok(CallbackData::CmdBackToHelp),
                 "noop" => Ok(CallbackData::Noop),
                 _ => Err(format!("Unknown callback data: {}", s)),
             }
@@ -109,7 +70,6 @@ impl FromStr for CallbackData {
 impl From<CallbackData> for String {
     fn from(data: CallbackData) -> String {
         match data {
-            CallbackData::RemoveCategory(cat) => format!("remove_cat:{}", cat),
             CallbackData::AddFilterCategory(cat) => format!("add_filter_cat:{}", cat),
             CallbackData::ToggleWord { category, word } => {
                 format!("toggle_word:{}:{}", category, word)
@@ -117,17 +77,8 @@ impl From<CallbackData> for String {
             CallbackData::PagePrev(cat) => format!("page_prev:{}", cat),
             CallbackData::PageNext(cat) => format!("page_next:{}", cat),
             CallbackData::RemoveFilterCategory(cat) => format!("remove_filter_cat:{}", cat),
-            CallbackData::RemoveFilter { category, pattern } => {
-                format!("remove_filter:{}:{}", category, pattern)
-            }
-            CallbackData::CmdList => "cmd_list".to_string(),
-            CallbackData::CmdReport => "cmd_report".to_string(),
-            CallbackData::CmdClear => "cmd_clear".to_string(),
-            CallbackData::CmdCategories => "cmd_categories".to_string(),
-            CallbackData::CmdRemoveCategory => "cmd_remove_category".to_string(),
             CallbackData::CmdAddFilter => "cmd_add_filter".to_string(),
             CallbackData::CmdRemoveFilter => "cmd_remove_filter".to_string(),
-            CallbackData::CmdBackToHelp => "cmd_back_to_help".to_string(),
             CallbackData::Noop => "noop".to_string(),
         }
     }
@@ -265,11 +216,6 @@ pub async fn handle_callback_query(
 
     // Handle the callback using pattern matching
     match callback_data {
-        CallbackData::RemoveCategory(category_name) => {
-            remove_category(&category_storage, chat_id, &category_name).await;
-            remove_category_menu(bot, chat_id, message.id(), category_storage).await?;
-        }
-
         CallbackData::AddFilterCategory(category_name) => {
             // Clear any previous selection and page offset
             clear_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
@@ -391,42 +337,12 @@ pub async fn handle_callback_query(
             .await?;
         }
 
-        CallbackData::RemoveFilter { category, pattern } => {
-            remove_category_filter(&category_storage, chat_id, &category, &pattern).await;
-            show_category_filters_for_removal(bot, chat_id, message.id(), category_storage, category)
-                .await?;
-        }
-
-        CallbackData::CmdList => {
-            list_command(bot, msg, storage).await?;
-        }
-
-        CallbackData::CmdReport => {
-            report_command(bot, msg, storage, category_storage).await?;
-        }
-
-        CallbackData::CmdClear => {
-            clear_command(bot, msg, storage).await?;
-        }
-
-        CallbackData::CmdCategories => {
-            categories_command(bot, msg, category_storage).await?;
-        }
-
-        CallbackData::CmdRemoveCategory => {
-            remove_category_menu(bot, chat_id, message.id(), category_storage).await?;
-        }
-
         CallbackData::CmdAddFilter => {
             add_filter_menu(bot, chat_id, message.id(), category_storage).await?;
         }
 
         CallbackData::CmdRemoveFilter => {
             remove_filter_menu(bot, chat_id, message.id(), category_storage).await?;
-        }
-
-        CallbackData::CmdBackToHelp => {
-            help_command(bot, msg).await?;
         }
 
         CallbackData::Noop => {
