@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
 
@@ -6,7 +7,7 @@ use crate::commands::categories::{
     categories_command, remove_category_menu, show_category_filters_for_removal,
 };
 use crate::commands::expenses::{clear_command, list_command};
-use crate::commands::filters::{add_filter_command, add_filter_menu, remove_filter_menu};
+use crate::commands::filters::{add_filter_menu, remove_filter_menu};
 use crate::commands::help::help_command;
 use crate::commands::report::report_command;
 use crate::commands::{execute_command, show_filter_word_suggestions};
@@ -16,6 +17,123 @@ use crate::storage::{
     clear_filter_page_offset, clear_filter_selection, get_filter_page_offset, get_filter_selection,
     remove_category, remove_category_filter, set_filter_page_offset, set_filter_selection,
 };
+
+/// Represents all possible callback data from inline keyboard buttons
+#[derive(Debug, Clone, PartialEq)]
+pub enum CallbackData {
+    /// Remove a category by name
+    RemoveCategory(String),
+    /// Show filter word suggestions for a category
+    AddFilterCategory(String),
+    /// Toggle a word in filter selection
+    ToggleWord { category: String, word: String },
+    /// Navigate to previous page
+    PagePrev(String),
+    /// Navigate to next page
+    PageNext(String),
+    /// Show filters for removal in a category
+    RemoveFilterCategory(String),
+    /// Remove a specific filter
+    RemoveFilter { category: String, pattern: String },
+    /// Command: List expenses
+    CmdList,
+    /// Command: Show report
+    CmdReport,
+    /// Command: Clear expenses
+    CmdClear,
+    /// Command: List categories
+    CmdCategories,
+    /// Command: Remove category menu
+    CmdRemoveCategory,
+    /// Command: Add filter menu
+    CmdAddFilter,
+    /// Command: Remove filter menu
+    CmdRemoveFilter,
+    /// Command: Back to help
+    CmdBackToHelp,
+    /// No operation (inactive button)
+    Noop,
+}
+
+impl FromStr for CallbackData {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(category) = s.strip_prefix("remove_cat:") {
+            Ok(CallbackData::RemoveCategory(category.to_string()))
+        } else if let Some(category) = s.strip_prefix("add_filter_cat:") {
+            Ok(CallbackData::AddFilterCategory(category.to_string()))
+        } else if let Some(rest) = s.strip_prefix("toggle_word:") {
+            let parts: Vec<&str> = rest.splitn(2, ':').collect();
+            if parts.len() == 2 {
+                Ok(CallbackData::ToggleWord {
+                    category: parts[0].to_string(),
+                    word: parts[1].to_string(),
+                })
+            } else {
+                Err(format!("Invalid toggle_word format: {}", s))
+            }
+        } else if let Some(category) = s.strip_prefix("page_prev:") {
+            Ok(CallbackData::PagePrev(category.to_string()))
+        } else if let Some(category) = s.strip_prefix("page_next:") {
+            Ok(CallbackData::PageNext(category.to_string()))
+        } else if let Some(category) = s.strip_prefix("remove_filter_cat:") {
+            Ok(CallbackData::RemoveFilterCategory(category.to_string()))
+        } else if let Some(rest) = s.strip_prefix("remove_filter:") {
+            let parts: Vec<&str> = rest.splitn(2, ':').collect();
+            if parts.len() == 2 {
+                Ok(CallbackData::RemoveFilter {
+                    category: parts[0].to_string(),
+                    pattern: parts[1].to_string(),
+                })
+            } else {
+                Err(format!("Invalid remove_filter format: {}", s))
+            }
+        } else {
+            match s {
+                "cmd_list" => Ok(CallbackData::CmdList),
+                "cmd_report" => Ok(CallbackData::CmdReport),
+                "cmd_clear" => Ok(CallbackData::CmdClear),
+                "cmd_categories" => Ok(CallbackData::CmdCategories),
+                "cmd_remove_category" => Ok(CallbackData::CmdRemoveCategory),
+                "cmd_add_filter" => Ok(CallbackData::CmdAddFilter),
+                "cmd_remove_filter" => Ok(CallbackData::CmdRemoveFilter),
+                "cmd_back_to_help" => Ok(CallbackData::CmdBackToHelp),
+                "noop" => Ok(CallbackData::Noop),
+                _ => Err(format!("Unknown callback data: {}", s)),
+            }
+        }
+    }
+}
+
+impl CallbackData {
+    /// Convert callback data to string format for button callbacks
+    #[allow(dead_code)]
+    pub fn to_callback_string(&self) -> String {
+        match self {
+            CallbackData::RemoveCategory(cat) => format!("remove_cat:{}", cat),
+            CallbackData::AddFilterCategory(cat) => format!("add_filter_cat:{}", cat),
+            CallbackData::ToggleWord { category, word } => {
+                format!("toggle_word:{}:{}", category, word)
+            }
+            CallbackData::PagePrev(cat) => format!("page_prev:{}", cat),
+            CallbackData::PageNext(cat) => format!("page_next:{}", cat),
+            CallbackData::RemoveFilterCategory(cat) => format!("remove_filter_cat:{}", cat),
+            CallbackData::RemoveFilter { category, pattern } => {
+                format!("remove_filter:{}:{}", category, pattern)
+            }
+            CallbackData::CmdList => "cmd_list".to_string(),
+            CallbackData::CmdReport => "cmd_report".to_string(),
+            CallbackData::CmdClear => "cmd_clear".to_string(),
+            CallbackData::CmdCategories => "cmd_categories".to_string(),
+            CallbackData::CmdRemoveCategory => "cmd_remove_category".to_string(),
+            CallbackData::CmdAddFilter => "cmd_add_filter".to_string(),
+            CallbackData::CmdRemoveFilter => "cmd_remove_filter".to_string(),
+            CallbackData::CmdBackToHelp => "cmd_back_to_help".to_string(),
+            CallbackData::Noop => "noop".to_string(),
+        }
+    }
+}
 
 /// Handle text messages containing potential expense data
 pub async fn handle_text_message(
@@ -119,210 +237,202 @@ pub async fn handle_callback_query(
     filter_selection_storage: FilterSelectionStorage,
     filter_page_storage: FilterPageStorage,
 ) -> ResponseResult<()> {
-    if let Some(data) = &q.data {
-        // Answer the callback query to remove the loading state
-        bot.answer_callback_query(q.id.clone()).await?;
+    // Answer the callback query to remove the loading state
+    bot.answer_callback_query(q.id.clone()).await?;
 
-        // Get the message that contained the button
-        if let Some(message) = q.message
-            && let Some(msg) = message.regular_message()
-        {
-            let msg = msg.clone();
-            let chat_id = msg.chat.id;
+    // Get the message that contained the button
+    let Some(message) = q.message else {
+        return Ok(());
+    };
+    
+    let Some(msg) = message.regular_message() else {
+        return Ok(());
+    };
+    
+    let msg = msg.clone();
+    let chat_id = msg.chat.id;
 
-            // Handle remove_cat:CategoryName format
-            if data.starts_with("remove_cat:") {
-                let category_name = data.strip_prefix("remove_cat:").unwrap();
-                remove_category(&category_storage, chat_id, category_name).await;
-                // Show the updated remove menu
-                remove_category_menu(bot, chat_id, message.id(), category_storage).await?;
-            } else if data.starts_with("add_filter_cat:") {
-                // Show word suggestions for a specific category
-                let category_name = data.strip_prefix("add_filter_cat:").unwrap().to_string();
-                // Clear any previous selection and page offset
-                clear_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
-                clear_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
-                show_filter_word_suggestions(
-                    bot,
-                    chat_id,
-                    message.id(),
-                    storage.clone(),
-                    category_storage,
-                    filter_selection_storage.clone(),
-                    filter_page_storage.clone(),
-                    category_name,
-                )
-                .await?;
-            } else if data.starts_with("toggle_word:") {
-                // Handle toggle_word:CategoryName:Word format
-                let parts: Vec<&str> = data
-                    .strip_prefix("toggle_word:")
-                    .unwrap()
-                    .splitn(2, ':')
-                    .collect();
-                if parts.len() == 2 {
-                    let category_name = parts[0].to_string();
-                    let word = parts[1].to_string();
+    // Parse callback data string into enum
+    let Some(data_str) = &q.data else {
+        return Ok(());
+    };
+    
+    let callback_data = match CallbackData::from_str(data_str) {
+        Ok(data) => data,
+        Err(err) => {
+            log::warn!("Invalid callback data '{}': {}", data_str, err);
+            return Ok(());
+        }
+    };
 
-                    // Get current selection
-                    let mut selected_words =
-                        get_filter_selection(&filter_selection_storage, chat_id, &category_name)
-                            .await;
+    // Handle the callback using pattern matching
+    match callback_data {
+        CallbackData::RemoveCategory(category_name) => {
+            remove_category(&category_storage, chat_id, &category_name).await;
+            remove_category_menu(bot, chat_id, message.id(), category_storage).await?;
+        }
 
-                    // Toggle the word
-                    if let Some(pos) = selected_words.iter().position(|w| w == &word) {
-                        selected_words.remove(pos);
-                    } else {
-                        selected_words.push(word);
-                    }
+        CallbackData::AddFilterCategory(category_name) => {
+            // Clear any previous selection and page offset
+            clear_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
+            clear_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
+            show_filter_word_suggestions(
+                bot,
+                chat_id,
+                message.id(),
+                storage.clone(),
+                category_storage,
+                filter_selection_storage.clone(),
+                filter_page_storage.clone(),
+                category_name,
+            )
+            .await?;
+        }
 
-                    // Save updated selection
-                    set_filter_selection(
-                        &filter_selection_storage,
-                        chat_id,
-                        category_name.clone(),
-                        selected_words,
-                    )
-                    .await;
+        CallbackData::ToggleWord { category, word } => {
+            // Get current selection
+            let mut selected_words =
+                get_filter_selection(&filter_selection_storage, chat_id, &category).await;
 
-                    // Update the message with new selection
-                    show_filter_word_suggestions(
-                        bot,
-                        chat_id,
-                        message.id(),
-                        storage.clone(),
-                        category_storage,
-                        filter_selection_storage.clone(),
-                        filter_page_storage.clone(),
-                        category_name,
-                    )
-                    .await?;
-                }
-            } else if data.starts_with("page_prev:") {
-                // Handle page_prev:CategoryName format
-                let category_name = data.strip_prefix("page_prev:").unwrap().to_string();
-
-                // Get current page offset and decrease by 20
-                let current_offset =
-                    get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
-                let new_offset = current_offset.saturating_sub(20);
-
-                // Update page offset
-                set_filter_page_offset(
-                    &filter_page_storage,
-                    chat_id,
-                    category_name.clone(),
-                    new_offset,
-                )
-                .await;
-
-                // Refresh the display
-                show_filter_word_suggestions(
-                    bot,
-                    chat_id,
-                    message.id(),
-                    storage.clone(),
-                    category_storage,
-                    filter_selection_storage.clone(),
-                    filter_page_storage.clone(),
-                    category_name,
-                )
-                .await?;
-            } else if data.starts_with("page_next:") {
-                // Handle page_next:CategoryName format
-                let category_name = data.strip_prefix("page_next:").unwrap().to_string();
-
-                // Get current page offset and increase by 20
-                let current_offset =
-                    get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
-                let new_offset = current_offset + 20;
-
-                // Update page offset
-                set_filter_page_offset(
-                    &filter_page_storage,
-                    chat_id,
-                    category_name.clone(),
-                    new_offset,
-                )
-                .await;
-
-                // Refresh the display
-                show_filter_word_suggestions(
-                    bot,
-                    chat_id,
-                    message.id(),
-                    storage.clone(),
-                    category_storage,
-                    filter_selection_storage.clone(),
-                    filter_page_storage.clone(),
-                    category_name,
-                )
-                .await?;
-            } else if data.starts_with("remove_filter_cat:") {
-                // Show filters for a specific category
-                let category_name = data.strip_prefix("remove_filter_cat:").unwrap().to_string();
-                show_category_filters_for_removal(
-                    bot,
-                    chat_id,
-                    message.id(),
-                    category_storage,
-                    category_name,
-                )
-                .await?;
-            } else if data.starts_with("remove_filter:") {
-                // Handle remove_filter:CategoryName:Pattern format
-                let parts: Vec<&str> = data
-                    .strip_prefix("remove_filter:")
-                    .unwrap()
-                    .splitn(2, ':')
-                    .collect();
-                if parts.len() == 2 {
-                    let category_name = parts[0];
-                    let pattern = parts[1];
-                    remove_category_filter(&category_storage, chat_id, category_name, pattern)
-                        .await;
-                    // Show the updated filters for this category
-                    show_category_filters_for_removal(
-                        bot,
-                        chat_id,
-                        message.id(),
-                        category_storage,
-                        category_name.to_string(),
-                    )
-                    .await?;
-                }
+            // Toggle the word
+            if let Some(pos) = selected_words.iter().position(|w| w == &word) {
+                selected_words.remove(pos);
             } else {
-                match data.as_str() {
-                    "cmd_list" => {
-                        list_command(bot, msg, storage).await?;
-                    }
-                    "cmd_report" => {
-                        report_command(bot, msg, storage, category_storage).await?;
-                    }
-                    "cmd_clear" => {
-                        clear_command(bot, msg, storage).await?;
-                    }
-                    "cmd_categories" => {
-                        categories_command(bot, msg, category_storage).await?;
-                    }
-                    "cmd_remove_category" => {
-                        remove_category_menu(bot, chat_id, message.id(), category_storage).await?;
-                    }
-                    "cmd_add_filter" => {
-                        add_filter_menu(bot, chat_id, message.id(), category_storage).await?;
-                    }
-                    "cmd_remove_filter" => {
-                        remove_filter_menu(bot, chat_id, message.id(), category_storage).await?;
-                    }
-                    "cmd_back_to_help" => {
-                        help_command(bot, msg).await?;
-                    }
-                    "noop" => {
-                        // Inactive button - do nothing
-                    }
-                    _ => {}
-                }
+                selected_words.push(word);
             }
+
+            // Save updated selection
+            set_filter_selection(
+                &filter_selection_storage,
+                chat_id,
+                category.clone(),
+                selected_words,
+            )
+            .await;
+
+            // Update the message with new selection
+            show_filter_word_suggestions(
+                bot,
+                chat_id,
+                message.id(),
+                storage.clone(),
+                category_storage,
+                filter_selection_storage.clone(),
+                filter_page_storage.clone(),
+                category,
+            )
+            .await?;
+        }
+
+        CallbackData::PagePrev(category_name) => {
+            // Get current page offset and decrease by 20
+            let current_offset =
+                get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
+            let new_offset = current_offset.saturating_sub(20);
+
+            // Update page offset
+            set_filter_page_offset(
+                &filter_page_storage,
+                chat_id,
+                category_name.clone(),
+                new_offset,
+            )
+            .await;
+
+            // Refresh the display
+            show_filter_word_suggestions(
+                bot,
+                chat_id,
+                message.id(),
+                storage.clone(),
+                category_storage,
+                filter_selection_storage.clone(),
+                filter_page_storage.clone(),
+                category_name,
+            )
+            .await?;
+        }
+
+        CallbackData::PageNext(category_name) => {
+            // Get current page offset and increase by 20
+            let current_offset =
+                get_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
+            let new_offset = current_offset + 20;
+
+            // Update page offset
+            set_filter_page_offset(
+                &filter_page_storage,
+                chat_id,
+                category_name.clone(),
+                new_offset,
+            )
+            .await;
+
+            // Refresh the display
+            show_filter_word_suggestions(
+                bot,
+                chat_id,
+                message.id(),
+                storage.clone(),
+                category_storage,
+                filter_selection_storage.clone(),
+                filter_page_storage.clone(),
+                category_name,
+            )
+            .await?;
+        }
+
+        CallbackData::RemoveFilterCategory(category_name) => {
+            show_category_filters_for_removal(
+                bot,
+                chat_id,
+                message.id(),
+                category_storage,
+                category_name,
+            )
+            .await?;
+        }
+
+        CallbackData::RemoveFilter { category, pattern } => {
+            remove_category_filter(&category_storage, chat_id, &category, &pattern).await;
+            show_category_filters_for_removal(bot, chat_id, message.id(), category_storage, category)
+                .await?;
+        }
+
+        CallbackData::CmdList => {
+            list_command(bot, msg, storage).await?;
+        }
+
+        CallbackData::CmdReport => {
+            report_command(bot, msg, storage, category_storage).await?;
+        }
+
+        CallbackData::CmdClear => {
+            clear_command(bot, msg, storage).await?;
+        }
+
+        CallbackData::CmdCategories => {
+            categories_command(bot, msg, category_storage).await?;
+        }
+
+        CallbackData::CmdRemoveCategory => {
+            remove_category_menu(bot, chat_id, message.id(), category_storage).await?;
+        }
+
+        CallbackData::CmdAddFilter => {
+            add_filter_menu(bot, chat_id, message.id(), category_storage).await?;
+        }
+
+        CallbackData::CmdRemoveFilter => {
+            remove_filter_menu(bot, chat_id, message.id(), category_storage).await?;
+        }
+
+        CallbackData::CmdBackToHelp => {
+            help_command(bot, msg).await?;
+        }
+
+        CallbackData::Noop => {
+            // Inactive button - do nothing
         }
     }
 
