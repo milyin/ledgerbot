@@ -8,6 +8,17 @@ if [ -f ".env" ]; then
   export $(grep -v '^#' .env | xargs)
 fi
 
+# Determine the build directory based on CARGO_BUILD_FLAGS
+if [[ "$CARGO_BUILD_FLAGS" == *"--release"* ]]; then
+  BUILD_DIR="release"
+  # For release mode, use DEPLOY_PATH_RELEASE if set, otherwise fall back to DEPLOY_PATH
+  if [ -n "$DEPLOY_PATH_RELEASE" ]; then
+    DEPLOY_PATH="$DEPLOY_PATH_RELEASE"
+  fi
+else
+  BUILD_DIR="debug"
+fi
+
 # Check if DEPLOY_USER, DEPLOY_HOST, and DEPLOY_PATH are set
 if [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_PATH" ]; then
   echo "Error: DEPLOY_USER, DEPLOY_HOST, and DEPLOY_PATH environment variables must be set."
