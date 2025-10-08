@@ -10,7 +10,7 @@ use teloxide::{
 
 use crate::{
     parser::format_timestamp,
-    storage::{CategoryStorage, Expense, ExpenseStorage, get_chat_categories, get_chat_expenses},
+    storage::{CategoryStorageTrait, Expense, ExpenseStorageTrait, Storage},
 };
 
 /// Represents a conflict where an expense matches multiple categories
@@ -102,12 +102,11 @@ fn check_category_conflicts(
 pub async fn report_command(
     bot: Bot,
     msg: Message,
-    storage: ExpenseStorage,
-    category_storage: CategoryStorage,
+    storage: Storage,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    let chat_expenses = get_chat_expenses(&storage, chat_id).await;
-    let chat_categories = get_chat_categories(&category_storage, chat_id).await;
+    let chat_expenses = storage.get_chat_expenses(chat_id).await;
+    let chat_categories = storage.get_chat_categories(chat_id).await;
 
     // Check for category conflicts before generating report
     if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {

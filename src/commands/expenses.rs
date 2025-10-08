@@ -1,9 +1,7 @@
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use teloxide::{prelude::*, types::Message, utils::command::ParseError};
 
-use crate::storage::{
-    Expense, ExpenseStorage, add_expense, clear_chat_expenses, get_chat_expenses,
-};
+use crate::storage::{Expense, ExpenseStorageTrait, Storage};
 
 /// Format timestamp as YYYY-MM-DD string
 fn format_timestamp(timestamp: i64) -> String {
@@ -58,9 +56,9 @@ pub fn parse_expense(s: String) -> Result<ExpenseParams, ParseError> {
 }
 
 /// List all expenses chronologically without category grouping
-pub async fn list_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
+pub async fn list_command(bot: Bot, msg: Message, storage: Storage) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    let chat_expenses = get_chat_expenses(&storage, chat_id).await;
+    let chat_expenses = storage.get_chat_expenses(chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
 
     bot.send_message(chat_id, expenses_list).await?;
@@ -97,7 +95,7 @@ fn format_expenses_chronological(expenses: &[Expense]) -> String {
 pub async fn expense_command(
     bot: Bot,
     msg: Message,
-    storage: ExpenseStorage,
+    storage: Storage,
     date: Option<NaiveDate>,
     description: Option<String>,
     amount: Option<f64>,
@@ -120,7 +118,7 @@ pub async fn expense_command(
             };
 
             // Store the expense
-            add_expense(&storage, chat_id, &desc, amount_val, timestamp).await;
+            storage.add_expense(chat_id, &desc, amount_val, timestamp).await;
 
             // Send confirmation message only if not silent
             if !silent {
@@ -160,9 +158,9 @@ pub async fn expense_command(
 }
 
 /// Clear all expenses
-pub async fn clear_command(bot: Bot, msg: Message, storage: ExpenseStorage) -> ResponseResult<()> {
+pub async fn clear_command(bot: Bot, msg: Message, storage: Storage) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    clear_chat_expenses(&storage, chat_id).await;
+    storage.clear_chat_expenses(chat_id).await;
 
     bot.send_message(chat_id, "🗑️ All expenses cleared!")
         .await?;

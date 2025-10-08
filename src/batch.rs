@@ -40,8 +40,7 @@ pub async fn execute_batch(
     bot: Bot,
     batch_storage: BatchStorage,
     target_chat_id: ChatId,
-    storage: crate::storage::ExpenseStorage,
-    category_storage: crate::storage::CategoryStorage,
+    storage: crate::storage::Storage,
     msg: Message,
 ) {
     // Wait for the timeout period
@@ -73,7 +72,6 @@ pub async fn execute_batch(
                         bot.clone(),
                         msg.clone(),
                         storage.clone(),
-                        category_storage.clone(),
                         cmd,
                         true,
                     )

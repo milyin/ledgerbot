@@ -6,13 +6,13 @@ use teloxide::{
 };
 
 use crate::handlers::CallbackData;
-use crate::storage::{CategoryStorage, add_category, get_chat_categories};
+use crate::storage::{CategoryStorageTrait, Storage};
 
 /// Add a category (name only)
 pub async fn category_command(
     bot: Bot,
     msg: Message,
-    category_storage: CategoryStorage,
+    storage: Storage,
     name: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
@@ -24,7 +24,7 @@ pub async fn category_command(
             let sent_msg = bot.send_message(chat_id, "➕ Add Category").await?;
             add_category_menu(bot, chat_id, sent_msg.id).await?;
         }
-        Some(name) => match add_category(&category_storage, chat_id, name.clone()).await {
+        Some(name) => match storage.add_category(chat_id, name.clone()).await {
             Ok(()) => {
                 bot.send_message(
                     chat_id,
@@ -48,10 +48,10 @@ pub async fn category_command(
 pub async fn categories_command(
     bot: Bot,
     msg: Message,
-    category_storage: CategoryStorage,
+    storage: Storage,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    let categories = get_chat_categories(&category_storage, chat_id).await;
+    let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
         bot.send_message(chat_id, "No categories defined yet.")
@@ -82,7 +82,7 @@ pub async fn categories_command(
 pub async fn remove_category_command(
     bot: Bot,
     msg: Message,
-    category_storage: CategoryStorage,
+    storage: Storage,
     name: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
@@ -91,10 +91,10 @@ pub async fn remove_category_command(
         None => {
             // Show the remove category menu instead
             let sent_msg = bot.send_message(chat_id, "❌ Remove Category").await?;
-            remove_category_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+            remove_category_menu(bot, chat_id, sent_msg.id, storage).await?;
         }
         Some(name) => {
-            let categories = get_chat_categories(&category_storage, chat_id).await;
+            let categories = storage.get_chat_categories(chat_id).await;
 
             // Check if category exists
             if !categories.contains_key(&name) {
@@ -104,7 +104,7 @@ pub async fn remove_category_command(
             }
 
             // Remove the category
-            crate::storage::remove_category(&category_storage, chat_id, &name).await;
+            storage.remove_category(chat_id, &name).await;
             bot.send_message(chat_id, format!("✅ Category '{}' removed.", name))
                 .await?;
         }
@@ -118,9 +118,9 @@ pub async fn remove_category_menu(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    category_storage: CategoryStorage,
+    storage: Storage,
 ) -> ResponseResult<()> {
-    let categories = get_chat_categories(&category_storage, chat_id).await;
+    let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
         bot.edit_message_text(chat_id, message_id, "No categories to remove.")
@@ -175,10 +175,10 @@ pub async fn show_category_filters_for_removal(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    category_storage: CategoryStorage,
+    storage: Storage,
     category_name: String,
 ) -> ResponseResult<()> {
-    let categories = get_chat_categories(&category_storage, chat_id).await;
+    let categories = storage.get_chat_categories(chat_id).await;
 
     if let Some(patterns) = categories.get(&category_name) {
         if patterns.is_empty() {

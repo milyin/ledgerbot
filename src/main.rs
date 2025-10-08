@@ -11,10 +11,7 @@ use teloxide::prelude::*;
 use batch::create_batch_storage;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storage::{
-    create_category_storage, create_filter_page_storage, create_filter_selection_storage,
-    create_storage,
-};
+use storage::Storage;
 
 #[tokio::main]
 async fn main() {
@@ -26,20 +23,11 @@ async fn main() {
     let token = args.get_token();
     let bot = Bot::new(token);
 
-    // Initialize shared expense storage
-    let storage = create_storage();
+    // Initialize main storage (holds expenses, categories, and filter state)
+    let storage = Storage::new();
 
-    // Initialize category storage
-    let category_storage = create_category_storage();
-
-    // Initialize batch storage
+    // Initialize batch storage (separate from main storage for now)
     let batch_storage = create_batch_storage();
-
-    // Initialize filter selection storage
-    let filter_selection_storage = create_filter_selection_storage();
-
-    // Initialize filter page storage
-    let filter_page_storage = create_filter_page_storage();
 
     // Create handler using modern teloxide patterns
     let handler = dptree::entry()
@@ -56,11 +44,8 @@ async fn main() {
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![
-            storage,
-            category_storage,
-            batch_storage,
-            filter_selection_storage,
-            filter_page_storage
+            storage.clone(),
+            batch_storage
         ])
         .enable_ctrlc_handler()
         .build()

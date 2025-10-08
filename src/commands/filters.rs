@@ -6,13 +6,13 @@ use teloxide::{
 };
 
 use crate::handlers::CallbackData;
-use crate::storage::{CategoryStorage, add_category_filter, get_chat_categories};
+use crate::storage::{CategoryStorageTrait, Storage};
 
 /// Add a filter to a category
 pub async fn add_filter_command(
     bot: Bot,
     msg: Message,
-    category_storage: CategoryStorage,
+    storage: Storage,
     category: Option<String>,
     pattern: Option<String>,
 ) -> ResponseResult<()> {
@@ -20,7 +20,7 @@ pub async fn add_filter_command(
 
     match (category, pattern) {
         (Some(category), Some(pattern)) => {
-            let categories = get_chat_categories(&category_storage, chat_id).await;
+            let categories = storage.get_chat_categories(chat_id).await;
 
             // Check if category exists
             if !categories.contains_key(&category) {
@@ -39,8 +39,7 @@ pub async fn add_filter_command(
             // Validate regex pattern
             match regex::Regex::new(&pattern) {
                 Ok(_) => {
-                    add_category_filter(
-                        &category_storage,
+                    storage.add_category_filter(
                         chat_id,
                         category.clone(),
                         pattern.clone(),
@@ -61,7 +60,7 @@ pub async fn add_filter_command(
         (None, None) => {
             // Show the add filter menu instead
             let sent_msg = bot.send_message(chat_id, "🔧 Add Filter").await?;
-            add_filter_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+            add_filter_menu(bot, chat_id, sent_msg.id, storage).await?;
         }
         (Some(category), None) => {
             bot.send_message(
@@ -89,7 +88,7 @@ pub async fn add_filter_command(
 pub async fn remove_filter_command(
     bot: Bot,
     msg: Message,
-    category_storage: CategoryStorage,
+    storage: Storage,
     category: Option<String>,
     pattern: Option<String>,
 ) -> ResponseResult<()> {
@@ -97,7 +96,7 @@ pub async fn remove_filter_command(
 
     match (category, pattern) {
         (Some(category), Some(pattern)) => {
-            let categories = get_chat_categories(&category_storage, chat_id).await;
+            let categories = storage.get_chat_categories(chat_id).await;
 
             // Check if category exists
             if !categories.contains_key(&category) {
@@ -125,7 +124,7 @@ pub async fn remove_filter_command(
             }
 
             // Remove the filter
-            crate::storage::remove_category_filter(&category_storage, chat_id, &category, &pattern)
+            storage.remove_category_filter(chat_id, &category, &pattern)
                 .await;
             bot.send_message(
                 chat_id,
@@ -139,7 +138,7 @@ pub async fn remove_filter_command(
         (None, None) => {
             // Show the remove filter menu instead
             let sent_msg = bot.send_message(chat_id, "🗑️ Remove Filter").await?;
-            remove_filter_menu(bot, chat_id, sent_msg.id, category_storage).await?;
+            remove_filter_menu(bot, chat_id, sent_msg.id, storage).await?;
         }
         (Some(category), None) => {
             bot.send_message(
@@ -168,9 +167,9 @@ pub async fn remove_filter_menu(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    category_storage: CategoryStorage,
+    storage: Storage,
 ) -> ResponseResult<()> {
-    let categories = get_chat_categories(&category_storage, chat_id).await;
+    let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
         bot.edit_message_text(chat_id, message_id, "No categories available.")
@@ -212,9 +211,9 @@ pub async fn add_filter_menu(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    category_storage: CategoryStorage,
+    storage: Storage,
 ) -> ResponseResult<()> {
-    let categories = get_chat_categories(&category_storage, chat_id).await;
+    let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
         bot.edit_message_text(
