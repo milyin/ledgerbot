@@ -5,6 +5,7 @@ use teloxide::{
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
 };
 
+use crate::handlers::CallbackData;
 use crate::storage::{CategoryStorage, add_category, get_chat_categories};
 
 /// Add a category (name only)
@@ -207,7 +208,7 @@ pub async fn show_category_filters_for_removal(
             // Add a back button
             buttons.push(vec![InlineKeyboardButton::callback(
                 "↩️ Back",
-                "cmd_remove_filter",
+                CallbackData::CmdRemoveFilter.to_callback_string(),
             )]);
 
             let keyboard = InlineKeyboardMarkup::new(buttons);

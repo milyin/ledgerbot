@@ -108,7 +108,6 @@ impl FromStr for CallbackData {
 
 impl CallbackData {
     /// Convert callback data to string format for button callbacks
-    #[allow(dead_code)]
     pub fn to_callback_string(&self) -> String {
         match self {
             CallbackData::RemoveCategory(cat) => format!("remove_cat:{}", cat),

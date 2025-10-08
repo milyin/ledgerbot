@@ -22,6 +22,7 @@ use crate::{
         help::{help_command, start_command},
         report::report_command,
     },
+    handlers::CallbackData,
     parser::extract_words,
     storage::{
         CategoryStorage, ExpenseStorage, FilterPageStorage, FilterSelectionStorage,
@@ -195,10 +196,14 @@ pub async fn show_filter_word_suggestions(
             word.clone()
         };
 
-        // Use short callback data without encoding state
+        // Use CallbackData enum for type-safe callback data
         row.push(InlineKeyboardButton::callback(
             label,
-            format!("toggle_word:{}:{}", category_name, word),
+            CallbackData::ToggleWord {
+                category: category_name.clone(),
+                word: word.clone(),
+            }
+            .to_callback_string(),
         ));
 
         // Add row when we have 4 buttons
@@ -220,22 +225,28 @@ pub async fn show_filter_word_suggestions(
     if page_offset > 0 {
         control_row.push(InlineKeyboardButton::callback(
             "◀️",
-            format!("page_prev:{}", category_name),
+            CallbackData::PagePrev(category_name.clone()).to_callback_string(),
         ));
     } else {
         // Inactive button with dummy callback data
-        control_row.push(InlineKeyboardButton::callback("◁", "noop"));
+        control_row.push(InlineKeyboardButton::callback(
+            "◁",
+            CallbackData::Noop.to_callback_string(),
+        ));
     }
 
     // Next page button (always shown, inactive if on last page)
     if page_offset + WORDS_PER_PAGE < total_words {
         control_row.push(InlineKeyboardButton::callback(
             "▶️",
-            format!("page_next:{}", category_name),
+            CallbackData::PageNext(category_name.clone()).to_callback_string(),
         ));
     } else {
         // Inactive button with dummy callback data
-        control_row.push(InlineKeyboardButton::callback("️▷", "noop"));
+        control_row.push(InlineKeyboardButton::callback(
+            "️▷",
+            CallbackData::Noop.to_callback_string(),
+        ));
     }
 
     // Apply button - puts /add_filter command with generated regexp in input box
@@ -255,7 +266,10 @@ pub async fn show_filter_word_suggestions(
     ));
 
     // Back button
-    control_row.push(InlineKeyboardButton::callback("↩️ Back", "cmd_add_filter"));
+    control_row.push(InlineKeyboardButton::callback(
+        "↩️ Back",
+        CallbackData::CmdAddFilter.to_callback_string(),
+    ));
 
     buttons.push(control_row);
 

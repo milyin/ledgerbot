@@ -5,6 +5,7 @@ use teloxide::{
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
 };
 
+use crate::handlers::CallbackData;
 use crate::storage::{CategoryStorage, add_category_filter, get_chat_categories};
 
 /// Add a filter to a category
@@ -184,7 +185,7 @@ pub async fn remove_filter_menu(
             .map(|(name, _)| {
                 vec![InlineKeyboardButton::callback(
                     format!("�️ {}", name),
-                    format!("remove_filter_cat:{}", name),
+                    CallbackData::RemoveFilterCategory(name.clone()).to_callback_string(),
                 )]
             })
             .collect();
@@ -231,7 +232,7 @@ pub async fn add_filter_menu(
             .map(|name| {
                 vec![InlineKeyboardButton::callback(
                     format!("🔧 {}", name),
-                    format!("add_filter_cat:{}", name),
+                    CallbackData::AddFilterCategory(name.clone()).to_callback_string(),
                 )]
             })
             .collect();
