@@ -13,6 +13,91 @@ use crate::{
     storage::{CategoryStorage, Expense, ExpenseStorage, get_chat_categories, get_chat_expenses},
 };
 
+/// Represents a conflict where an expense matches multiple categories
+#[derive(Debug, Clone)]
+struct CategoryConflict {
+    expense: Expense,
+    matching_categories: Vec<(String, String)>, // (category_name, matched_pattern)
+}
+
+/// Check if any expense matches multiple categories
+/// Returns Err with formatted error message if conflicts are found
+fn check_category_conflicts(
+    expenses: &[Expense],
+    categories: &HashMap<String, Vec<String>>,
+) -> Result<(), String> {
+    let mut conflicts: Vec<CategoryConflict> = Vec::new();
+
+    // Build regex matchers for each category
+    let category_matchers: Vec<(String, Vec<(String, regex::Regex)>)> = categories
+        .iter()
+        .map(|(name, patterns)| {
+            let regexes: Vec<(String, regex::Regex)> = patterns
+                .iter()
+                .filter_map(|pattern| {
+                    regex::Regex::new(pattern)
+                        .ok()
+                        .map(|re| (pattern.clone(), re))
+                })
+                .collect();
+            (name.clone(), regexes)
+        })
+        .collect();
+
+    // Check each expense for conflicts
+    for expense in expenses {
+        let mut matching_categories: Vec<(String, String)> = Vec::new();
+
+        // Find all categories that match this expense
+        for (category_name, regexes) in &category_matchers {
+            for (pattern, re) in regexes {
+                if re.is_match(&expense.description) {
+                    matching_categories.push((category_name.clone(), pattern.clone()));
+                    break; // Only add category once, even if multiple patterns match
+                }
+            }
+        }
+
+        // If expense matches more than one category, it's a conflict
+        if matching_categories.len() > 1 {
+            conflicts.push(CategoryConflict {
+                expense: expense.clone(),
+                matching_categories,
+            });
+        }
+    }
+
+    // If there are conflicts, format and return error message
+    if !conflicts.is_empty() {
+        let mut error_message = String::from("❌ *Category Conflicts Detected*\n\n");
+        error_message.push_str("The following expenses match multiple categories\\.\n");
+        error_message.push_str("Please adjust your filters to avoid overlapping categories\\.\n\n");
+
+        for conflict in conflicts {
+            let date_str = format_timestamp(conflict.expense.timestamp);
+            error_message.push_str(&format!(
+                "📝 *Expense:* {} {} {}\n",
+                escape(&date_str),
+                escape(&conflict.expense.description),
+                escape(&conflict.expense.amount.to_string())
+            ));
+            error_message.push_str("*Matching categories:*\n");
+            for (category_name, pattern) in conflict.matching_categories {
+                error_message.push_str(&format!(
+                    "  • {} \\(filter: `{}`\\)\n",
+                    escape(&category_name),
+                    escape(&pattern)
+                ));
+            }
+            error_message.push('\n');
+        }
+
+        return Err(error_message);
+    }
+
+    Ok(())
+}
+
 /// Report all expenses grouped by categories
 pub async fn report_command(
     bot: Bot,
@@ -23,6 +108,15 @@ pub async fn report_command(
     let chat_id = msg.chat.id;
     let chat_expenses = get_chat_expenses(&storage, chat_id).await;
     let chat_categories = get_chat_categories(&category_storage, chat_id).await;
+    
+    // Check for category conflicts before generating report
+    if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
+        bot.send_message(chat_id, conflict_message)
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+            .await?;
+        return Ok(());
+    }
+    
     let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
 
     bot.send_message(chat_id, expenses_list)
