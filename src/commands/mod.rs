@@ -24,9 +24,10 @@ use crate::{
     },
     handlers::CallbackData,
     parser::extract_words,
-    storage::{
+    storage::Storage,
+    storage_traits::{
         CategoryStorageTrait, ExpenseStorageTrait, FilterPageStorageTrait,
-        FilterSelectionStorageTrait, Storage,
+        FilterSelectionStorageTrait,
     },
 };
 

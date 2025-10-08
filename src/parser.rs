@@ -1,5 +1,5 @@
 use crate::commands::Command;
-use crate::storage::Expense;
+use crate::storage_traits::Expense;
 use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
 use teloxide::utils::command::BotCommands;

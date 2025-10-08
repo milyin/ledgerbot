@@ -1,7 +1,8 @@
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use teloxide::{prelude::*, types::Message, utils::command::ParseError};
 
-use crate::storage::{Expense, ExpenseStorageTrait, Storage};
+use crate::storage::Storage;
+use crate::storage_traits::{Expense, ExpenseStorageTrait};
 
 /// Format timestamp as YYYY-MM-DD string
 fn format_timestamp(timestamp: i64) -> String {
@@ -169,7 +170,7 @@ pub async fn clear_command(bot: Bot, msg: Message, storage: Storage) -> Response
 
 #[cfg(test)]
 mod tests {
-    use crate::{commands::expenses::format_expenses_chronological, storage::Expense};
+    use crate::{commands::expenses::format_expenses_chronological, storage_traits::Expense};
 
     #[test]
     fn test_format_expenses_chronological() {

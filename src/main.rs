@@ -4,6 +4,7 @@ mod config;
 mod handlers;
 mod parser;
 mod storage;
+mod storage_traits;
 
 use clap::Parser;
 use teloxide::prelude::*;

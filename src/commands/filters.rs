@@ -6,7 +6,8 @@ use teloxide::{
 };
 
 use crate::handlers::CallbackData;
-use crate::storage::{CategoryStorageTrait, Storage};
+use crate::storage::Storage;
+use crate::storage_traits::CategoryStorageTrait;
 
 /// Add a filter to a category
 pub async fn add_filter_command(

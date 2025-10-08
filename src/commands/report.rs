@@ -10,7 +10,8 @@ use teloxide::{
 
 use crate::{
     parser::format_timestamp,
-    storage::{CategoryStorageTrait, Expense, ExpenseStorageTrait, Storage},
+    storage::Storage,
+    storage_traits::{CategoryStorageTrait, Expense, ExpenseStorageTrait},
 };
 
 /// Represents a conflict where an expense matches multiple categories

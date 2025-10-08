@@ -7,7 +7,8 @@ use crate::commands::categories::show_category_filters_for_removal;
 use crate::commands::filters::{add_filter_menu, remove_filter_menu};
 use crate::commands::{execute_command, show_filter_word_suggestions};
 use crate::parser::parse_expenses;
-use crate::storage::{FilterPageStorageTrait, FilterSelectionStorageTrait, Storage};
+use crate::storage::Storage;
+use crate::storage_traits::{FilterPageStorageTrait, FilterSelectionStorageTrait};
 
 /// Represents all possible callback data from inline keyboard buttons
 #[derive(Debug, Clone, PartialEq)]
