@@ -202,8 +202,7 @@ pub async fn show_filter_word_suggestions(
             CallbackData::ToggleWord {
                 category: category_name.clone(),
                 word: word.clone(),
-            }
-            .to_callback_string(),
+            },
         ));
 
         // Add row when we have 4 buttons
@@ -225,13 +224,13 @@ pub async fn show_filter_word_suggestions(
     if page_offset > 0 {
         control_row.push(InlineKeyboardButton::callback(
             "◀️",
-            CallbackData::PagePrev(category_name.clone()).to_callback_string(),
+            CallbackData::PagePrev(category_name.clone()),
         ));
     } else {
         // Inactive button with dummy callback data
         control_row.push(InlineKeyboardButton::callback(
             "◁",
-            CallbackData::Noop.to_callback_string(),
+            CallbackData::Noop,
         ));
     }
 
@@ -239,13 +238,13 @@ pub async fn show_filter_word_suggestions(
     if page_offset + WORDS_PER_PAGE < total_words {
         control_row.push(InlineKeyboardButton::callback(
             "▶️",
-            CallbackData::PageNext(category_name.clone()).to_callback_string(),
+            CallbackData::PageNext(category_name.clone()),
         ));
     } else {
         // Inactive button with dummy callback data
         control_row.push(InlineKeyboardButton::callback(
             "️▷",
-            CallbackData::Noop.to_callback_string(),
+            CallbackData::Noop,
         ));
     }
 
@@ -268,7 +267,7 @@ pub async fn show_filter_word_suggestions(
     // Back button
     control_row.push(InlineKeyboardButton::callback(
         "↩️ Back",
-        CallbackData::CmdAddFilter.to_callback_string(),
+        CallbackData::CmdAddFilter,
     ));
 
     buttons.push(control_row);

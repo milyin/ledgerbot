@@ -106,10 +106,9 @@ impl FromStr for CallbackData {
     }
 }
 
-impl CallbackData {
-    /// Convert callback data to string format for button callbacks
-    pub fn to_callback_string(&self) -> String {
-        match self {
+impl From<CallbackData> for String {
+    fn from(data: CallbackData) -> String {
+        match data {
             CallbackData::RemoveCategory(cat) => format!("remove_cat:{}", cat),
             CallbackData::AddFilterCategory(cat) => format!("add_filter_cat:{}", cat),
             CallbackData::ToggleWord { category, word } => {

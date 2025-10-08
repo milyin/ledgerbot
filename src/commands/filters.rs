@@ -185,7 +185,7 @@ pub async fn remove_filter_menu(
             .map(|(name, _)| {
                 vec![InlineKeyboardButton::callback(
                     format!("�️ {}", name),
-                    CallbackData::RemoveFilterCategory(name.clone()).to_callback_string(),
+                    CallbackData::RemoveFilterCategory(name.clone()),
                 )]
             })
             .collect();
@@ -232,7 +232,7 @@ pub async fn add_filter_menu(
             .map(|name| {
                 vec![InlineKeyboardButton::callback(
                     format!("🔧 {}", name),
-                    CallbackData::AddFilterCategory(name.clone()).to_callback_string(),
+                    CallbackData::AddFilterCategory(name.clone()),
                 )]
             })
             .collect();

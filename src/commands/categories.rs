@@ -208,7 +208,7 @@ pub async fn show_category_filters_for_removal(
             // Add a back button
             buttons.push(vec![InlineKeyboardButton::callback(
                 "↩️ Back",
-                CallbackData::CmdRemoveFilter.to_callback_string(),
+                CallbackData::CmdRemoveFilter,
             )]);
 
             let keyboard = InlineKeyboardMarkup::new(buttons);
