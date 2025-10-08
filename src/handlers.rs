@@ -258,35 +258,6 @@ pub async fn handle_callback_query(
                     category_name,
                 )
                 .await?;
-            } else if data.starts_with("apply_words:") {
-                // Handle apply_words:CategoryName format
-                let category_name = data.strip_prefix("apply_words:").unwrap().to_string();
-
-                // Get selected words
-                let selected_words =
-                    get_filter_selection(&filter_selection_storage, chat_id, &category_name).await;
-
-                if !selected_words.is_empty() {
-                    // Escape each word and combine with case-insensitive OR pattern
-                    let escaped_words: Vec<String> =
-                        selected_words.iter().map(|w| regex::escape(w)).collect();
-                    let pattern = format!("(?i)({})", escaped_words.join("|"));
-
-                    // Clear the selection and page offset
-                    clear_filter_selection(&filter_selection_storage, chat_id, &category_name)
-                        .await;
-                    clear_filter_page_offset(&filter_page_storage, chat_id, &category_name).await;
-
-                    // Call add_filter_command with the combined pattern
-                    add_filter_command(
-                        bot.clone(),
-                        msg.clone(),
-                        category_storage.clone(),
-                        Some(category_name),
-                        Some(pattern),
-                    )
-                    .await?;
-                }
             } else if data.starts_with("remove_filter_cat:") {
                 // Show filters for a specific category
                 let category_name = data.strip_prefix("remove_filter_cat:").unwrap().to_string();

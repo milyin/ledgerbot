@@ -240,9 +240,9 @@ pub async fn show_filter_word_suggestions(
 
     // Apply button - puts /add_filter command with generated regexp in input box
     let apply_command = if !selected_words.is_empty() {
-        // Escape each word and combine with case-insensitive OR pattern
+        // Escape each word and combine with case-insensitive OR pattern with word boundaries
         let escaped_words: Vec<String> = selected_words.iter().map(|w| regex::escape(w)).collect();
-        let pattern = format!("(?i)({})", escaped_words.join("|"));
+        let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
         format!("/add_filter {} {}", category_name, pattern)
     } else {
         // No words selected, just put category name
