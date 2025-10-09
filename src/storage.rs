@@ -100,7 +100,7 @@ impl CategoryStorageTrait for Storage {
         // Check if category already exists (while holding the lock)
         if chat_categories.contains_key(&category_name) {
             return Err(format!(
-                "ℹ️ Category `{}` already exists. Use `/add_filter` to add more patterns or `/categories` to view all.",
+                "ℹ️ Category `{}` already exists. Use \\/add_filter to add more patterns or \\/categories to view all.",
                 category_name
             ));
         }

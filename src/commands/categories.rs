@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use teloxide::{
     Bot,
-    payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters},
+    payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters, SendMessageSetters},
     prelude::{Requester, ResponseResult},
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
     utils::markdown::escape,
@@ -31,14 +31,17 @@ pub async fn category_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "✅ Category `{}` created. Use `/add_filter` to add regex patterns.",
-                        name
+                        "✅ Category `{}` created\\. Use \\/add_filterto add regex patterns\\.",
+                        escape(&name)
                     ),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
             }
             Err(err_msg) => {
-                bot.send_message(chat_id, format!("ℹ️ {}", err_msg)).await?;
+                bot.send_message(chat_id, format!("ℹ️ {}", escape(&err_msg)))
+                    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+                    .await?;
             }
         },
     }
@@ -56,7 +59,8 @@ pub async fn categories_command(
     let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
-        bot.send_message(chat_id, "📂 No categories defined yet. Use `/add_category <name>` to create one.")
+        bot.send_message(chat_id, "📂 No categories defined yet\\. Use \\/add_category <name> to create one\\.")
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
     } else {
         let mut result = String::new();
@@ -100,14 +104,16 @@ pub async fn remove_category_command(
 
             // Check if category exists
             if !categories.contains_key(&name) {
-                bot.send_message(chat_id, format!("❌ Category `{}` does not exist.", name))
+                bot.send_message(chat_id, format!("❌ Category `{}` does not exist\\.", escape(&name)))
+                    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                     .await?;
                 return Ok(());
             }
 
             // Remove the category
             storage.remove_category(chat_id, &name).await;
-            bot.send_message(chat_id, format!("✅ Category `{}` removed.", name))
+            bot.send_message(chat_id, format!("✅ Category `{}` removed\\.", escape(&name)))
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
         }
     }

@@ -1,6 +1,11 @@
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::sync::Arc;
-use teloxide::{prelude::*, types::Message, utils::command::ParseError};
+use teloxide::{
+    prelude::*, 
+    types::Message, 
+    utils::{command::ParseError, markdown::escape},
+    payloads::SendMessageSetters,
+};
 
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
 
@@ -135,8 +140,9 @@ pub async fn expense_command(
 
                 bot.send_message(
                     chat_id,
-                    format!("✅ Expense added: **{}** `{}` **${}**", date_display, desc, amount_val),
+                    format!("✅ Expense added: **{}** `{}` **${}**", escape(&date_display), escape(&desc), escape(&amount_val.to_string())),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
             }
         }
@@ -144,10 +150,11 @@ pub async fn expense_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Invalid amount for `{}`. Please provide a valid number.",
-                    desc
+                    "❌ Invalid amount for `{}`\\. Please provide a valid number\\.",
+                    escape(&desc)
                 ),
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
         _ => {
@@ -164,6 +171,7 @@ pub async fn clear_command(bot: Bot, msg: Message, storage: Arc<dyn ExpenseStora
     storage.clear_chat_expenses(chat_id).await;
 
     bot.send_message(chat_id, "🗑️ All expenses cleared!")
+        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
         .await?;
     Ok(())
 }

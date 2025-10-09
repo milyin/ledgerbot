@@ -1,7 +1,8 @@
 use teloxide::{
     prelude::*,
     types::{KeyboardButton, Message, ReplyMarkup},
-    utils::command::BotCommands,
+    utils::{command::BotCommands, markdown::escape},
+    payloads::SendMessageSetters,
 };
 
 use super::Command;
@@ -28,9 +29,10 @@ pub async fn start_command(bot: Bot, msg: Message) -> ResponseResult<()> {
         msg.chat.id,
         format!(
             "🤖 **Expense Bot v{}**\nMenu buttons are available ⬇️",
-            env!("CARGO_PKG_VERSION"),
+            escape(env!("CARGO_PKG_VERSION")),
         ),
     )
+    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
     .reply_markup(create_menu_keyboard())
     .await?;
 

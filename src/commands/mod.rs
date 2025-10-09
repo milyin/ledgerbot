@@ -12,6 +12,7 @@ use teloxide::{
         command::{BotCommands, ParseError},
         markdown::escape,
     },
+    payloads::SendMessageSetters,
 };
 
 use std::sync::Arc;
@@ -198,6 +199,7 @@ pub async fn clear_categories_command(
     storage.clear_chat_categories(chat_id).await;
 
     bot.send_message(chat_id, "🗑️ All categories cleared!")
+        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
         .await?;
     Ok(())
 }

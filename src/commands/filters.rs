@@ -29,10 +29,11 @@ pub async fn add_filter_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "❌ Category `{}` does not exist. Create it first with `/add_category {}`",
-                        category, category
+                        "❌ Category `{}` does not exist\\. Create it first with \\/add_category {}",
+                        escape(&category), escape(&category)
                     ),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
                 return Ok(());
             }
@@ -49,12 +50,14 @@ pub async fn add_filter_command(
                     .await;
                     bot.send_message(
                         chat_id,
-                        format!("✅ Filter `{}` added to category `{}`.", pattern, category),
+                        format!("✅ Filter `{}` added to category `{}`\\.", escape(&pattern), escape(&category)),
                     )
+                    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                     .await?;
                 }
                 Err(e) => {
-                    bot.send_message(chat_id, format!("❌ Invalid regex pattern: {}", e))
+                    bot.send_message(chat_id, format!("❌ Invalid regex pattern: {}", escape(&e.to_string())))
+                        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                         .await?;
                 }
             }
@@ -68,17 +71,19 @@ pub async fn add_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing pattern. Usage: `/add_filter {} <pattern>`",
-                    category
+                    "❌ Missing pattern\\. Usage: \\/add_filter {} <pattern>",
+                    escape(&category)
                 ),
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
         (None, Some(_)) => {
             bot.send_message(
                 chat_id,
-                "❌ Missing category. Usage: `/add_filter <category> <pattern>`",
+                "❌ Missing category\\. Usage: \\/add_filter <category> <pattern>",
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
     }
@@ -104,8 +109,9 @@ pub async fn remove_filter_command(
             if !categories.contains_key(&category) {
                 bot.send_message(
                     chat_id,
-                    format!("❌ Category `{}` does not exist.", category),
+                    format!("❌ Category `{}` does not exist\\.", escape(&category)),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
                 return Ok(());
             }
@@ -114,8 +120,9 @@ pub async fn remove_filter_command(
             let Some(patterns) = categories.get(&category) else {
                 bot.send_message(
                     chat_id,
-                    format!("❌ Category `{}` has no filters.", category),
+                    format!("❌ Category `{}` has no filters\\.", escape(&category)),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
                 return Ok(());
             };
@@ -163,17 +170,19 @@ pub async fn remove_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing position. Usage: `/remove_filter {} <position>`",
-                    category
+                    "❌ Missing position\\. Usage: \\/remove_filter {} <position>",
+                    escape(&category)
                 ),
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
         (None, Some(_)) => {
             bot.send_message(
                 chat_id,
-                "❌ Missing category. Usage: `/remove_filter <category> <position>`",
+                "❌ Missing category\\. Usage: `/remove_filter <category> <position>`",
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
     }
@@ -200,8 +209,9 @@ pub async fn edit_filter_command(
             if !categories.contains_key(&category) {
                 bot.send_message(
                     chat_id,
-                    format!("❌ Category `{}` does not exist.", category),
+                    format!("❌ Category `{}` does not exist\\.", escape(&category)),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
                 return Ok(());
             }
@@ -210,8 +220,9 @@ pub async fn edit_filter_command(
             let Some(patterns) = categories.get(&category) else {
                 bot.send_message(
                     chat_id,
-                    format!("❌ Category `{}` has no filters.", category),
+                    format!("❌ Category `{}` has no filters\\.", escape(&category)),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
                 return Ok(());
             };
@@ -262,7 +273,8 @@ pub async fn edit_filter_command(
                     .await?;
                 }
                 Err(e) => {
-                    bot.send_message(chat_id, format!("❌ Invalid regex pattern: {}", e))
+                    bot.send_message(chat_id, format!("❌ Invalid regex pattern: {}", escape(&e.to_string())))
+                        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                         .await?;
                 }
             }
@@ -276,27 +288,30 @@ pub async fn edit_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing pattern. Usage: `/edit_filter {} {} <new_pattern>`",
-                    category, position
+                    "❌ Missing pattern\\. Usage: \\/edit_filter {} {} <new_pattern>",
+                    escape(&category), escape(&position.to_string())
                 ),
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
         (Some(category), None, _) => {
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing position. Usage: `/edit_filter {} <position> <new_pattern>`",
-                    category
+                    "❌ Missing position\\. Usage: `/edit_filter {} <position> <new_pattern>`",
+                    escape(&category)
                 ),
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
         (None, _, _) => {
             bot.send_message(
                 chat_id,
-                "❌ Missing category. Usage: `/edit_filter <category> <position> <new_pattern>`",
+                "❌ Missing category\\. Usage: \\/edit_filter <category> <position> <new_pattern>",
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
     }
