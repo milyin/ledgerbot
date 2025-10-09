@@ -1,6 +1,6 @@
 use crate::commands::Command;
 use crate::storage_traits::{
-    CategoryStorageTrait, Expense, ExpenseStorageTrait, FilterPageStorageTrait,
+    BatchStorageTrait, CategoryStorageTrait, Expense, ExpenseStorageTrait, FilterPageStorageTrait,
     FilterSelectionStorageTrait, StorageTrait,
 };
 use serde::{Deserialize, Serialize};
@@ -44,6 +44,7 @@ impl Default for CategoryData {
 // Type aliases for complex storage types
 type CategoryStorageData = Arc<Mutex<HashMap<ChatId, HashMap<String, Vec<String>>>>>;
 type FilterSelectionStorageData = Arc<Mutex<HashMap<(ChatId, String), Vec<String>>>>;
+type BatchStorageData = Arc<Mutex<HashMap<ChatId, Vec<Result<Command, String>>>>>;
 
 /// Per-chat storage for expenses - each chat has its own expense list
 #[derive(Clone)]
@@ -425,6 +426,49 @@ impl FilterPageStorageTrait for FilterPageStorage {
     }
 }
 
+/// Per-chat batch storage for temporary command batching during message processing
+#[derive(Clone)]
+pub struct BatchStorage {
+    data: BatchStorageData,
+}
+
+impl BatchStorage {
+    pub fn new() -> Self {
+        Self {
+            data: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
+/// Implement BatchStorageTrait for BatchStorage
+#[async_trait::async_trait]
+impl BatchStorageTrait for BatchStorage {
+    async fn add_to_batch(
+        &self,
+        chat_id: ChatId,
+        commands: Vec<Result<Command, String>>,
+    ) -> bool {
+        let mut storage_guard = self.data.lock().await;
+        match storage_guard.get_mut(&chat_id) {
+            Some(state) => {
+                // Update existing batch for this chat
+                state.extend(commands);
+                false
+            }
+            None => {
+                // Start new batch for this chat
+                storage_guard.insert(chat_id, commands);
+                true
+            }
+        }
+    }
+
+    async fn consume_batch(&self, chat_id: ChatId) -> Option<Vec<Result<Command, String>>> {
+        let mut storage_guard = self.data.lock().await;
+        storage_guard.remove(&chat_id)
+    }
+}
+
 /// Main storage structure that holds all bot data
 /// This is the primary storage container for the application
 #[derive(Clone)]
@@ -433,6 +477,7 @@ pub struct Storage {
     categories: Arc<dyn CategoryStorageTrait>,
     filter_selection: Arc<dyn FilterSelectionStorageTrait>,
     filter_page: Arc<dyn FilterPageStorageTrait>,
+    batch: Arc<dyn BatchStorageTrait>,
 }
 
 impl Storage {
@@ -443,6 +488,7 @@ impl Storage {
             categories: Arc::new(CategoryStorage::new()),
             filter_selection: Arc::new(FilterSelectionStorage::new()),
             filter_page: Arc::new(FilterPageStorage::new()),
+            batch: Arc::new(BatchStorage::new()),
         }
     }
 
@@ -476,6 +522,10 @@ impl StorageTrait for Storage {
 
     fn as_filter_page_storage(self: Arc<Self>) -> Arc<dyn FilterPageStorageTrait> {
         self.filter_page.clone()
+    }
+
+    fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait> {
+        self.batch.clone()
     }
 }
 

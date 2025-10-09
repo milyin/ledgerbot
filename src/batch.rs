@@ -1,45 +1,23 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use teloxide::{payloads::SendMessageSetters, prelude::*, utils::markdown::escape};
-use tokio::sync::Mutex;
 
 use crate::commands::{Command, execute_command};
 use crate::config::BATCH_TIMEOUT_SECONDS;
-use crate::storage_traits::StorageTrait;
-
-/// Per-chat batch storage - each chat has its own batch state
-pub type BatchStorage = Arc<Mutex<HashMap<ChatId, Vec<Result<Command, String>>>>>;
-
-/// Create a new batch storage
-pub fn create_batch_storage() -> BatchStorage {
-    Arc::new(Mutex::new(HashMap::new()))
-}
+use crate::storage_traits::{BatchStorageTrait, StorageTrait};
 
 /// Add expense data to batch and return whether this is the first message in the batch
 pub async fn add_to_batch(
-    batch_storage: &BatchStorage,
+    batch_storage: Arc<dyn BatchStorageTrait>,
     chat_id: ChatId,
     commands: Vec<Result<Command, String>>,
 ) -> bool {
-    let mut batch_guard = batch_storage.lock().await;
-    match batch_guard.get_mut(&chat_id) {
-        Some(state) => {
-            // Update existing batch for this chat
-            state.extend(commands);
-            false
-        }
-        None => {
-            // Start new batch for this chat
-            batch_guard.insert(chat_id, commands);
-            true
-        }
-    }
+    batch_storage.add_to_batch(chat_id, commands).await
 }
 
 /// Send batch report after timeout and execute stored commands
 pub async fn execute_batch(
     bot: Bot,
-    batch_storage: BatchStorage,
+    batch_storage: Arc<dyn BatchStorageTrait>,
     target_chat_id: ChatId,
     storage: Arc<dyn StorageTrait>,
     msg: Message,
@@ -47,11 +25,7 @@ pub async fn execute_batch(
     // Wait for the timeout period
     tokio::time::sleep(tokio::time::Duration::from_secs(BATCH_TIMEOUT_SECONDS)).await;
 
-    let batch_data = {
-        let mut batch_guard = batch_storage.lock().await;
-        // Remove and return the batch state if it exists
-        batch_guard.remove(&target_chat_id)
-    };
+    let batch_data = batch_storage.consume_batch(target_chat_id).await;
 
     let mut expense_count: usize = 0;
     let mut total_amount: f64 = 0.0;

@@ -11,7 +11,6 @@ use std::sync::Arc;
 use std::path::PathBuf;
 use teloxide::prelude::*;
 
-use batch::create_batch_storage;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
 use storage::{Storage, PersistentCategoryStorage};
@@ -42,9 +41,6 @@ async fn main() {
     // Wrap storage in Arc<dyn StorageTrait> for use throughout the bot
     let storage_trait: Arc<dyn StorageTrait> = Arc::new(storage);
 
-    // Initialize batch storage (separate from main storage for now)
-    let batch_storage = create_batch_storage();
-
     // Create handler using modern teloxide patterns
     let handler = dptree::entry()
         .branch(
@@ -59,7 +55,7 @@ async fn main() {
         .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![storage_trait, batch_storage])
+        .dependencies(dptree::deps![storage_trait])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

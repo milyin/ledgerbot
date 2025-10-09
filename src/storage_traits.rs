@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use teloxide::types::ChatId;
 
+// Forward declaration - full import would create circular dependency
+use crate::commands::Command;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expense {
     pub timestamp: i64,
@@ -84,6 +87,20 @@ pub trait FilterPageStorageTrait: Send + Sync {
     async fn clear_filter_page_offset(&self, chat_id: ChatId, category: &str);
 }
 
+/// Trait for batch storage operations (temporary command batching)
+#[async_trait::async_trait]
+pub trait BatchStorageTrait: Send + Sync {
+    /// Add commands to batch and return whether this is the first message in the batch
+    async fn add_to_batch(
+        &self,
+        chat_id: ChatId,
+        commands: Vec<Result<Command, String>>,
+    ) -> bool;
+
+    /// Consume and remove batch data for a chat
+    async fn consume_batch(&self, chat_id: ChatId) -> Option<Vec<Result<Command, String>>>;
+}
+
 /// Combined storage trait that provides all storage operations
 /// This trait allows converting to specific trait objects for functions that only need subset of functionality
 pub trait StorageTrait: Send + Sync {
@@ -98,4 +115,7 @@ pub trait StorageTrait: Send + Sync {
 
     /// Convert to FilterPageStorageTrait trait object
     fn as_filter_page_storage(self: Arc<Self>) -> Arc<dyn FilterPageStorageTrait>;
+
+    /// Convert to BatchStorageTrait trait object
+    fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait>;
 }

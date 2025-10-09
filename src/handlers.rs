@@ -4,7 +4,7 @@ use teloxide::{
     payloads::SendMessageSetters, prelude::*, types::CallbackQuery, utils::markdown::escape,
 };
 
-use crate::batch::{BatchStorage, add_to_batch, execute_batch};
+use crate::batch::{add_to_batch, execute_batch};
 use crate::commands::categories::{
     show_category_filters_for_editing, show_category_filters_for_removal,
 };
@@ -98,7 +98,6 @@ pub async fn handle_text_message(
     bot: Bot,
     msg: Message,
     storage: Arc<dyn StorageTrait>,
-    batch_storage: BatchStorage,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
@@ -128,16 +127,16 @@ pub async fn handle_text_message(
         // For single-line, non-forwarded messages, execute immediately.
         if is_multiline || is_forwarded {
             // Add to batch storage for deferred execution
-            let is_first_message = add_to_batch(&batch_storage, chat_id, parsed_results).await;
+            let batch_storage = storage.clone().as_batch_storage();
+            let is_first_message = add_to_batch(batch_storage.clone(), chat_id, parsed_results).await;
 
             // Start timeout task only for the first message in batch
             if is_first_message {
-                let batch_clone = batch_storage.clone();
                 let bot_clone = bot.clone();
                 let storage_clone = storage.clone();
                 let msg_clone = msg.clone();
                 tokio::spawn(async move {
-                    execute_batch(bot_clone, batch_clone, chat_id, storage_clone, msg_clone).await;
+                    execute_batch(bot_clone, batch_storage, chat_id, storage_clone, msg_clone).await;
                 });
             }
         } else {
