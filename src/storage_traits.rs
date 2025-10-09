@@ -86,14 +86,7 @@ pub trait FilterPageStorageTrait: Send + Sync {
 
 /// Combined storage trait that provides all storage operations
 /// This trait allows converting to specific trait objects for functions that only need subset of functionality
-pub trait StorageTrait:
-    ExpenseStorageTrait
-    + CategoryStorageTrait
-    + FilterSelectionStorageTrait
-    + FilterPageStorageTrait
-    + Send
-    + Sync
-{
+pub trait StorageTrait: Send + Sync {
     /// Convert to ExpenseStorageTrait trait object
     fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait>;
 
