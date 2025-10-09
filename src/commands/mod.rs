@@ -192,69 +192,92 @@ pub enum Command {
     },
 }
 
+// Command constants as string representations
+impl Command {
+    pub const HELP: &'static str = "/help";
+    pub const START: &'static str = "/start";
+    pub const LIST: &'static str = "/list";
+    pub const REPORT: &'static str = "/report";
+    pub const CLEAR: &'static str = "/clear";
+    pub const CATEGORIES: &'static str = "/categories";
+    pub const CLEAR_CATEGORIES: &'static str = "/clear_categories";
+    pub const ADD_CATEGORY: &'static str = "/add_category";
+    pub const ADD_FILTER: &'static str = "/add_filter";
+    pub const REMOVE_CATEGORY: &'static str = "/remove_category";
+    pub const REMOVE_FILTER: &'static str = "/remove_filter";
+    pub const EDIT_FILTER: &'static str = "/edit_filter";
+    pub const EXPENSE: &'static str = "/expense";
+}
+
 impl From<Command> for String {
     fn from(val: Command) -> Self {
         match val {
-            Command::Start => "/start".to_string(),
-            Command::Help => "/help".to_string(),
-            Command::List => "/list".to_string(),
-            Command::Report => "/report".to_string(),
-            Command::Clear => "/clear".to_string(),
-            Command::Categories => "/categories".to_string(),
-            Command::ClearCategories => "/clear_categories".to_string(),
+            Command::Start => Command::START.to_string(),
+            Command::Help => Command::HELP.to_string(),
+            Command::List => Command::LIST.to_string(),
+            Command::Report => Command::REPORT.to_string(),
+            Command::Clear => Command::CLEAR.to_string(),
+            Command::Categories => Command::CATEGORIES.to_string(),
+            Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
             Command::AddCategory { name } => {
                 match name {
-                    Some(name) => format!("/add_category {}", name),
-                    None => "/add_category".to_string(),
+                    Some(name) => format!("{} {}", Command::ADD_CATEGORY, name),
+                    None => Command::ADD_CATEGORY.to_string(),
                 }
             }
             Command::AddFilter { category, pattern } => {
                 match (category, pattern) {
-                    (Some(cat), Some(pat)) => format!("/add_filter {} {}", cat, pat),
-                    (Some(cat), None) => format!("/add_filter {}", cat),
-                    (None, Some(pat)) => format!("/add_filter <category> {}", pat),
-                    (None, None) => "/add_filter".to_string(),
+                    (Some(cat), Some(pat)) => format!("{} {} {}", Command::ADD_FILTER, cat, pat),
+                    (Some(cat), None) => format!("{} {}", Command::ADD_FILTER, cat),
+                    (None, Some(pat)) => format!("{} <category> {}", Command::ADD_FILTER, pat),
+                    (None, None) => Command::ADD_FILTER.to_string(),
                 }
             }
             Command::RemoveCategory { name } => {
                 match name {
-                    Some(name) => format!("/remove_category {}", name),
-                    None => "/remove_category".to_string(),
+                    Some(name) => format!("{} {}", Command::REMOVE_CATEGORY, name),
+                    None => Command::REMOVE_CATEGORY.to_string(),
                 }
             }
             Command::RemoveFilter { category, position } => {
                 match (category, position) {
-                    (Some(cat), Some(pos)) => format!("/remove_filter {} {}", cat, pos),
-                    (Some(cat), None) => format!("/remove_filter {}", cat),
-                    (None, Some(pos)) => format!("/remove_filter <category> {}", pos),
-                    (None, None) => "/remove_filter".to_string(),
+                    (Some(cat), Some(pos)) => format!("{} {} {}", Command::REMOVE_FILTER, cat, pos),
+                    (Some(cat), None) => format!("{} {}", Command::REMOVE_FILTER, cat),
+                    (None, Some(pos)) => format!("{} <category> {}", Command::REMOVE_FILTER, pos),
+                    (None, None) => Command::REMOVE_FILTER.to_string(),
                 }
             }
             Command::EditFilter { category, position, pattern } => {
                 match (category, position, pattern) {
-                    (Some(cat), Some(pos), Some(pat)) => format!("/edit_filter {} {} {}", cat, pos, pat),
-                    (Some(cat), Some(pos), None) => format!("/edit_filter {} {}", cat, pos),
-                    (Some(cat), None, Some(pat)) => format!("/edit_filter {} <position> {}", cat, pat),
-                    (Some(cat), None, None) => format!("/edit_filter {}", cat),
-                    (None, Some(pos), Some(pat)) => format!("/edit_filter <category> {} {}", pos, pat),
-                    (None, Some(pos), None) => format!("/edit_filter <category> {}", pos),
-                    (None, None, Some(pat)) => format!("/edit_filter <category> <position> {}", pat),
-                    (None, None, None) => "/edit_filter".to_string(),
+                    (Some(cat), Some(pos), Some(pat)) => format!("{} {} {} {}", Command::EDIT_FILTER, cat, pos, pat),
+                    (Some(cat), Some(pos), None) => format!("{} {} {}", Command::EDIT_FILTER, cat, pos),
+                    (Some(cat), None, Some(pat)) => format!("{} {} <position> {}", Command::EDIT_FILTER, cat, pat),
+                    (Some(cat), None, None) => format!("{} {}", Command::EDIT_FILTER, cat),
+                    (None, Some(pos), Some(pat)) => format!("{} <category> {} {}", Command::EDIT_FILTER, pos, pat),
+                    (None, Some(pos), None) => format!("{} <category> {}", Command::EDIT_FILTER, pos),
+                    (None, None, Some(pat)) => format!("{} <category> <position> {}", Command::EDIT_FILTER, pat),
+                    (None, None, None) => Command::EDIT_FILTER.to_string(),
                 }
             }
             Command::Expense { date, description, amount } => {
                 match (date, description, amount) {
-                    (Some(date), Some(desc), Some(amt)) => format!("/expense {} {} {}", date.format("%Y-%m-%d"), desc, amt),
-                    (Some(date), Some(desc), None) => format!("/expense {} {}", date.format("%Y-%m-%d"), desc),
-                    (Some(date), None, Some(amt)) => format!("/expense {} <description> {}", date.format("%Y-%m-%d"), amt),
-                    (Some(date), None, None) => format!("/expense {}", date.format("%Y-%m-%d")),
-                    (None, Some(desc), Some(amt)) => format!("/expense {} {}", desc, amt),
-                    (None, Some(desc), None) => format!("/expense {}", desc),
-                    (None, None, Some(amt)) => format!("/expense [<date>] <description> {}", amt),
-                    (None, None, None) => "/expense".to_string(),
+                    (Some(date), Some(desc), Some(amt)) => format!("{} {} {} {}", Command::EXPENSE, date.format("%Y-%m-%d"), desc, amt),
+                    (Some(date), Some(desc), None) => format!("{} {} {}", Command::EXPENSE, date.format("%Y-%m-%d"), desc),
+                    (Some(date), None, Some(amt)) => format!("{} {} <description> {}", Command::EXPENSE, date.format("%Y-%m-%d"), amt),
+                    (Some(date), None, None) => format!("{} {}", Command::EXPENSE, date.format("%Y-%m-%d")),
+                    (None, Some(desc), Some(amt)) => format!("{} {} {}", Command::EXPENSE, desc, amt),
+                    (None, Some(desc), None) => format!("{} {}", Command::EXPENSE, desc),
+                    (None, None, Some(amt)) => format!("{} [<date>] <description> {}", Command::EXPENSE, amt),
+                    (None, None, None) => Command::EXPENSE.to_string(),
                 }
             }
         }
+    }
+}
+
+impl std::fmt::Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", String::from(self.clone()))
     }
 }
 

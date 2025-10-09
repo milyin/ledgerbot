@@ -1,3 +1,4 @@
+use crate::commands::Command;
 use crate::storage_traits::{
     CategoryStorageTrait, Expense, ExpenseStorageTrait, FilterPageStorageTrait,
     FilterSelectionStorageTrait, StorageTrait,
@@ -5,6 +6,7 @@ use crate::storage_traits::{
 use std::collections::HashMap;
 use std::sync::Arc;
 use teloxide::types::ChatId;
+use teloxide::utils::markdown::escape;
 use tokio::sync::Mutex;
 
 /// Per-chat storage for expenses - each chat has its own expense list
@@ -100,8 +102,8 @@ impl CategoryStorageTrait for Storage {
         // Check if category already exists (while holding the lock)
         if chat_categories.contains_key(&category_name) {
             return Err(format!(
-                "ℹ️ Category `{}` already exists. Use \\/add_filter to add more patterns or \\/categories to view all.",
-                category_name
+                "ℹ️ Category `{}` already exists. Use {} to add more patterns or {} to view all.",
+                category_name, escape(Command::ADD_FILTER), escape(Command::CATEGORIES)
             ));
         }
 

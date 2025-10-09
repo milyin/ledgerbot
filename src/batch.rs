@@ -107,8 +107,9 @@ pub async fn execute_batch(
             "✅ **Batch Summary Report**\n\n\
             Expense records parsed: {}\n\
             Total amount: {:.2}\n\n\
-            Use \\/list or \\/report to see all expenses.",
-            escape(&expense_count.to_string()), escape(&format!("{:.2}", total_amount))
+            Use {} or {} to see all expenses.",
+            escape(&expense_count.to_string()), escape(&format!("{:.2}", total_amount)),
+            escape(Command::LIST), escape(Command::REPORT)
         );
 
         if let Err(e) = bot

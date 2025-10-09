@@ -9,6 +9,7 @@ use teloxide::{
 
 use crate::handlers::CallbackData;
 use crate::storage_traits::CategoryStorageTrait;
+use crate::commands::Command;
 
 /// Add a category (name only)
 pub async fn category_command(
@@ -31,8 +32,8 @@ pub async fn category_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "✅ Category `{}` created\\. Use \\/add_filter to add regex patterns\\.",
-                        escape(&name)
+                        "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
+                        escape(&name), escape(Command::ADD_FILTER)
                     ),
                 )
                 .parse_mode(teloxide::types::ParseMode::MarkdownV2)
