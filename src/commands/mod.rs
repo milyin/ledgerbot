@@ -20,7 +20,7 @@ use crate::{
     commands::{
         categories::{categories_command, category_command, remove_category_command},
         expenses::{clear_command, expense_command, list_command, parse_expense},
-        filters::{add_filter_command, remove_filter_command},
+        filters::{add_filter_command, edit_filter_command, remove_filter_command},
         help::{help_command, start_command},
         report::report_command,
     },
@@ -79,6 +79,43 @@ fn parse_category_and_position(s: String) -> Result<(Option<String>, Option<usiz
     }
 }
 
+/// Custom parser for category, position, and pattern (for edit_filter)
+fn parse_category_position_and_pattern(
+    s: String,
+) -> Result<(Option<String>, Option<usize>, Option<String>), ParseError> {
+    // Take only the first line to prevent multi-line capture
+    let first_line = s.lines().next().unwrap_or("").trim();
+    if first_line.is_empty() {
+        return Ok((None, None, None));
+    }
+
+    let parts: Vec<&str> = first_line.splitn(3, ' ').collect();
+    match parts.as_slice() {
+        [category] => Ok((Some(category.to_string()), None, None)),
+        [category, position_str] => {
+            match position_str.parse::<usize>() {
+                Ok(position) => Ok((Some(category.to_string()), Some(position), None)),
+                Err(_) => Err(ParseError::IncorrectFormat(
+                    format!("Position must be a number, got '{}'", position_str).into()
+                )),
+            }
+        }
+        [category, position_str, pattern] => {
+            match position_str.parse::<usize>() {
+                Ok(position) => Ok((
+                    Some(category.to_string()),
+                    Some(position),
+                    Some(pattern.to_string()),
+                )),
+                Err(_) => Err(ParseError::IncorrectFormat(
+                    format!("Position must be a number, got '{}'", position_str).into()
+                )),
+            }
+        }
+        _ => Ok((None, None, None)),
+    }
+}
+
 /// Bot commands
 #[derive(BotCommands, Clone, Debug, PartialEq)]
 #[command(
@@ -129,6 +166,16 @@ pub enum Command {
     RemoveFilter {
         category: Option<String>,
         position: Option<usize>,
+    },
+    #[command(
+        description = "edit filter in category by position",
+        rename = "edit_filter",
+        parse_with = parse_category_position_and_pattern
+    )]
+    EditFilter {
+        category: Option<String>,
+        position: Option<usize>,
+        pattern: Option<String>,
     },
     #[command(
         description = "add expense with date, description and amount",
@@ -372,6 +419,17 @@ pub async fn execute_command(
                 storage.clone().as_category_storage(),
                 category,
                 position,
+            )
+            .await?;
+        }
+        Command::EditFilter { category, position, pattern } => {
+            edit_filter_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone().as_category_storage(),
+                category,
+                position,
+                pattern,
             )
             .await?;
         }
