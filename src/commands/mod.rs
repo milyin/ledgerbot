@@ -6,13 +6,13 @@ pub mod report;
 
 use chrono::NaiveDate;
 use teloxide::{
+    payloads::SendMessageSetters,
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
     utils::{
         command::{BotCommands, ParseError},
         markdown::escape,
     },
-    payloads::SendMessageSetters,
 };
 
 use std::sync::Arc;
@@ -31,7 +31,8 @@ use crate::{
 };
 
 /// Type alias for category, position, and pattern parser result
-type CategoryPositionPatternResult = Result<(Option<String>, Option<usize>, Option<String>), ParseError>;
+type CategoryPositionPatternResult =
+    Result<(Option<String>, Option<usize>, Option<String>), ParseError>;
 
 /// Custom parser for optional single string parameter
 fn parse_optional_string(s: String) -> Result<(Option<String>,), ParseError> {
@@ -71,22 +72,18 @@ fn parse_category_and_position(s: String) -> Result<(Option<String>, Option<usiz
     let parts: Vec<&str> = first_line.splitn(2, ' ').collect();
     match parts.as_slice() {
         [category] => Ok((Some(category.to_string()), None)),
-        [category, position_str] => {
-            match position_str.parse::<usize>() {
-                Ok(position) => Ok((Some(category.to_string()), Some(position))),
-                Err(_) => Err(ParseError::IncorrectFormat(
-                    format!("Position must be a number, got '{}'", position_str).into()
-                )),
-            }
-        }
+        [category, position_str] => match position_str.parse::<usize>() {
+            Ok(position) => Ok((Some(category.to_string()), Some(position))),
+            Err(_) => Err(ParseError::IncorrectFormat(
+                format!("Position must be a number, got '{}'", position_str).into(),
+            )),
+        },
         _ => Ok((None, None)),
     }
 }
 
 /// Custom parser for category, position, and pattern (for edit_filter)
-fn parse_category_position_and_pattern(
-    s: String,
-) -> CategoryPositionPatternResult {
+fn parse_category_position_and_pattern(s: String) -> CategoryPositionPatternResult {
     // Take only the first line to prevent multi-line capture
     let first_line = s.lines().next().unwrap_or("").trim();
     if first_line.is_empty() {
@@ -96,26 +93,22 @@ fn parse_category_position_and_pattern(
     let parts: Vec<&str> = first_line.splitn(3, ' ').collect();
     match parts.as_slice() {
         [category] => Ok((Some(category.to_string()), None, None)),
-        [category, position_str] => {
-            match position_str.parse::<usize>() {
-                Ok(position) => Ok((Some(category.to_string()), Some(position), None)),
-                Err(_) => Err(ParseError::IncorrectFormat(
-                    format!("Position must be a number, got '{}'", position_str).into()
-                )),
-            }
-        }
-        [category, position_str, pattern] => {
-            match position_str.parse::<usize>() {
-                Ok(position) => Ok((
-                    Some(category.to_string()),
-                    Some(position),
-                    Some(pattern.to_string()),
-                )),
-                Err(_) => Err(ParseError::IncorrectFormat(
-                    format!("Position must be a number, got '{}'", position_str).into()
-                )),
-            }
-        }
+        [category, position_str] => match position_str.parse::<usize>() {
+            Ok(position) => Ok((Some(category.to_string()), Some(position), None)),
+            Err(_) => Err(ParseError::IncorrectFormat(
+                format!("Position must be a number, got '{}'", position_str).into(),
+            )),
+        },
+        [category, position_str, pattern] => match position_str.parse::<usize>() {
+            Ok(position) => Ok((
+                Some(category.to_string()),
+                Some(position),
+                Some(pattern.to_string()),
+            )),
+            Err(_) => Err(ParseError::IncorrectFormat(
+                format!("Position must be a number, got '{}'", position_str).into(),
+            )),
+        },
         _ => Ok((None, None, None)),
     }
 }
@@ -220,57 +213,43 @@ impl From<Command> for String {
             Command::Categories => Command::CATEGORIES.to_string(),
             Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
             Command::AddCategory { name } => {
-                match name {
-                    Some(name) => format!("{} {}", Command::ADD_CATEGORY, name),
-                    None => Command::ADD_CATEGORY.to_string(),
-                }
-            }
+                let name_str = name.unwrap_or_else(|| "<name>".to_string());
+                format!("{} {}", Command::ADD_CATEGORY, name_str)
+            },
             Command::AddFilter { category, pattern } => {
-                match (category, pattern) {
-                    (Some(cat), Some(pat)) => format!("{} {} {}", Command::ADD_FILTER, cat, pat),
-                    (Some(cat), None) => format!("{} {}", Command::ADD_FILTER, cat),
-                    (None, Some(pat)) => format!("{} <category> {}", Command::ADD_FILTER, pat),
-                    (None, None) => Command::ADD_FILTER.to_string(),
-                }
-            }
+                let category_str = category.unwrap_or_else(|| "<category>".to_string());
+                let pattern_str = pattern.unwrap_or_else(|| "<pattern>".to_string());
+                format!("{} {} {}", Command::ADD_FILTER, category_str, pattern_str)
+            },
             Command::RemoveCategory { name } => {
-                match name {
-                    Some(name) => format!("{} {}", Command::REMOVE_CATEGORY, name),
-                    None => Command::REMOVE_CATEGORY.to_string(),
-                }
-            }
+                let name_str = name.unwrap_or_else(|| "<name>".to_string());
+                format!("{} {}", Command::REMOVE_CATEGORY, name_str)
+            },
             Command::RemoveFilter { category, position } => {
-                match (category, position) {
-                    (Some(cat), Some(pos)) => format!("{} {} {}", Command::REMOVE_FILTER, cat, pos),
-                    (Some(cat), None) => format!("{} {}", Command::REMOVE_FILTER, cat),
-                    (None, Some(pos)) => format!("{} <category> {}", Command::REMOVE_FILTER, pos),
-                    (None, None) => Command::REMOVE_FILTER.to_string(),
-                }
-            }
-            Command::EditFilter { category, position, pattern } => {
-                match (category, position, pattern) {
-                    (Some(cat), Some(pos), Some(pat)) => format!("{} {} {} {}", Command::EDIT_FILTER, cat, pos, pat),
-                    (Some(cat), Some(pos), None) => format!("{} {} {}", Command::EDIT_FILTER, cat, pos),
-                    (Some(cat), None, Some(pat)) => format!("{} {} <position> {}", Command::EDIT_FILTER, cat, pat),
-                    (Some(cat), None, None) => format!("{} {}", Command::EDIT_FILTER, cat),
-                    (None, Some(pos), Some(pat)) => format!("{} <category> {} {}", Command::EDIT_FILTER, pos, pat),
-                    (None, Some(pos), None) => format!("{} <category> {}", Command::EDIT_FILTER, pos),
-                    (None, None, Some(pat)) => format!("{} <category> <position> {}", Command::EDIT_FILTER, pat),
-                    (None, None, None) => Command::EDIT_FILTER.to_string(),
-                }
-            }
-            Command::Expense { date, description, amount } => {
-                match (date, description, amount) {
-                    (Some(date), Some(desc), Some(amt)) => format!("{} {} {} {}", Command::EXPENSE, date.format("%Y-%m-%d"), desc, amt),
-                    (Some(date), Some(desc), None) => format!("{} {} {}", Command::EXPENSE, date.format("%Y-%m-%d"), desc),
-                    (Some(date), None, Some(amt)) => format!("{} {} <description> {}", Command::EXPENSE, date.format("%Y-%m-%d"), amt),
-                    (Some(date), None, None) => format!("{} {}", Command::EXPENSE, date.format("%Y-%m-%d")),
-                    (None, Some(desc), Some(amt)) => format!("{} {} {}", Command::EXPENSE, desc, amt),
-                    (None, Some(desc), None) => format!("{} {}", Command::EXPENSE, desc),
-                    (None, None, Some(amt)) => format!("{} [<date>] <description> {}", Command::EXPENSE, amt),
-                    (None, None, None) => Command::EXPENSE.to_string(),
-                }
-            }
+                let category_str = category.unwrap_or_else(|| "<category>".to_string());
+                let position_str = position.map(|p| p.to_string()).unwrap_or_else(|| "<position>".to_string());
+                format!("{} {} {}", Command::REMOVE_FILTER, category_str, position_str)
+            },
+            Command::EditFilter {
+                category,
+                position,
+                pattern,
+            } => {
+                let category_str = category.unwrap_or_else(|| "<category>".to_string());
+                let position_str = position.map(|p| p.to_string()).unwrap_or_else(|| "<position>".to_string());
+                let pattern_str = pattern.unwrap_or_else(|| "<pattern>".to_string());
+                format!("{} {} {} {}", Command::EDIT_FILTER, category_str, position_str, pattern_str)
+            },
+            Command::Expense {
+                date,
+                description,
+                amount,
+            } => {
+                let date_str = date.map(|d| d.format("%Y-%m-%d").to_string()).unwrap_or_else(|| "<date>".to_string());
+                let description_str = description.unwrap_or_else(|| "<description>".to_string());
+                let amount_str = amount.map(|a| a.to_string()).unwrap_or_else(|| "<amount>".to_string());
+                format!("{} {} {} {}", Command::EXPENSE, date_str, description_str, amount_str)
+            },
         }
     }
 }
@@ -304,14 +283,30 @@ pub async fn show_filter_word_suggestions(
     storage: Arc<dyn StorageTrait>,
     category_name: String,
 ) -> ResponseResult<()> {
-    let expenses = storage.clone().as_expense_storage().get_chat_expenses(chat_id).await;
-    let categories = storage.clone().as_category_storage().get_chat_categories(chat_id).await;
+    let expenses = storage
+        .clone()
+        .as_expense_storage()
+        .get_chat_expenses(chat_id)
+        .await;
+    let categories = storage
+        .clone()
+        .as_category_storage()
+        .get_chat_categories(chat_id)
+        .await;
 
     // Get currently selected words from storage
-    let selected_words = storage.clone().as_filter_selection_storage().get_filter_selection(chat_id, &category_name).await;
+    let selected_words = storage
+        .clone()
+        .as_filter_selection_storage()
+        .get_filter_selection(chat_id, &category_name)
+        .await;
 
     // Get current page offset
-    let page_offset = storage.clone().as_filter_page_storage().get_filter_page_offset(chat_id, &category_name).await;
+    let page_offset = storage
+        .clone()
+        .as_filter_page_storage()
+        .get_filter_page_offset(chat_id, &category_name)
+        .await;
 
     // Extract words from uncategorized expenses
     let words = extract_words(&expenses, &categories);
@@ -469,7 +464,12 @@ pub async fn execute_command(
             .await?;
         }
         Command::List => {
-            list_command(bot.clone(), msg.clone(), storage.clone().as_expense_storage()).await?;
+            list_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone().as_expense_storage(),
+            )
+            .await?;
         }
         Command::Report => {
             report_command(
@@ -481,16 +481,37 @@ pub async fn execute_command(
             .await?;
         }
         Command::Clear => {
-            clear_command(bot.clone(), msg.clone(), storage.clone().as_expense_storage()).await?;
+            clear_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone().as_expense_storage(),
+            )
+            .await?;
         }
         Command::ClearCategories => {
-            clear_categories_command(bot.clone(), msg.clone(), storage.clone().as_category_storage()).await?;
+            clear_categories_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone().as_category_storage(),
+            )
+            .await?;
         }
         Command::AddCategory { name } => {
-            category_command(bot.clone(), msg.clone(), storage.clone().as_category_storage(), name).await?;
+            category_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone().as_category_storage(),
+                name,
+            )
+            .await?;
         }
         Command::Categories => {
-            categories_command(bot.clone(), msg.clone(), storage.clone().as_category_storage()).await?;
+            categories_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone().as_category_storage(),
+            )
+            .await?;
         }
         Command::AddFilter { category, pattern } => {
             add_filter_command(
@@ -503,8 +524,13 @@ pub async fn execute_command(
             .await?;
         }
         Command::RemoveCategory { name } => {
-            remove_category_command(bot.clone(), msg.clone(), storage.clone().as_category_storage(), name)
-                .await?;
+            remove_category_command(
+                bot.clone(),
+                msg.clone(),
+                storage.clone().as_category_storage(),
+                name,
+            )
+            .await?;
         }
         Command::RemoveFilter { category, position } => {
             remove_filter_command(
@@ -516,7 +542,11 @@ pub async fn execute_command(
             )
             .await?;
         }
-        Command::EditFilter { category, position, pattern } => {
+        Command::EditFilter {
+            category,
+            position,
+            pattern,
+        } => {
             edit_filter_command(
                 bot.clone(),
                 msg.clone(),

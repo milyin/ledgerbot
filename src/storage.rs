@@ -73,11 +73,8 @@ impl ExpenseStorageTrait for Storage {
     }
 
     async fn add_expense(&self, chat_id: ChatId, description: &str, amount: f64, timestamp: i64) {
-        self.add_expenses(
-            chat_id,
-            vec![(description.to_string(), amount, timestamp)],
-        )
-        .await;
+        self.add_expenses(chat_id, vec![(description.to_string(), amount, timestamp)])
+            .await;
     }
 
     async fn clear_chat_expenses(&self, chat_id: ChatId) {
@@ -103,7 +100,9 @@ impl CategoryStorageTrait for Storage {
         if chat_categories.contains_key(&category_name) {
             return Err(format!(
                 "ℹ️ Category `{}` already exists. Use {} to add more patterns or {} to view all.",
-                category_name, escape(Command::ADD_FILTER), escape(Command::CATEGORIES)
+                category_name,
+                escape(Command::ADD_FILTER),
+                escape(Command::CATEGORIES)
             ));
         }
 
@@ -113,7 +112,12 @@ impl CategoryStorageTrait for Storage {
         Ok(())
     }
 
-    async fn add_category_filter(&self, chat_id: ChatId, category_name: String, regex_pattern: String) {
+    async fn add_category_filter(
+        &self,
+        chat_id: ChatId,
+        category_name: String,
+        regex_pattern: String,
+    ) {
         let mut storage_guard = self.categories.lock().await;
         let chat_categories = storage_guard.entry(chat_id).or_default();
         let patterns = chat_categories
@@ -124,7 +128,12 @@ impl CategoryStorageTrait for Storage {
         }
     }
 
-    async fn remove_category_filter(&self, chat_id: ChatId, category_name: &str, regex_pattern: &str) {
+    async fn remove_category_filter(
+        &self,
+        chat_id: ChatId,
+        category_name: &str,
+        regex_pattern: &str,
+    ) {
         let mut storage_guard = self.categories.lock().await;
         if let Some(chat_categories) = storage_guard.get_mut(&chat_id)
             && let Some(patterns) = chat_categories.get_mut(category_name)
@@ -203,15 +212,15 @@ impl StorageTrait for Storage {
     fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait> {
         self
     }
-    
+
     fn as_category_storage(self: Arc<Self>) -> Arc<dyn CategoryStorageTrait> {
         self
     }
-    
+
     fn as_filter_selection_storage(self: Arc<Self>) -> Arc<dyn FilterSelectionStorageTrait> {
         self
     }
-    
+
     fn as_filter_page_storage(self: Arc<Self>) -> Arc<dyn FilterPageStorageTrait> {
         self
     }

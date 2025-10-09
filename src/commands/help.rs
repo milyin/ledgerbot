@@ -1,8 +1,8 @@
 use teloxide::{
+    payloads::SendMessageSetters,
     prelude::*,
     types::{KeyboardButton, Message, ReplyMarkup},
     utils::{command::BotCommands, markdown::escape},
-    payloads::SendMessageSetters,
 };
 
 use super::Command;

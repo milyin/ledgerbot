@@ -7,9 +7,9 @@ use teloxide::{
     utils::markdown::escape,
 };
 
+use crate::commands::Command;
 use crate::handlers::CallbackData;
 use crate::storage_traits::CategoryStorageTrait;
-use crate::commands::Command;
 
 /// Add a category (name only)
 pub async fn category_command(
@@ -33,7 +33,8 @@ pub async fn category_command(
                     chat_id,
                     format!(
                         "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
-                        escape(&name), escape(Command::ADD_FILTER)
+                        escape(&name),
+                        escape(Command::ADD_FILTER)
                     ),
                 )
                 .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -60,9 +61,20 @@ pub async fn categories_command(
     let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
-        bot.send_message(chat_id, "📂 No categories defined yet\\. Use \\/add_category <name> to create one\\.")
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await?;
+        bot.send_message(
+            chat_id,
+            format!(
+                "📂 No categories defined yet\\. Use {} to create one\\.",
+                escape(
+                    &Command::AddCategory {
+                        name: Some("<name>".into())
+                    }
+                    .to_string()
+                )
+            ),
+        )
+        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+        .await?;
     } else {
         let mut result = String::new();
 
@@ -105,17 +117,23 @@ pub async fn remove_category_command(
 
             // Check if category exists
             if !categories.contains_key(&name) {
-                bot.send_message(chat_id, format!("❌ Category `{}` does not exist\\.", escape(&name)))
-                    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                    .await?;
+                bot.send_message(
+                    chat_id,
+                    format!("❌ Category `{}` does not exist\\.", escape(&name)),
+                )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+                .await?;
                 return Ok(());
             }
 
             // Remove the category
             storage.remove_category(chat_id, &name).await;
-            bot.send_message(chat_id, format!("✅ Category `{}` removed\\.", escape(&name)))
-                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                .await?;
+            bot.send_message(
+                chat_id,
+                format!("✅ Category `{}` removed\\.", escape(&name)),
+            )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+            .await?;
         }
     }
 
@@ -132,8 +150,12 @@ pub async fn remove_category_menu(
     let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
-        bot.edit_message_text(chat_id, message_id, "📂 No categories to remove\\. Use `/add_category <name>` to create one first\\.")
-            .await?;
+        bot.edit_message_text(
+            chat_id,
+            message_id,
+            "📂 No categories to remove\\. Use `/add_category <name>` to create one first\\.",
+        )
+        .await?;
     } else {
         let text = "❌ **Select category to remove:**\n\nClick a button to place the command in your input box\\.";
 
@@ -297,4 +319,3 @@ pub async fn show_category_filters_for_editing(
 
     Ok(())
 }
-

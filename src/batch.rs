@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use teloxide::{
-    prelude::*,
-    utils::markdown::escape,
-    payloads::SendMessageSetters,
-};
+use teloxide::{payloads::SendMessageSetters, prelude::*, utils::markdown::escape};
 use tokio::sync::Mutex;
 
 use crate::commands::{Command, execute_command};
@@ -73,14 +69,8 @@ pub async fn execute_batch(
                         expense_count += 1;
                         total_amount += amt_val;
                     }
-                    let exec_result = execute_command(
-                        bot.clone(),
-                        msg.clone(),
-                        storage.clone(),
-                        cmd,
-                        true,
-                    )
-                    .await;
+                    let exec_result =
+                        execute_command(bot.clone(), msg.clone(), storage.clone(), cmd, true).await;
                     if let Err(e) = exec_result {
                         log::error!("Failed to execute batched command: {}", e);
                     }
@@ -108,14 +98,17 @@ pub async fn execute_batch(
             Expense records parsed: {}\n\
             Total amount: {:.2}\n\n\
             Use {} or {} to see all expenses.",
-            escape(&expense_count.to_string()), escape(&format!("{:.2}", total_amount)),
-            escape(Command::LIST), escape(Command::REPORT)
+            escape(&expense_count.to_string()),
+            escape(&format!("{:.2}", total_amount)),
+            escape(Command::LIST),
+            escape(Command::REPORT)
         );
 
         if let Err(e) = bot
             .send_message(target_chat_id, report)
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await {
+            .await
+        {
             log::error!("Failed to send batch report: {}", e);
         }
     }

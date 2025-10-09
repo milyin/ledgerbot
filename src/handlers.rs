@@ -1,14 +1,13 @@
 use std::str::FromStr;
 use std::sync::Arc;
 use teloxide::{
-    prelude::*,
-    types::CallbackQuery,
-    utils::markdown::escape,
-    payloads::SendMessageSetters,
+    payloads::SendMessageSetters, prelude::*, types::CallbackQuery, utils::markdown::escape,
 };
 
 use crate::batch::{BatchStorage, add_to_batch, execute_batch};
-use crate::commands::categories::{show_category_filters_for_editing, show_category_filters_for_removal};
+use crate::commands::categories::{
+    show_category_filters_for_editing, show_category_filters_for_removal,
+};
 use crate::commands::filters::{add_filter_menu, edit_filter_menu, remove_filter_menu};
 use crate::commands::{execute_command, show_filter_word_suggestions};
 use crate::parser::parse_expenses;
@@ -138,14 +137,7 @@ pub async fn handle_text_message(
                 let storage_clone = storage.clone();
                 let msg_clone = msg.clone();
                 tokio::spawn(async move {
-                    execute_batch(
-                        bot_clone,
-                        batch_clone,
-                        chat_id,
-                        storage_clone,
-                        msg_clone,
-                    )
-                    .await;
+                    execute_batch(bot_clone, batch_clone, chat_id, storage_clone, msg_clone).await;
                 });
             }
         } else {
@@ -154,19 +146,17 @@ pub async fn handle_text_message(
                 match result {
                     Ok(cmd) => {
                         // Execute the command using the shared execute_command function
-                        let exec_result = execute_command(
-                            bot.clone(),
-                            msg.clone(),
-                            storage.clone(),
-                            cmd,
-                            false,
-                        )
-                        .await;
+                        let exec_result =
+                            execute_command(bot.clone(), msg.clone(), storage.clone(), cmd, false)
+                                .await;
                         if let Err(e) = exec_result {
                             log::error!("Failed to execute command: {}", e);
-                            bot.send_message(chat_id, format!("❌ Error: {}", escape(&e.to_string())))
-                                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                                .await?;
+                            bot.send_message(
+                                chat_id,
+                                format!("❌ Error: {}", escape(&e.to_string())),
+                            )
+                            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+                            .await?;
                         }
                     }
                     Err(err_msg) => {
@@ -224,8 +214,16 @@ pub async fn handle_callback_query(
     match callback_data {
         CallbackData::AddFilterCategory(category_name) => {
             // Clear any previous selection and page offset
-            storage.clone().as_filter_selection_storage().clear_filter_selection(chat_id, &category_name).await;
-            storage.clone().as_filter_page_storage().clear_filter_page_offset(chat_id, &category_name).await;
+            storage
+                .clone()
+                .as_filter_selection_storage()
+                .clear_filter_selection(chat_id, &category_name)
+                .await;
+            storage
+                .clone()
+                .as_filter_page_storage()
+                .clear_filter_page_offset(chat_id, &category_name)
+                .await;
             show_filter_word_suggestions(
                 bot,
                 chat_id,
@@ -238,7 +236,11 @@ pub async fn handle_callback_query(
 
         CallbackData::ToggleWord { category, word } => {
             // Get current selection
-            let mut selected_words = storage.clone().as_filter_selection_storage().get_filter_selection(chat_id, &category).await;
+            let mut selected_words = storage
+                .clone()
+                .as_filter_selection_storage()
+                .get_filter_selection(chat_id, &category)
+                .await;
 
             // Toggle the word
             if let Some(pos) = selected_words.iter().position(|w| w == &word) {
@@ -248,28 +250,30 @@ pub async fn handle_callback_query(
             }
 
             // Save updated selection
-            storage.clone().as_filter_selection_storage()
+            storage
+                .clone()
+                .as_filter_selection_storage()
                 .set_filter_selection(chat_id, category.clone(), selected_words)
                 .await;
 
             // Update the message with new selection
-            show_filter_word_suggestions(
-                bot,
-                chat_id,
-                message.id(),
-                storage.clone(),
-                category,
-            )
-            .await?;
+            show_filter_word_suggestions(bot, chat_id, message.id(), storage.clone(), category)
+                .await?;
         }
 
         CallbackData::PagePrev(category_name) => {
             // Get current page offset and decrease by 20
-            let current_offset = storage.clone().as_filter_page_storage().get_filter_page_offset(chat_id, &category_name).await;
+            let current_offset = storage
+                .clone()
+                .as_filter_page_storage()
+                .get_filter_page_offset(chat_id, &category_name)
+                .await;
             let new_offset = current_offset.saturating_sub(20);
 
             // Update page offset
-            storage.clone().as_filter_page_storage()
+            storage
+                .clone()
+                .as_filter_page_storage()
                 .set_filter_page_offset(chat_id, category_name.clone(), new_offset)
                 .await;
 
@@ -286,11 +290,17 @@ pub async fn handle_callback_query(
 
         CallbackData::PageNext(category_name) => {
             // Get current page offset and increase by 20
-            let current_offset = storage.clone().as_filter_page_storage().get_filter_page_offset(chat_id, &category_name).await;
+            let current_offset = storage
+                .clone()
+                .as_filter_page_storage()
+                .get_filter_page_offset(chat_id, &category_name)
+                .await;
             let new_offset = current_offset + 20;
 
             // Update page offset
-            storage.clone().as_filter_page_storage()
+            storage
+                .clone()
+                .as_filter_page_storage()
                 .set_filter_page_offset(chat_id, category_name.clone(), new_offset)
                 .await;
 
@@ -328,15 +338,33 @@ pub async fn handle_callback_query(
         }
 
         CallbackData::CmdAddFilter => {
-            add_filter_menu(bot, chat_id, message.id(), storage.clone().as_category_storage()).await?;
+            add_filter_menu(
+                bot,
+                chat_id,
+                message.id(),
+                storage.clone().as_category_storage(),
+            )
+            .await?;
         }
 
         CallbackData::CmdRemoveFilter => {
-            remove_filter_menu(bot, chat_id, message.id(), storage.clone().as_category_storage()).await?;
+            remove_filter_menu(
+                bot,
+                chat_id,
+                message.id(),
+                storage.clone().as_category_storage(),
+            )
+            .await?;
         }
 
         CallbackData::CmdEditFilter => {
-            edit_filter_menu(bot, chat_id, message.id(), storage.clone().as_category_storage()).await?;
+            edit_filter_menu(
+                bot,
+                chat_id,
+                message.id(),
+                storage.clone().as_category_storage(),
+            )
+            .await?;
         }
 
         CallbackData::Noop => {

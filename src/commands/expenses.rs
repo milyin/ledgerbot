@@ -1,10 +1,10 @@
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::sync::Arc;
 use teloxide::{
-    prelude::*, 
-    types::Message, 
-    utils::{command::ParseError, markdown::escape},
     payloads::SendMessageSetters,
+    prelude::*,
+    types::Message,
+    utils::{command::ParseError, markdown::escape},
 };
 
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
@@ -62,7 +62,11 @@ pub fn parse_expense(s: String) -> Result<ExpenseParams, ParseError> {
 }
 
 /// List all expenses chronologically without category grouping
-pub async fn list_command(bot: Bot, msg: Message, storage: Arc<dyn ExpenseStorageTrait>) -> ResponseResult<()> {
+pub async fn list_command(
+    bot: Bot,
+    msg: Message,
+    storage: Arc<dyn ExpenseStorageTrait>,
+) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     let chat_expenses = storage.get_chat_expenses(chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
@@ -124,7 +128,9 @@ pub async fn expense_command(
             };
 
             // Store the expense
-            storage.add_expense(chat_id, &desc, amount_val, timestamp).await;
+            storage
+                .add_expense(chat_id, &desc, amount_val, timestamp)
+                .await;
 
             // Send confirmation message only if not silent
             if !silent {
@@ -140,7 +146,12 @@ pub async fn expense_command(
 
                 bot.send_message(
                     chat_id,
-                    format!("✅ Expense added: **{}** `{}` **${}**", escape(&date_display), escape(&desc), escape(&amount_val.to_string())),
+                    format!(
+                        "✅ Expense added: **{}** `{}` **${}**",
+                        escape(&date_display),
+                        escape(&desc),
+                        escape(&amount_val.to_string())
+                    ),
                 )
                 .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
@@ -166,7 +177,11 @@ pub async fn expense_command(
 }
 
 /// Clear all expenses
-pub async fn clear_command(bot: Bot, msg: Message, storage: Arc<dyn ExpenseStorageTrait>) -> ResponseResult<()> {
+pub async fn clear_command(
+    bot: Bot,
+    msg: Message,
+    storage: Arc<dyn ExpenseStorageTrait>,
+) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     storage.clear_chat_expenses(chat_id).await;
 

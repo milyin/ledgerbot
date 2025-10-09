@@ -28,7 +28,7 @@ async fn main() {
 
     // Initialize main storage (holds expenses, categories, and filter state)
     let storage = Storage::new();
-    
+
     // Wrap storage in Arc<dyn StorageTrait> for use throughout the bot
     let storage_trait: Arc<dyn StorageTrait> = Arc::new(storage);
 
@@ -49,10 +49,7 @@ async fn main() {
         .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![
-            storage_trait,
-            batch_storage
-        ])
+        .dependencies(dptree::deps![storage_trait, batch_storage])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
