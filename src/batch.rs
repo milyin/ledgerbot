@@ -96,10 +96,10 @@ pub async fn execute_batch(
         let report = format!(
             "✅ **Batch Summary Report**\n\n\
             Expense records parsed: {}\n\
-            Total amount: {:.2}\n\n\
-            Use {} or {} to see all expenses.",
+            Total amount: {}\n\n\
+            Use {} or {} to see all expenses\\.",
             escape(&expense_count.to_string()),
-            escape(&format!("{:.2}", total_amount)),
+            escape(&total_amount.to_string()),
             escape(Command::LIST),
             escape(Command::REPORT)
         );
