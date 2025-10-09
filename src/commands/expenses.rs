@@ -235,6 +235,6 @@ mod tests {
         // Test with no expenses
         let expenses = Vec::new();
         let result = format_expenses_chronological(&expenses);
-        assert_eq!(result, "No expenses recorded yet.");
+        assert_eq!(result, "📝 No expenses recorded yet. Send a message like `2024-10-09 Coffee 5.50` to add one.");
     }
 }
