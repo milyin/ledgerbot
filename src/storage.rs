@@ -445,14 +445,11 @@ impl Storage {
         }
     }
 
-    /// Create a new storage with persistent category storage
-    pub fn new_with_persistent_categories(storage_dir: PathBuf) -> Self {
-        Self {
-            expenses: Arc::new(ExpenseStorage::new()),
-            categories: Arc::new(PersistentCategoryStorage::new(storage_dir)),
-            filter_selection: Arc::new(FilterSelectionStorage::new()),
-            filter_page: Arc::new(FilterPageStorage::new()),
-        }
+    /// Builder-like method to configure category storage
+    /// Replaces the category storage with the provided implementation
+    pub fn categories_storage(mut self, storage: impl CategoryStorageTrait + 'static) -> Self {
+        self.categories = Arc::new(storage);
+        self
     }
 }
 

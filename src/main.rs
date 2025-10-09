@@ -14,7 +14,7 @@ use teloxide::prelude::*;
 use batch::create_batch_storage;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storage::Storage;
+use storage::{Storage, PersistentCategoryStorage};
 use storage_traits::StorageTrait;
 
 #[tokio::main]
@@ -32,7 +32,7 @@ async fn main() {
         // Use persistent storage with provided path or default
         let storage_dir = storage_path.unwrap_or_else(|| PathBuf::from("categories"));
         log::info!("Using persistent category storage in directory: {:?}", storage_dir);
-        Storage::new_with_persistent_categories(storage_dir)
+        Storage::new().categories_storage(PersistentCategoryStorage::new(storage_dir))
     } else {
         // Use in-memory storage
         log::info!("Using in-memory category storage");
