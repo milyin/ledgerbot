@@ -129,7 +129,7 @@ pub async fn report_command(
 /// Format expenses as a readable list with total, grouped by categories
 fn format_expenses_list(expenses: &[Expense], categories: &HashMap<String, Vec<String>>) -> String {
     if expenses.is_empty() {
-        return "No expenses recorded yet.".to_string();
+        return "No expenses recorded yet\\.".to_string();
     }
 
     let mut result = String::new();
