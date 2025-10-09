@@ -197,7 +197,7 @@ pub async fn add_category_menu(
     let text = "➕ **Add a new category:**\n\nClick the button below and type the category name\\.";
 
     let keyboard = InlineKeyboardMarkup::new(vec![vec![
-        InlineKeyboardButton::switch_inline_query_current_chat("➕ Add Category", &format!("{} ", Command::ADD_CATEGORY)),
+        InlineKeyboardButton::switch_inline_query_current_chat("➕ Add Category", format!("{} ", Command::ADD_CATEGORY)),
     ]]);
 
     bot.edit_message_text(chat_id, message_id, text)

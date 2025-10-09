@@ -8,6 +8,7 @@ mod storage_traits;
 
 use clap::Parser;
 use std::sync::Arc;
+use std::path::PathBuf;
 use teloxide::prelude::*;
 
 use batch::create_batch_storage;
@@ -26,8 +27,17 @@ async fn main() {
     let token = args.get_token();
     let bot = Bot::new(token);
 
-    // Initialize main storage (holds expenses, categories, and filter state)
-    let storage = Storage::new();
+    // Initialize main storage based on CLI arguments
+    let storage = if let Some(storage_path) = args.persistent_storage {
+        // Use persistent storage with provided path or default
+        let storage_dir = storage_path.unwrap_or_else(|| PathBuf::from("categories"));
+        log::info!("Using persistent category storage in directory: {:?}", storage_dir);
+        Storage::new_with_persistent_categories(storage_dir)
+    } else {
+        // Use in-memory storage
+        log::info!("Using in-memory category storage");
+        Storage::new()
+    };
 
     // Wrap storage in Arc<dyn StorageTrait> for use throughout the bot
     let storage_trait: Arc<dyn StorageTrait> = Arc::new(storage);

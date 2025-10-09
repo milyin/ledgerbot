@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::path::PathBuf;
 
 pub const PREDEFINED_BOT_TOKEN_RELEASE: Option<&str> = option_env!("PREDEFINED_BOT_TOKEN_RELEASE");
 pub const PREDEFINED_BOT_TOKEN_DEBUG: Option<&str> = option_env!("PREDEFINED_BOT_TOKEN_DEBUG");
@@ -22,6 +23,9 @@ pub const BATCH_TIMEOUT_SECONDS: u64 = 1; // Report after N seconds of inactivit
 pub struct Args {
     #[arg(long, help = BOT_TOKEN_HELP)]
     pub bot_token_env: Option<String>,
+    
+    #[arg(long, help = "Enable persistent category storage with optional path (default: ./categories)")]
+    pub persistent_storage: Option<Option<PathBuf>>,
 }
 
 impl Args {

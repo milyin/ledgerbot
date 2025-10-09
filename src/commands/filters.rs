@@ -310,7 +310,7 @@ pub async fn edit_filter_command(
                     "❌ Missing pattern\\. Usage: {}",
                     escape(&Command::EditFilter { 
                         category: Some(category.clone()), 
-                        position: Some(position.clone()), 
+                        position: Some(position), 
                         pattern: Some("new_pattern".to_string()) 
                     }.to_string())
                 ),
