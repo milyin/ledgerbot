@@ -70,7 +70,7 @@ pub fn parse_expenses(
                 commands.push(Ok(cmd));
             }
             Err(e) => {
-                commands.push(Err(format!("Failed to parse command '{}': {}", line, e)));
+                commands.push(Err(format!("❌ Failed to parse command `{}`: {}", line, e)));
             }
         }
     }

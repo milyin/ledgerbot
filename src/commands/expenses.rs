@@ -70,7 +70,7 @@ pub async fn list_command(bot: Bot, msg: Message, storage: Arc<dyn ExpenseStorag
 /// Output format: "date description price"
 fn format_expenses_chronological(expenses: &[Expense]) -> String {
     if expenses.is_empty() {
-        return "No expenses recorded yet.".to_string();
+        return "📝 No expenses recorded yet. Send a message like `2024-10-09 Coffee 5.50` to add one.".to_string();
     }
 
     // Sort by timestamp (chronological order)
@@ -135,7 +135,7 @@ pub async fn expense_command(
 
                 bot.send_message(
                     chat_id,
-                    format!("✅ Expense added: {} {} {}", date_display, desc, amount_val),
+                    format!("✅ Expense added: **{}** `{}` **${}**", date_display, desc, amount_val),
                 )
                 .await?;
             }
@@ -144,7 +144,7 @@ pub async fn expense_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Invalid amount for '{}'. Please provide a valid number.",
+                    "❌ Invalid amount for `{}`. Please provide a valid number.",
                     desc
                 ),
             )

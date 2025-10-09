@@ -30,7 +30,7 @@ pub async fn category_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "✅ Category '{}' created. Use /add_filter to add regex patterns.",
+                        "✅ Category `{}` created. Use `/add_filter` to add regex patterns.",
                         name
                     ),
                 )
@@ -55,7 +55,7 @@ pub async fn categories_command(
     let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
-        bot.send_message(chat_id, "No categories defined yet.")
+        bot.send_message(chat_id, "📂 No categories defined yet. Use `/add_category <name>` to create one.")
             .await?;
     } else {
         let mut result = String::new();
@@ -99,14 +99,14 @@ pub async fn remove_category_command(
 
             // Check if category exists
             if !categories.contains_key(&name) {
-                bot.send_message(chat_id, format!("❌ Category '{}' does not exist.", name))
+                bot.send_message(chat_id, format!("❌ Category `{}` does not exist.", name))
                     .await?;
                 return Ok(());
             }
 
             // Remove the category
             storage.remove_category(chat_id, &name).await;
-            bot.send_message(chat_id, format!("✅ Category '{}' removed.", name))
+            bot.send_message(chat_id, format!("✅ Category `{}` removed.", name))
                 .await?;
         }
     }
@@ -124,7 +124,7 @@ pub async fn remove_category_menu(
     let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
-        bot.edit_message_text(chat_id, message_id, "No categories to remove.")
+        bot.edit_message_text(chat_id, message_id, "📂 No categories to remove. Use `/add_category <name>` to create one first.")
             .await?;
     } else {
         let text = "❌ **Select category to remove:**\n\nClick a button to place the command in your input box.";
@@ -186,12 +186,12 @@ pub async fn show_category_filters_for_removal(
             bot.edit_message_text(
                 chat_id,
                 message_id,
-                format!("No filters in category '{}'.", category_name),
+                format!("📁 No filters in category `{}`. Use `/add_filter {} <pattern>` to add one.", category_name, category_name),
             )
             .await?;
         } else {
             let text = format!(
-                "�️ **Select filter to remove from '{}':**\n\nClick a button to place the command in your input box.",
+                "🗑️ **Select filter to remove from `{}`:**\n\nClick a button to place the command in your input box.",
                 category_name
             );
 
@@ -241,12 +241,12 @@ pub async fn show_category_filters_for_editing(
             bot.edit_message_text(
                 chat_id,
                 message_id,
-                format!("No filters in category '{}'.", category_name),
+                format!("📁 No filters in category `{}`. Use `/add_filter {} <pattern>` to add one.", category_name, category_name),
             )
             .await?;
         } else {
             let text = format!(
-                "✏️ **Select filter to edit from '{}':**\n\nClick a button to edit the filter. The existing pattern will be pre-filled for you to modify.",
+                "✏️ **Select filter to edit from `{}`:**\n\nClick a button to edit the filter. The existing pattern will be pre-filled for you to modify.",
                 category_name
             );
 

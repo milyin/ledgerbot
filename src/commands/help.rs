@@ -27,7 +27,7 @@ pub async fn start_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     bot.send_message(
         msg.chat.id,
         format!(
-            "Expense Bot v.{}\nMenu buttons are available ⬇️",
+            "🤖 **Expense Bot v{}**\nMenu buttons are available ⬇️",
             env!("CARGO_PKG_VERSION"),
         ),
     )

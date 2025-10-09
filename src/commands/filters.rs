@@ -28,7 +28,7 @@ pub async fn add_filter_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "❌ Category '{}' does not exist. Create it first with /add_category {}",
+                        "❌ Category `{}` does not exist. Create it first with `/add_category {}`",
                         category, category
                     ),
                 )
@@ -48,7 +48,7 @@ pub async fn add_filter_command(
                     .await;
                     bot.send_message(
                         chat_id,
-                        format!("✅ Filter '{}' added to category '{}'.", pattern, category),
+                        format!("✅ Filter `{}` added to category `{}`.", pattern, category),
                     )
                     .await?;
                 }
@@ -67,7 +67,7 @@ pub async fn add_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing pattern. Usage: /add_filter {} <pattern>",
+                    "❌ Missing pattern. Usage: `/add_filter {} <pattern>`",
                     category
                 ),
             )
@@ -76,7 +76,7 @@ pub async fn add_filter_command(
         (None, Some(_)) => {
             bot.send_message(
                 chat_id,
-                "❌ Missing category. Usage: /add_filter <category> <pattern>",
+                "❌ Missing category. Usage: `/add_filter <category> <pattern>`",
             )
             .await?;
         }
@@ -103,7 +103,7 @@ pub async fn remove_filter_command(
             if !categories.contains_key(&category) {
                 bot.send_message(
                     chat_id,
-                    format!("❌ Category '{}' does not exist.", category),
+                    format!("❌ Category `{}` does not exist.", category),
                 )
                 .await?;
                 return Ok(());
@@ -113,7 +113,7 @@ pub async fn remove_filter_command(
             let Some(patterns) = categories.get(&category) else {
                 bot.send_message(
                     chat_id,
-                    format!("❌ Category '{}' has no filters.", category),
+                    format!("❌ Category `{}` has no filters.", category),
                 )
                 .await?;
                 return Ok(());
@@ -124,7 +124,7 @@ pub async fn remove_filter_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "❌ Invalid position {}. Category '{}' has {} filter(s) (indexed 0-{}).",
+                        "❌ Invalid position `{}`. Category `{}` has **{}** filter(s) (indexed 0-{}).",
                         position,
                         category,
                         patterns.len(),
@@ -145,7 +145,7 @@ pub async fn remove_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "✅ Filter #{} ('{}') removed from category '{}'.",
+                    "✅ Filter **#{}** (`{}`) removed from category `{}`.",
                     position, pattern_to_remove, category
                 ),
             )
@@ -160,7 +160,7 @@ pub async fn remove_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing position. Usage: /remove_filter {} <position>",
+                    "❌ Missing position. Usage: `/remove_filter {} <position>`",
                     category
                 ),
             )
@@ -169,7 +169,7 @@ pub async fn remove_filter_command(
         (None, Some(_)) => {
             bot.send_message(
                 chat_id,
-                "❌ Missing category. Usage: /remove_filter <category> <position>",
+                "❌ Missing category. Usage: `/remove_filter <category> <position>`",
             )
             .await?;
         }
@@ -197,7 +197,7 @@ pub async fn edit_filter_command(
             if !categories.contains_key(&category) {
                 bot.send_message(
                     chat_id,
-                    format!("❌ Category '{}' does not exist.", category),
+                    format!("❌ Category `{}` does not exist.", category),
                 )
                 .await?;
                 return Ok(());
@@ -207,7 +207,7 @@ pub async fn edit_filter_command(
             let Some(patterns) = categories.get(&category) else {
                 bot.send_message(
                     chat_id,
-                    format!("❌ Category '{}' has no filters.", category),
+                    format!("❌ Category `{}` has no filters.", category),
                 )
                 .await?;
                 return Ok(());
@@ -218,7 +218,7 @@ pub async fn edit_filter_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "❌ Invalid position {}. Category '{}' has {} filter(s) (indexed 0-{}).",
+                        "❌ Invalid position `{}`. Category `{}` has **{}** filter(s) (indexed 0-{}).",
                         position,
                         category,
                         patterns.len(),
@@ -250,7 +250,7 @@ pub async fn edit_filter_command(
                     bot.send_message(
                         chat_id,
                         format!(
-                            "✅ Filter #{} updated in category '{}'.\nOld: '{}'\nNew: '{}'",
+                            "✅ Filter **#{}** updated in category `{}`.\n**Old:** `{}`\n**New:** `{}`",
                             position, category, old_pattern_clone, pattern
                         ),
                     )
@@ -271,7 +271,7 @@ pub async fn edit_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing pattern. Usage: /edit_filter {} {} <new_pattern>",
+                    "❌ Missing pattern. Usage: `/edit_filter {} {} <new_pattern>`",
                     category, position
                 ),
             )
@@ -281,7 +281,7 @@ pub async fn edit_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing position. Usage: /edit_filter {} <position> <new_pattern>",
+                    "❌ Missing position. Usage: `/edit_filter {} <position> <new_pattern>`",
                     category
                 ),
             )
@@ -290,7 +290,7 @@ pub async fn edit_filter_command(
         (None, _, _) => {
             bot.send_message(
                 chat_id,
-                "❌ Missing category. Usage: /edit_filter <category> <position> <new_pattern>",
+                "❌ Missing category. Usage: `/edit_filter <category> <position> <new_pattern>`",
             )
             .await?;
         }
