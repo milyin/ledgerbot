@@ -114,7 +114,7 @@ pub async fn remove_category_command(
     match name {
         None => {
             // Show the remove category menu instead
-            let sent_msg = bot.send_message(chat_id, "❌ Remove Category").await?;
+            let sent_msg = bot.send_message(chat_id, "🗑️ Remove Category").await?;
             remove_category_menu(bot, chat_id, sent_msg.id, storage).await?;
         }
         Some(name) => {
@@ -162,14 +162,14 @@ pub async fn remove_category_menu(
         )
         .await?;
     } else {
-        let text = "❌ **Select category to remove:**\n\nClick a button to place the command in your input box\\.";
+        let text = "🗑️ **Select category to remove:**\n\nClick a button to place the command in your input box\\.";
 
         // Create buttons for each category using switch_inline_query_current_chat
         let buttons: Vec<Vec<InlineKeyboardButton>> = categories
             .keys()
             .map(|name| {
                 vec![InlineKeyboardButton::switch_inline_query_current_chat(
-                    format!("🚫 {}", name),
+                    format!("🗑️ {}", name),
                     Command::RemoveCategory { name: Some(name.clone()) }.to_string(),
                 )]
             })
