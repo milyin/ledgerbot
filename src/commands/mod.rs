@@ -56,6 +56,29 @@ fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<Strin
     }
 }
 
+/// Custom parser for category and position (for remove_filter)
+fn parse_category_and_position(s: String) -> Result<(Option<String>, Option<usize>), ParseError> {
+    // Take only the first line to prevent multi-line capture
+    let first_line = s.lines().next().unwrap_or("").trim();
+    if first_line.is_empty() {
+        return Ok((None, None));
+    }
+
+    let parts: Vec<&str> = first_line.splitn(2, ' ').collect();
+    match parts.as_slice() {
+        [category] => Ok((Some(category.to_string()), None)),
+        [category, position_str] => {
+            match position_str.parse::<usize>() {
+                Ok(position) => Ok((Some(category.to_string()), Some(position))),
+                Err(_) => Err(ParseError::IncorrectFormat(
+                    format!("Position must be a number, got '{}'", position_str).into()
+                )),
+            }
+        }
+        _ => Ok((None, None)),
+    }
+}
+
 /// Bot commands
 #[derive(BotCommands, Clone, Debug, PartialEq)]
 #[command(
@@ -99,13 +122,13 @@ pub enum Command {
     )]
     RemoveCategory { name: Option<String> },
     #[command(
-        description = "remove filter from category",
+        description = "remove filter from category by position",
         rename = "remove_filter",
-        parse_with = parse_two_optional_strings
+        parse_with = parse_category_and_position
     )]
     RemoveFilter {
         category: Option<String>,
-        pattern: Option<String>,
+        position: Option<usize>,
     },
     #[command(
         description = "add expense with date, description and amount",
@@ -342,13 +365,13 @@ pub async fn execute_command(
             remove_category_command(bot.clone(), msg.clone(), storage.clone().as_category_storage(), name)
                 .await?;
         }
-        Command::RemoveFilter { category, pattern } => {
+        Command::RemoveFilter { category, position } => {
             remove_filter_command(
                 bot.clone(),
                 msg.clone(),
                 storage.clone().as_category_storage(),
                 category,
-                pattern,
+                position,
             )
             .await?;
         }

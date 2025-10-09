@@ -85,18 +85,18 @@ pub async fn add_filter_command(
     Ok(())
 }
 
-/// Remove a filter from a category
+/// Remove a filter from a category by position
 pub async fn remove_filter_command(
     bot: Bot,
     msg: Message,
     storage: Arc<dyn CategoryStorageTrait>,
     category: Option<String>,
-    pattern: Option<String>,
+    position: Option<usize>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
 
-    match (category, pattern) {
-        (Some(category), Some(pattern)) => {
+    match (category, position) {
+        (Some(category), Some(position)) => {
             let categories = storage.get_chat_categories(chat_id).await;
 
             // Check if category exists
@@ -109,29 +109,44 @@ pub async fn remove_filter_command(
                 return Ok(());
             }
 
-            // Check if filter exists in the category
-            if let Some(patterns) = categories.get(&category)
-                && !patterns.contains(&pattern)
-            {
+            // Get filters for the category
+            let Some(patterns) = categories.get(&category) else {
+                bot.send_message(
+                    chat_id,
+                    format!("❌ Category '{}' has no filters.", category),
+                )
+                .await?;
+                return Ok(());
+            };
+
+            // Check if position is valid (0-indexed)
+            if position >= patterns.len() {
                 bot.send_message(
                     chat_id,
                     format!(
-                        "❌ Filter '{}' not found in category '{}'.",
-                        pattern, category
+                        "❌ Invalid position {}. Category '{}' has {} filter(s) (indexed 0-{}).",
+                        position,
+                        category,
+                        patterns.len(),
+                        patterns.len().saturating_sub(1)
                     ),
                 )
                 .await?;
                 return Ok(());
             }
 
+            // Get the pattern at the specified position (0-indexed)
+            let pattern = &patterns[position];
+            let pattern_to_remove = pattern.clone();
+
             // Remove the filter
-            storage.remove_category_filter(chat_id, &category, &pattern)
+            storage.remove_category_filter(chat_id, &category, &pattern_to_remove)
                 .await;
             bot.send_message(
                 chat_id,
                 format!(
-                    "✅ Filter '{}' removed from category '{}'.",
-                    pattern, category
+                    "✅ Filter #{} ('{}') removed from category '{}'.",
+                    position, pattern_to_remove, category
                 ),
             )
             .await?;
@@ -145,7 +160,7 @@ pub async fn remove_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "❌ Missing pattern. Usage: /remove_filter {} <pattern>",
+                    "❌ Missing position. Usage: /remove_filter {} <position>",
                     category
                 ),
             )
@@ -154,7 +169,7 @@ pub async fn remove_filter_command(
         (None, Some(_)) => {
             bot.send_message(
                 chat_id,
-                "❌ Missing category. Usage: /remove_filter <category> <pattern>",
+                "❌ Missing category. Usage: /remove_filter <category> <position>",
             )
             .await?;
         }

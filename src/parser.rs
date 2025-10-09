@@ -510,7 +510,7 @@ mod tests {
         //   /add_category <name>
         //   /add_filter <category> <pattern>
         //   /remove_category <name>
-        //   /remove_filter <category> <pattern>
+        //   /remove_filter <category> <position>
         let text = "\
             /start\n\
             /help\n\
@@ -522,7 +522,7 @@ mod tests {
             /add_category Food\n\
             /add_filter Food (?i)lunch\n\
             /remove_category Transport\n\
-            /remove_filter Food (?i)coffee\n\
+            /remove_filter Food 0\n\
             Coffee 5.50\n\
             /list\n\
         ";
@@ -555,9 +555,9 @@ mod tests {
             if name == &Some("Transport".to_string())));
 
         assert!(
-            matches!(&results[10], Ok(Command::RemoveFilter { category, pattern })
+            matches!(&results[10], Ok(Command::RemoveFilter { category, position })
             if category == &Some("Food".to_string())
-            && pattern == &Some("(?i)coffee".to_string()))
+            && position == &Some(0))
         );
 
         // Check the expense
@@ -602,8 +602,8 @@ mod tests {
         assert!(matches!(&results[2], Ok(Command::RemoveCategory { name }) if name.is_none()));
 
         assert!(
-            matches!(&results[3], Ok(Command::RemoveFilter { category, pattern })
-            if category.is_none() && pattern.is_none())
+            matches!(&results[3], Ok(Command::RemoveFilter { category, position })
+            if category.is_none() && position.is_none())
         );
 
         assert!(matches!(&results[4], Ok(Command::AddCategory { name })

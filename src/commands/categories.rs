@@ -196,12 +196,14 @@ pub async fn show_category_filters_for_removal(
             );
 
             // Create buttons for each filter using switch_inline_query_current_chat
+            // Show position number (0-indexed) along with the pattern
             let mut buttons: Vec<Vec<InlineKeyboardButton>> = patterns
                 .iter()
-                .map(|pattern| {
+                .enumerate()
+                .map(|(index, pattern)| {
                     vec![InlineKeyboardButton::switch_inline_query_current_chat(
-                        pattern.clone(),
-                        format!("/remove_filter {} {}", category_name, pattern),
+                        format!("{}. {}", index, pattern),
+                        format!("/remove_filter {} {}", category_name, index),
                     )]
                 })
                 .collect();
