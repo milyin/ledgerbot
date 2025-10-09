@@ -1,9 +1,10 @@
 use std::sync::Arc;
 use teloxide::{
     Bot,
-    payloads::EditMessageReplyMarkupSetters,
+    payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters, SendMessageSetters},
     prelude::{Requester, ResponseResult},
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
+    utils::markdown::escape,
 };
 
 use crate::handlers::CallbackData;
@@ -124,13 +125,14 @@ pub async fn remove_filter_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "❌ Invalid position `{}`. Category `{}` has **{}** filter(s) (indexed 0-{}).",
-                        position,
-                        category,
-                        patterns.len(),
-                        patterns.len().saturating_sub(1)
+                        "❌ Invalid position `{}`\\. Category `{}` has **{}** filter\\(s\\) \\(indexed 0\\-{}\\)\\.",
+                        escape(&position.to_string()),
+                        escape(&category),
+                        escape(&patterns.len().to_string()),
+                        escape(&patterns.len().saturating_sub(1).to_string())
                     ),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
                 return Ok(());
             }
@@ -145,10 +147,11 @@ pub async fn remove_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "✅ Filter **#{}** (`{}`) removed from category `{}`.",
-                    position, pattern_to_remove, category
+                    "✅ Filter **#{}** \\(`{}`\\) removed from category `{}`\\.",
+                    escape(&position.to_string()), escape(&pattern_to_remove), escape(&category)
                 ),
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
         (None, None) => {
@@ -218,13 +221,14 @@ pub async fn edit_filter_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "❌ Invalid position `{}`. Category `{}` has **{}** filter(s) (indexed 0-{}).",
-                        position,
-                        category,
-                        patterns.len(),
-                        patterns.len().saturating_sub(1)
+                        "❌ Invalid position `{}`\\. Category `{}` has **{}** filter\\(s\\) \\(indexed 0\\-{}\\)\\.",
+                        escape(&position.to_string()),
+                        escape(&category),
+                        escape(&patterns.len().to_string()),
+                        escape(&patterns.len().saturating_sub(1).to_string())
                     ),
                 )
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
                 return Ok(());
             }
@@ -250,10 +254,11 @@ pub async fn edit_filter_command(
                     bot.send_message(
                         chat_id,
                         format!(
-                            "✅ Filter **#{}** updated in category `{}`.\n**Old:** `{}`\n**New:** `{}`",
-                            position, category, old_pattern_clone, pattern
+                            "✅ Filter **#{}** updated in category `{}`\\.\n**Old:** `{}`\n**New:** `{}`",
+                            escape(&position.to_string()), escape(&category), escape(&old_pattern_clone), escape(&pattern)
                         ),
                     )
+                    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                     .await?;
                 }
                 Err(e) => {
@@ -312,7 +317,7 @@ pub async fn remove_filter_menu(
         bot.edit_message_text(chat_id, message_id, "No categories available.")
             .await?;
     } else {
-        let text = "�️ **Select category to remove filter:**\n\nClick a button to see filters for that category.";
+        let text = "🗑️ **Select category to remove filter:**\n\nClick a button to see filters for that category\\.";
 
         // Create buttons for each category that has filters
         let buttons: Vec<Vec<InlineKeyboardButton>> = categories
@@ -320,7 +325,7 @@ pub async fn remove_filter_menu(
             .filter(|(_, patterns)| !patterns.is_empty())
             .map(|(name, _)| {
                 vec![InlineKeyboardButton::callback(
-                    format!("�️ {}", name),
+                    format!("🗑️ {}", name),
                     CallbackData::RemoveFilterCategory(name.clone()),
                 )]
             })
@@ -334,7 +339,9 @@ pub async fn remove_filter_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.edit_message_text(chat_id, message_id, text).await?;
+        bot.edit_message_text(chat_id, message_id, text)
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+            .await?;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
@@ -356,7 +363,7 @@ pub async fn edit_filter_menu(
         bot.edit_message_text(chat_id, message_id, "No categories available.")
             .await?;
     } else {
-        let text = "✏️ **Select category to edit filter:**\n\nClick a button to see filters for that category.";
+        let text = "✏️ **Select category to edit filter:**\n\nClick a button to see filters for that category\\.";
 
         // Create buttons for each category that has filters
         let buttons: Vec<Vec<InlineKeyboardButton>> = categories
@@ -378,7 +385,9 @@ pub async fn edit_filter_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.edit_message_text(chat_id, message_id, text).await?;
+        bot.edit_message_text(chat_id, message_id, text)
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+            .await?;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
@@ -400,11 +409,11 @@ pub async fn add_filter_menu(
         bot.edit_message_text(
             chat_id,
             message_id,
-            "No categories available. Create a category first with /add_category <name>",
+            "No categories available\\. Create a category first with /add\\_category <name>",
         )
         .await?;
     } else {
-        let text = "� **Select category to add filter:**";
+        let text = "🔧 **Select category to add filter:**";
 
         // Create buttons for each category
         let buttons: Vec<Vec<InlineKeyboardButton>> = categories
@@ -419,7 +428,9 @@ pub async fn add_filter_menu(
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.edit_message_text(chat_id, message_id, text).await?;
+        bot.edit_message_text(chat_id, message_id, text)
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+            .await?;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;
