@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use teloxide::{
     Bot,
     payloads::EditMessageReplyMarkupSetters,
@@ -6,14 +7,13 @@ use teloxide::{
 };
 
 use crate::handlers::CallbackData;
-use crate::storage::Storage;
 use crate::storage_traits::CategoryStorageTrait;
 
 /// Add a filter to a category
 pub async fn add_filter_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
     category: Option<String>,
     pattern: Option<String>,
 ) -> ResponseResult<()> {
@@ -89,7 +89,7 @@ pub async fn add_filter_command(
 pub async fn remove_filter_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
     category: Option<String>,
     pattern: Option<String>,
 ) -> ResponseResult<()> {
@@ -168,7 +168,7 @@ pub async fn remove_filter_menu(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
 ) -> ResponseResult<()> {
     let categories = storage.get_chat_categories(chat_id).await;
 
@@ -212,7 +212,7 @@ pub async fn add_filter_menu(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
 ) -> ResponseResult<()> {
     let categories = storage.get_chat_categories(chat_id).await;
 

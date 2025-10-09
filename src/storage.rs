@@ -1,6 +1,6 @@
 use crate::storage_traits::{
     CategoryStorageTrait, Expense, ExpenseStorageTrait, FilterPageStorageTrait,
-    FilterSelectionStorageTrait,
+    FilterSelectionStorageTrait, StorageTrait,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -193,5 +193,24 @@ impl FilterSelectionStorageTrait for Storage {
     async fn clear_filter_selection(&self, chat_id: ChatId, category: &str) {
         let mut storage_guard = self.filter_selection.lock().await;
         storage_guard.remove(&(chat_id, category.to_string()));
+    }
+}
+
+/// Implement StorageTrait for Storage to enable conversion to specific trait objects
+impl StorageTrait for Storage {
+    fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait> {
+        self
+    }
+    
+    fn as_category_storage(self: Arc<Self>) -> Arc<dyn CategoryStorageTrait> {
+        self
+    }
+    
+    fn as_filter_selection_storage(self: Arc<Self>) -> Arc<dyn FilterSelectionStorageTrait> {
+        self
+    }
+    
+    fn as_filter_page_storage(self: Arc<Self>) -> Arc<dyn FilterPageStorageTrait> {
+        self
     }
 }

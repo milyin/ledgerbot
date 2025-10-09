@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::sync::Arc;
 use teloxide::prelude::*;
 use teloxide::types::CallbackQuery;
 
@@ -7,8 +8,7 @@ use crate::commands::categories::show_category_filters_for_removal;
 use crate::commands::filters::{add_filter_menu, remove_filter_menu};
 use crate::commands::{execute_command, show_filter_word_suggestions};
 use crate::parser::parse_expenses;
-use crate::storage::Storage;
-use crate::storage_traits::{FilterPageStorageTrait, FilterSelectionStorageTrait};
+use crate::storage_traits::StorageTrait;
 
 /// Represents all possible callback data from inline keyboard buttons
 #[derive(Debug, Clone, PartialEq)]
@@ -85,7 +85,7 @@ impl From<CallbackData> for String {
 pub async fn handle_text_message(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn StorageTrait>,
     batch_storage: BatchStorage,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
@@ -174,7 +174,7 @@ pub async fn handle_text_message(
 pub async fn handle_callback_query(
     bot: Bot,
     q: CallbackQuery,
-    storage: Storage,
+    storage: Arc<dyn StorageTrait>,
 ) -> ResponseResult<()> {
     // Answer the callback query to remove the loading state
     bot.answer_callback_query(q.id.clone()).await?;
@@ -208,8 +208,8 @@ pub async fn handle_callback_query(
     match callback_data {
         CallbackData::AddFilterCategory(category_name) => {
             // Clear any previous selection and page offset
-            storage.clear_filter_selection(chat_id, &category_name).await;
-            storage.clear_filter_page_offset(chat_id, &category_name).await;
+            storage.clone().as_filter_selection_storage().clear_filter_selection(chat_id, &category_name).await;
+            storage.clone().as_filter_page_storage().clear_filter_page_offset(chat_id, &category_name).await;
             show_filter_word_suggestions(
                 bot,
                 chat_id,
@@ -222,7 +222,7 @@ pub async fn handle_callback_query(
 
         CallbackData::ToggleWord { category, word } => {
             // Get current selection
-            let mut selected_words = storage.get_filter_selection(chat_id, &category).await;
+            let mut selected_words = storage.clone().as_filter_selection_storage().get_filter_selection(chat_id, &category).await;
 
             // Toggle the word
             if let Some(pos) = selected_words.iter().position(|w| w == &word) {
@@ -232,7 +232,7 @@ pub async fn handle_callback_query(
             }
 
             // Save updated selection
-            storage
+            storage.clone().as_filter_selection_storage()
                 .set_filter_selection(chat_id, category.clone(), selected_words)
                 .await;
 
@@ -249,11 +249,11 @@ pub async fn handle_callback_query(
 
         CallbackData::PagePrev(category_name) => {
             // Get current page offset and decrease by 20
-            let current_offset = storage.get_filter_page_offset(chat_id, &category_name).await;
+            let current_offset = storage.clone().as_filter_page_storage().get_filter_page_offset(chat_id, &category_name).await;
             let new_offset = current_offset.saturating_sub(20);
 
             // Update page offset
-            storage
+            storage.clone().as_filter_page_storage()
                 .set_filter_page_offset(chat_id, category_name.clone(), new_offset)
                 .await;
 
@@ -270,11 +270,11 @@ pub async fn handle_callback_query(
 
         CallbackData::PageNext(category_name) => {
             // Get current page offset and increase by 20
-            let current_offset = storage.get_filter_page_offset(chat_id, &category_name).await;
+            let current_offset = storage.clone().as_filter_page_storage().get_filter_page_offset(chat_id, &category_name).await;
             let new_offset = current_offset + 20;
 
             // Update page offset
-            storage
+            storage.clone().as_filter_page_storage()
                 .set_filter_page_offset(chat_id, category_name.clone(), new_offset)
                 .await;
 
@@ -294,18 +294,18 @@ pub async fn handle_callback_query(
                 bot,
                 chat_id,
                 message.id(),
-                storage.clone(),
+                storage.clone().as_category_storage(),
                 category_name,
             )
             .await?;
         }
 
         CallbackData::CmdAddFilter => {
-            add_filter_menu(bot, chat_id, message.id(), storage.clone()).await?;
+            add_filter_menu(bot, chat_id, message.id(), storage.clone().as_category_storage()).await?;
         }
 
         CallbackData::CmdRemoveFilter => {
-            remove_filter_menu(bot, chat_id, message.id(), storage.clone()).await?;
+            remove_filter_menu(bot, chat_id, message.id(), storage.clone().as_category_storage()).await?;
         }
 
         CallbackData::Noop => {

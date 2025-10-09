@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use teloxide::{
     Bot,
     payloads::EditMessageReplyMarkupSetters,
@@ -6,14 +7,13 @@ use teloxide::{
 };
 
 use crate::handlers::CallbackData;
-use crate::storage::Storage;
 use crate::storage_traits::CategoryStorageTrait;
 
 /// Add a category (name only)
 pub async fn category_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
     name: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
@@ -49,7 +49,7 @@ pub async fn category_command(
 pub async fn categories_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     let categories = storage.get_chat_categories(chat_id).await;
@@ -83,7 +83,7 @@ pub async fn categories_command(
 pub async fn remove_category_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
     name: Option<String>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
@@ -119,7 +119,7 @@ pub async fn remove_category_menu(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
 ) -> ResponseResult<()> {
     let categories = storage.get_chat_categories(chat_id).await;
 
@@ -176,7 +176,7 @@ pub async fn show_category_filters_for_removal(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
     category_name: String,
 ) -> ResponseResult<()> {
     let categories = storage.get_chat_categories(chat_id).await;

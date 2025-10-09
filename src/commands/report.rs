@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use teloxide::{
     Bot,
@@ -10,7 +11,6 @@ use teloxide::{
 
 use crate::{
     parser::format_timestamp,
-    storage::Storage,
     storage_traits::{CategoryStorageTrait, Expense, ExpenseStorageTrait},
 };
 
@@ -103,11 +103,12 @@ fn check_category_conflicts(
 pub async fn report_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    expense_storage: Arc<dyn ExpenseStorageTrait>,
+    category_storage: Arc<dyn CategoryStorageTrait>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
-    let chat_expenses = storage.get_chat_expenses(chat_id).await;
-    let chat_categories = storage.get_chat_categories(chat_id).await;
+    let chat_expenses = expense_storage.get_chat_expenses(chat_id).await;
+    let chat_categories = category_storage.get_chat_categories(chat_id).await;
 
     // Check for category conflicts before generating report
     if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {

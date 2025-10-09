@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
+use std::sync::Arc;
 use teloxide::{prelude::*, types::Message, utils::command::ParseError};
 
-use crate::storage::Storage;
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
 
 /// Format timestamp as YYYY-MM-DD string
@@ -57,7 +57,7 @@ pub fn parse_expense(s: String) -> Result<ExpenseParams, ParseError> {
 }
 
 /// List all expenses chronologically without category grouping
-pub async fn list_command(bot: Bot, msg: Message, storage: Storage) -> ResponseResult<()> {
+pub async fn list_command(bot: Bot, msg: Message, storage: Arc<dyn ExpenseStorageTrait>) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     let chat_expenses = storage.get_chat_expenses(chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
@@ -96,7 +96,7 @@ fn format_expenses_chronological(expenses: &[Expense]) -> String {
 pub async fn expense_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn ExpenseStorageTrait>,
     date: Option<NaiveDate>,
     description: Option<String>,
     amount: Option<f64>,
@@ -159,7 +159,7 @@ pub async fn expense_command(
 }
 
 /// Clear all expenses
-pub async fn clear_command(bot: Bot, msg: Message, storage: Storage) -> ResponseResult<()> {
+pub async fn clear_command(bot: Bot, msg: Message, storage: Arc<dyn ExpenseStorageTrait>) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     storage.clear_chat_expenses(chat_id).await;
 

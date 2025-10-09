@@ -14,6 +14,8 @@ use teloxide::{
     },
 };
 
+use std::sync::Arc;
+
 use crate::{
     commands::{
         categories::{categories_command, category_command, remove_category_command},
@@ -24,11 +26,7 @@ use crate::{
     },
     handlers::CallbackData,
     parser::extract_words,
-    storage::Storage,
-    storage_traits::{
-        CategoryStorageTrait, ExpenseStorageTrait, FilterPageStorageTrait,
-        FilterSelectionStorageTrait,
-    },
+    storage_traits::{CategoryStorageTrait, StorageTrait},
 };
 
 /// Custom parser for optional single string parameter
@@ -124,7 +122,7 @@ pub enum Command {
 pub async fn clear_categories_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn CategoryStorageTrait>,
 ) -> ResponseResult<()> {
     let chat_id = msg.chat.id;
     storage.clear_chat_categories(chat_id).await;
@@ -139,17 +137,17 @@ pub async fn show_filter_word_suggestions(
     bot: Bot,
     chat_id: ChatId,
     message_id: MessageId,
-    storage: Storage,
+    storage: Arc<dyn StorageTrait>,
     category_name: String,
 ) -> ResponseResult<()> {
-    let expenses = storage.get_chat_expenses(chat_id).await;
-    let categories = storage.get_chat_categories(chat_id).await;
+    let expenses = storage.clone().as_expense_storage().get_chat_expenses(chat_id).await;
+    let categories = storage.clone().as_category_storage().get_chat_categories(chat_id).await;
 
     // Get currently selected words from storage
-    let selected_words = storage.get_filter_selection(chat_id, &category_name).await;
+    let selected_words = storage.clone().as_filter_selection_storage().get_filter_selection(chat_id, &category_name).await;
 
     // Get current page offset
-    let page_offset = storage.get_filter_page_offset(chat_id, &category_name).await;
+    let page_offset = storage.clone().as_filter_page_storage().get_filter_page_offset(chat_id, &category_name).await;
 
     // Extract words from uncategorized expenses
     let words = extract_words(&expenses, &categories);
@@ -279,7 +277,7 @@ pub async fn show_filter_word_suggestions(
 pub async fn execute_command(
     bot: Bot,
     msg: Message,
-    storage: Storage,
+    storage: Arc<dyn StorageTrait>,
     cmd: Command,
     silent: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -298,7 +296,7 @@ pub async fn execute_command(
             expense_command(
                 bot.clone(),
                 msg.clone(),
-                storage.clone(),
+                storage.clone().as_expense_storage(),
                 date,
                 description,
                 amount,
@@ -307,47 +305,48 @@ pub async fn execute_command(
             .await?;
         }
         Command::List => {
-            list_command(bot.clone(), msg.clone(), storage.clone()).await?;
+            list_command(bot.clone(), msg.clone(), storage.clone().as_expense_storage()).await?;
         }
         Command::Report => {
             report_command(
                 bot.clone(),
                 msg.clone(),
-                storage.clone(),
+                storage.clone().as_expense_storage(),
+                storage.clone().as_category_storage(),
             )
             .await?;
         }
         Command::Clear => {
-            clear_command(bot.clone(), msg.clone(), storage.clone()).await?;
+            clear_command(bot.clone(), msg.clone(), storage.clone().as_expense_storage()).await?;
         }
         Command::ClearCategories => {
-            clear_categories_command(bot.clone(), msg.clone(), storage.clone()).await?;
+            clear_categories_command(bot.clone(), msg.clone(), storage.clone().as_category_storage()).await?;
         }
         Command::AddCategory { name } => {
-            category_command(bot.clone(), msg.clone(), storage.clone(), name).await?;
+            category_command(bot.clone(), msg.clone(), storage.clone().as_category_storage(), name).await?;
         }
         Command::Categories => {
-            categories_command(bot.clone(), msg.clone(), storage.clone()).await?;
+            categories_command(bot.clone(), msg.clone(), storage.clone().as_category_storage()).await?;
         }
         Command::AddFilter { category, pattern } => {
             add_filter_command(
                 bot.clone(),
                 msg.clone(),
-                storage.clone(),
+                storage.clone().as_category_storage(),
                 category,
                 pattern,
             )
             .await?;
         }
         Command::RemoveCategory { name } => {
-            remove_category_command(bot.clone(), msg.clone(), storage.clone(), name)
+            remove_category_command(bot.clone(), msg.clone(), storage.clone().as_category_storage(), name)
                 .await?;
         }
         Command::RemoveFilter { category, pattern } => {
             remove_filter_command(
                 bot.clone(),
                 msg.clone(),
-                storage.clone(),
+                storage.clone().as_category_storage(),
                 category,
                 pattern,
             )

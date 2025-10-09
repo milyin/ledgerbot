@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use teloxide::types::ChatId;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,4 +72,20 @@ pub trait FilterPageStorageTrait: Send + Sync {
     
     /// Clear page offset for filter word browsing
     async fn clear_filter_page_offset(&self, chat_id: ChatId, category: &str);
+}
+
+/// Combined storage trait that provides all storage operations
+/// This trait allows converting to specific trait objects for functions that only need subset of functionality
+pub trait StorageTrait: ExpenseStorageTrait + CategoryStorageTrait + FilterSelectionStorageTrait + FilterPageStorageTrait + Send + Sync {
+    /// Convert to ExpenseStorageTrait trait object
+    fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait>;
+    
+    /// Convert to CategoryStorageTrait trait object
+    fn as_category_storage(self: Arc<Self>) -> Arc<dyn CategoryStorageTrait>;
+    
+    /// Convert to FilterSelectionStorageTrait trait object
+    fn as_filter_selection_storage(self: Arc<Self>) -> Arc<dyn FilterSelectionStorageTrait>;
+    
+    /// Convert to FilterPageStorageTrait trait object
+    fn as_filter_page_storage(self: Arc<Self>) -> Arc<dyn FilterPageStorageTrait>;
 }

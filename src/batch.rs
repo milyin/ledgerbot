@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 
 use crate::commands::{Command, execute_command};
 use crate::config::BATCH_TIMEOUT_SECONDS;
+use crate::storage_traits::StorageTrait;
 
 /// Per-chat batch storage - each chat has its own batch state
 pub type BatchStorage = Arc<Mutex<HashMap<ChatId, Vec<Result<Command, String>>>>>;
@@ -40,7 +41,7 @@ pub async fn execute_batch(
     bot: Bot,
     batch_storage: BatchStorage,
     target_chat_id: ChatId,
-    storage: crate::storage::Storage,
+    storage: Arc<dyn StorageTrait>,
     msg: Message,
 ) {
     // Wait for the timeout period

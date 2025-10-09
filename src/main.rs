@@ -7,12 +7,14 @@ mod storage;
 mod storage_traits;
 
 use clap::Parser;
+use std::sync::Arc;
 use teloxide::prelude::*;
 
 use batch::create_batch_storage;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
 use storage::Storage;
+use storage_traits::StorageTrait;
 
 #[tokio::main]
 async fn main() {
@@ -26,6 +28,9 @@ async fn main() {
 
     // Initialize main storage (holds expenses, categories, and filter state)
     let storage = Storage::new();
+    
+    // Wrap storage in Arc<dyn StorageTrait> for use throughout the bot
+    let storage_trait: Arc<dyn StorageTrait> = Arc::new(storage);
 
     // Initialize batch storage (separate from main storage for now)
     let batch_storage = create_batch_storage();
@@ -45,7 +50,7 @@ async fn main() {
 
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![
-            storage.clone(),
+            storage_trait,
             batch_storage
         ])
         .enable_ctrlc_handler()
