@@ -31,7 +31,7 @@ pub async fn category_command(
                 bot.send_message(
                     chat_id,
                     format!(
-                        "✅ Category `{}` created\\. Use \\/add_filterto add regex patterns\\.",
+                        "✅ Category `{}` created\\. Use \\/add_filter to add regex patterns\\.",
                         escape(&name)
                     ),
                 )

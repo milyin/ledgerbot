@@ -30,6 +30,9 @@ use crate::{
     storage_traits::{CategoryStorageTrait, StorageTrait},
 };
 
+/// Type alias for category, position, and pattern parser result
+type CategoryPositionPatternResult = Result<(Option<String>, Option<usize>, Option<String>), ParseError>;
+
 /// Custom parser for optional single string parameter
 fn parse_optional_string(s: String) -> Result<(Option<String>,), ParseError> {
     // Take only the first line to prevent multi-line capture
@@ -83,7 +86,7 @@ fn parse_category_and_position(s: String) -> Result<(Option<String>, Option<usiz
 /// Custom parser for category, position, and pattern (for edit_filter)
 fn parse_category_position_and_pattern(
     s: String,
-) -> Result<(Option<String>, Option<usize>, Option<String>), ParseError> {
+) -> CategoryPositionPatternResult {
     // Take only the first line to prevent multi-line capture
     let first_line = s.lines().next().unwrap_or("").trim();
     if first_line.is_empty() {
@@ -187,6 +190,72 @@ pub enum Command {
         description: Option<String>,
         amount: Option<f64>,
     },
+}
+
+impl From<Command> for String {
+    fn from(val: Command) -> Self {
+        match val {
+            Command::Start => "/start".to_string(),
+            Command::Help => "/help".to_string(),
+            Command::List => "/list".to_string(),
+            Command::Report => "/report".to_string(),
+            Command::Clear => "/clear".to_string(),
+            Command::Categories => "/categories".to_string(),
+            Command::ClearCategories => "/clear_categories".to_string(),
+            Command::AddCategory { name } => {
+                match name {
+                    Some(name) => format!("/add_category {}", name),
+                    None => "/add_category".to_string(),
+                }
+            }
+            Command::AddFilter { category, pattern } => {
+                match (category, pattern) {
+                    (Some(cat), Some(pat)) => format!("/add_filter {} {}", cat, pat),
+                    (Some(cat), None) => format!("/add_filter {}", cat),
+                    (None, Some(pat)) => format!("/add_filter <category> {}", pat),
+                    (None, None) => "/add_filter".to_string(),
+                }
+            }
+            Command::RemoveCategory { name } => {
+                match name {
+                    Some(name) => format!("/remove_category {}", name),
+                    None => "/remove_category".to_string(),
+                }
+            }
+            Command::RemoveFilter { category, position } => {
+                match (category, position) {
+                    (Some(cat), Some(pos)) => format!("/remove_filter {} {}", cat, pos),
+                    (Some(cat), None) => format!("/remove_filter {}", cat),
+                    (None, Some(pos)) => format!("/remove_filter <category> {}", pos),
+                    (None, None) => "/remove_filter".to_string(),
+                }
+            }
+            Command::EditFilter { category, position, pattern } => {
+                match (category, position, pattern) {
+                    (Some(cat), Some(pos), Some(pat)) => format!("/edit_filter {} {} {}", cat, pos, pat),
+                    (Some(cat), Some(pos), None) => format!("/edit_filter {} {}", cat, pos),
+                    (Some(cat), None, Some(pat)) => format!("/edit_filter {} <position> {}", cat, pat),
+                    (Some(cat), None, None) => format!("/edit_filter {}", cat),
+                    (None, Some(pos), Some(pat)) => format!("/edit_filter <category> {} {}", pos, pat),
+                    (None, Some(pos), None) => format!("/edit_filter <category> {}", pos),
+                    (None, None, Some(pat)) => format!("/edit_filter <category> <position> {}", pat),
+                    (None, None, None) => "/edit_filter".to_string(),
+                }
+            }
+            Command::Expense { date, description, amount } => {
+                match (date, description, amount) {
+                    (Some(date), Some(desc), Some(amt)) => format!("/expense {} {} {}", date.format("%Y-%m-%d"), desc, amt),
+                    (Some(date), Some(desc), None) => format!("/expense {} {}", date.format("%Y-%m-%d"), desc),
+                    (Some(date), None, Some(amt)) => format!("/expense {} <description> {}", date.format("%Y-%m-%d"), amt),
+                    (Some(date), None, None) => format!("/expense {}", date.format("%Y-%m-%d")),
+                    (None, Some(desc), Some(amt)) => format!("/expense {} {}", desc, amt),
+                    (None, Some(desc), None) => format!("/expense {}", desc),
+                    (None, None, Some(amt)) => format!("/expense [<date>] <description> {}", amt),
+                    (None, None, None) => "/expense".to_string(),
+                }
+            }
+        }
+    }
 }
 
 /// Clear all categories
