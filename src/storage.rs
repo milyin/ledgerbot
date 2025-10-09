@@ -227,21 +227,41 @@ impl FilterPageStorageTrait for FilterPageStorage {
 /// This is the primary storage container for the application
 #[derive(Clone)]
 pub struct Storage {
-    expenses: ExpenseStorage,
-    categories: CategoryStorage,
-    filter_selection: FilterSelectionStorage,
-    filter_page: FilterPageStorage,
+    expenses: Arc<dyn ExpenseStorageTrait>,
+    categories: Arc<dyn CategoryStorageTrait>,
+    filter_selection: Arc<dyn FilterSelectionStorageTrait>,
+    filter_page: Arc<dyn FilterPageStorageTrait>,
 }
 
 impl Storage {
     /// Create a new storage with all storage types initialized
     pub fn new() -> Self {
         Self {
-            expenses: ExpenseStorage::new(),
-            categories: CategoryStorage::new(),
-            filter_selection: FilterSelectionStorage::new(),
-            filter_page: FilterPageStorage::new(),
+            expenses: Arc::new(ExpenseStorage::new()),
+            categories: Arc::new(CategoryStorage::new()),
+            filter_selection: Arc::new(FilterSelectionStorage::new()),
+            filter_page: Arc::new(FilterPageStorage::new()),
         }
+    }
+
+    /// Replace the expense storage with a new instance
+    pub fn replace_expenses(&mut self, expenses: Arc<dyn ExpenseStorageTrait>) {
+        self.expenses = expenses;
+    }
+
+    /// Replace the category storage with a new instance
+    pub fn replace_categories(&mut self, categories: Arc<dyn CategoryStorageTrait>) {
+        self.categories = categories;
+    }
+
+    /// Replace the filter selection storage with a new instance
+    pub fn replace_filter_selection(&mut self, new_filter_selection: Arc<dyn FilterSelectionStorageTrait>) {
+        self.filter_selection = new_filter_selection;
+    }
+
+    /// Replace the filter page storage with a new instance
+    pub fn replace_filter_page(&mut self, filter_page: Arc<dyn FilterPageStorageTrait>) {
+        self.filter_page = filter_page;
     }
 }
 
@@ -254,18 +274,18 @@ impl Default for Storage {
 /// Implement StorageTrait for Storage to enable conversion to specific trait objects
 impl StorageTrait for Storage {
     fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait> {
-        Arc::new(self.expenses.clone())
+        self.expenses.clone()
     }
 
     fn as_category_storage(self: Arc<Self>) -> Arc<dyn CategoryStorageTrait> {
-        Arc::new(self.categories.clone())
+        self.categories.clone()
     }
 
     fn as_filter_selection_storage(self: Arc<Self>) -> Arc<dyn FilterSelectionStorageTrait> {
-        Arc::new(self.filter_selection.clone())
+        self.filter_selection.clone()
     }
 
     fn as_filter_page_storage(self: Arc<Self>) -> Arc<dyn FilterPageStorageTrait> {
-        Arc::new(self.filter_page.clone())
+        self.filter_page.clone()
     }
 }
