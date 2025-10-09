@@ -53,7 +53,7 @@ pub fn parse_expenses(
         }
 
         let command_line = if !line.starts_with('/') {
-            format!("/expense {}", line)
+            format!("{} {}", Command::EXPENSE, line)
         } else {
             line.to_string()
         };

@@ -84,11 +84,16 @@ pub async fn categories_command(
 
         for (name, patterns) in sorted_categories {
             // First create the category
-            result.push_str(&format!("/add_category {}\n", name));
+            result.push_str(&Command::AddCategory { name: Some(name.clone()) }.to_string());
+            result.push('\n');
 
             // Then assign patterns if they exist
             for pattern in patterns {
-                result.push_str(&format!("/add_filter {} {}\n", name, pattern));
+                result.push_str(&Command::AddFilter { 
+                    category: Some(name.clone()), 
+                    pattern: Some(pattern.clone()) 
+                }.to_string());
+                result.push('\n');
             }
         }
         bot.send_message(chat_id, result).await?;
@@ -165,7 +170,7 @@ pub async fn remove_category_menu(
             .map(|name| {
                 vec![InlineKeyboardButton::switch_inline_query_current_chat(
                     format!("🚫 {}", name),
-                    format!("/remove_category {}", name),
+                    Command::RemoveCategory { name: Some(name.clone()) }.to_string(),
                 )]
             })
             .collect();
@@ -192,7 +197,7 @@ pub async fn add_category_menu(
     let text = "➕ **Add a new category:**\n\nClick the button below and type the category name\\.";
 
     let keyboard = InlineKeyboardMarkup::new(vec![vec![
-        InlineKeyboardButton::switch_inline_query_current_chat("➕ Add Category", "/add_category "),
+        InlineKeyboardButton::switch_inline_query_current_chat("➕ Add Category", &format!("{} ", Command::ADD_CATEGORY)),
     ]]);
 
     bot.edit_message_text(chat_id, message_id, text)
@@ -237,7 +242,10 @@ pub async fn show_category_filters_for_removal(
                 .map(|(index, pattern)| {
                     vec![InlineKeyboardButton::switch_inline_query_current_chat(
                         format!("{}. {}", index, pattern),
-                        format!("/remove_filter {} {}", category_name, index),
+                        Command::RemoveFilter { 
+                            category: Some(category_name.clone()), 
+                            position: Some(index) 
+                        }.to_string(),
                     )]
                 })
                 .collect();
@@ -295,7 +303,11 @@ pub async fn show_category_filters_for_editing(
                 .map(|(index, pattern)| {
                     vec![InlineKeyboardButton::switch_inline_query_current_chat(
                         format!("{}. {}", index, pattern),
-                        format!("/edit_filter {} {} {}", category_name, index, pattern),
+                        Command::EditFilter { 
+                            category: Some(category_name.clone()), 
+                            position: Some(index), 
+                            pattern: Some(pattern.clone()) 
+                        }.to_string(),
                     )]
                 })
                 .collect();

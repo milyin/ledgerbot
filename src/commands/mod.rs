@@ -401,10 +401,13 @@ pub async fn show_filter_word_suggestions(
         // Escape each word and combine with case-insensitive OR pattern with word boundaries
         let escaped_words: Vec<String> = selected_words.iter().map(|w| regex::escape(w)).collect();
         let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
-        format!("/add_filter {} {}", category_name, pattern)
+        Command::AddFilter { 
+            category: Some(category_name.clone()), 
+            pattern: Some(pattern) 
+        }.to_string()
     } else {
         // No words selected, just put category name
-        format!("/add_filter {} ", category_name)
+        format!("{} {} ", Command::ADD_FILTER, category_name)
     };
 
     control_row.push(InlineKeyboardButton::switch_inline_query_current_chat(
