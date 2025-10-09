@@ -45,4 +45,4 @@ fi
 # SSH to the remote host and run ledgerbot, showing output locally
 # Use -tt to force TTY allocation and ensure output is shown
 # The -o options help with proper output handling
-ssh -tt -o LogLevel=ERROR ${DEPLOY_USER}@${DEPLOY_HOST} "cd ${DEPLOY_PATH} && RUST_LOG=debug ./ledgerbot 2>&1"
+ssh -tt -o LogLevel=ERROR ${DEPLOY_USER}@${DEPLOY_HOST} "cd ${DEPLOY_PATH} && RUST_LOG=debug ./ledgerbot --persistent-storage 2>&1"
