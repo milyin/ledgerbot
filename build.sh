@@ -13,10 +13,6 @@ fi
 # Determine the build directory based on CARGO_BUILD_FLAGS
 if [[ "$CARGO_BUILD_FLAGS" == *"--release"* ]]; then
   BUILD_DIR="release"
-  # For release mode, use DEPLOY_PATH_RELEASE if set, otherwise fall back to DEPLOY_PATH
-  if [ -n "$DEPLOY_PATH_RELEASE" ]; then
-    DEPLOY_PATH="$DEPLOY_PATH_RELEASE"
-  fi
 else
   BUILD_DIR="debug"
 fi
@@ -45,24 +41,4 @@ if [ ! -d "target/openssl-3.6.0" ]; then
 fi
 
 OPENSSL_DIR=$PWD/target/openssl-3.6.0/install cargo build --target=x86_64-unknown-linux-gnu $CARGO_BUILD_FLAGS
-
 strip target/x86_64-unknown-linux-gnu/$BUILD_DIR/ledgerbot
-
-# If in release mode, stop the ledgerbot service before copying
-if [[ "$BUILD_DIR" == "release" ]]; then
-  echo "Stopping ledgerbot service..."
-  ssh -t ${DEPLOY_USER}@${DEPLOY_HOST} "sudo systemctl stop ledgerbot"
-  echo "Service stopped"
-fi
-
-scp target/x86_64-unknown-linux-gnu/$BUILD_DIR/ledgerbot ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/ledgerbot
-
-# make ls command to show the deployed binary details
-ssh ${DEPLOY_USER}@${DEPLOY_HOST} "ls -lh ${DEPLOY_PATH}/ledgerbot"
-
-# If in release mode, start the ledgerbot service after copying
-if [[ "$BUILD_DIR" == "release" ]]; then
-  echo "Starting ledgerbot service..."
-  ssh -t ${DEPLOY_USER}@${DEPLOY_HOST} "sudo systemctl start ledgerbot"
-  echo "Service started successfully"
-fi

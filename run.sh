@@ -11,10 +11,6 @@ fi
 # Determine the build directory based on CARGO_BUILD_FLAGS
 if [[ "$CARGO_BUILD_FLAGS" == *"--release"* ]]; then
   BUILD_DIR="release"
-  # For release mode, use DEPLOY_PATH_RELEASE if set, otherwise fall back to DEPLOY_PATH
-  if [ -n "$DEPLOY_PATH_RELEASE" ]; then
-    DEPLOY_PATH="$DEPLOY_PATH_RELEASE"
-  fi
 else
   BUILD_DIR="debug"
 fi
@@ -33,6 +29,18 @@ echo "Building and deploying ledgerbot..."
 echo "Starting ledgerbot on remote host ${DEPLOY_HOST}..."
 echo "Press Ctrl+C to stop the remote process and exit"
 echo "----------------------------------------"
+
+scp target/x86_64-unknown-linux-gnu/$BUILD_DIR/ledgerbot ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/ledgerbot
+
+# make ls command to show the deployed binary details
+ssh ${DEPLOY_USER}@${DEPLOY_HOST} "ls -lh ${DEPLOY_PATH}/ledgerbot"
+
+# If in release mode, start the ledgerbot service after copying
+if [[ "$BUILD_DIR" == "release" ]]; then
+  echo "Starting ledgerbot service..."
+  ssh -t ${DEPLOY_USER}@${DEPLOY_HOST} "sudo systemctl start ledgerbot"
+  echo "Service started successfully"
+fi
 
 # SSH to the remote host and run ledgerbot, showing output locally
 # Use -tt to force TTY allocation and ensure output is shown
