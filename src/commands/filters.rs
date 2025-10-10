@@ -163,7 +163,7 @@ pub async fn remove_filter_command(
             bot.send_message(
                 chat_id,
                 format!(
-                    "✅ Filter **#{}** \\(`{}`\\) removed from category `{}`\\.",
+                    "✅ Filter **\\#{}** \\(`{}`\\) removed from category `{}`\\.",
                     escape(&position.to_string()),
                     escape(&pattern_to_remove),
                     escape(&category)
@@ -281,7 +281,7 @@ pub async fn edit_filter_command(
                     bot.send_message(
                         chat_id,
                         format!(
-                            "✅ Filter **#{}** updated in category `{}`\\.\n**Old:** `{}`\n**New:** `{}`",
+                            "✅ Filter **\\#{}** updated in category `{}`\\.\n**Old:** `{}`\n**New:** `{}`",
                             escape(&position.to_string()), escape(&category), escape(&old_pattern_clone), escape(&pattern)
                         ),
                     )
