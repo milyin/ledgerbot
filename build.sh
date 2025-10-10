@@ -17,13 +17,6 @@ else
   BUILD_DIR="debug"
 fi
 
-# Check if DEPLOY_USER, DEPLOY_HOST, and DEPLOY_PATH are set
-if [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_PATH" ]; then
-  echo "Error: DEPLOY_USER, DEPLOY_HOST, and DEPLOY_PATH environment variables must be set."
-  echo "Please copy .env.example to .env and fill in your deployment configuration."
-  exit 1
-fi
-
 # download openssl source code from 
 # https://github.com/openssl/openssl/releases/download/openssl-3.6.0/openssl-3.6.0.tar.gz 
 # into target/openssl if it does not exist there yet
