@@ -23,8 +23,11 @@ pub const BATCH_TIMEOUT_SECONDS: u64 = 1; // Report after N seconds of inactivit
 pub struct Args {
     #[arg(long, help = BOT_TOKEN_HELP)]
     pub bot_token_env: Option<String>,
-    
-    #[arg(long, help = "Enable persistent category storage with optional path (default: ./categories)")]
+
+    #[arg(
+        long,
+        help = "Enable persistent category storage with optional path (default: ./categories)"
+    )]
     pub persistent_storage: Option<Option<PathBuf>>,
 }
 

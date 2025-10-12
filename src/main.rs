@@ -2,20 +2,20 @@ mod batch;
 mod commands;
 mod config;
 mod handlers;
-mod macros;
 mod markdown_string;
+mod markdown_validate;
 mod parser;
 mod storage;
 mod storage_traits;
 
 use clap::Parser;
-use std::sync::Arc;
 use std::path::PathBuf;
+use std::sync::Arc;
 use teloxide::prelude::*;
 
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storage::{Storage, PersistentCategoryStorage};
+use storage::{PersistentCategoryStorage, Storage};
 use storage_traits::StorageTrait;
 
 #[tokio::main]
@@ -32,7 +32,10 @@ async fn main() {
     let storage = if let Some(storage_path) = args.persistent_storage {
         // Use persistent storage with provided path or default
         let storage_dir = storage_path.unwrap_or_else(|| PathBuf::from("categories"));
-        log::info!("Using persistent category storage in directory: {:?}", storage_dir);
+        log::info!(
+            "Using persistent category storage in directory: {:?}",
+            storage_dir
+        );
         Storage::new().categories_storage(PersistentCategoryStorage::new(storage_dir))
     } else {
         // Use in-memory storage

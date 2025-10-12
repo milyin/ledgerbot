@@ -1,10 +1,8 @@
 use std::str::FromStr;
 use std::sync::Arc;
-use teloxide::{
-    prelude::*, types::CallbackQuery,
-};
+use teloxide::{prelude::*, types::CallbackQuery};
 
-use crate::send_message_markdown;
+use crate::{markdown, markdown_string::MarkdownStringSendMessage};
 
 use crate::batch::{add_to_batch, execute_batch};
 use crate::commands::categories::{
@@ -130,7 +128,8 @@ pub async fn handle_text_message(
         if is_multiline || is_forwarded {
             // Add to batch storage for deferred execution
             let batch_storage = storage.clone().as_batch_storage();
-            let is_first_message = add_to_batch(batch_storage.clone(), chat_id, parsed_results).await;
+            let is_first_message =
+                add_to_batch(batch_storage.clone(), chat_id, parsed_results).await;
 
             // Start timeout task only for the first message in batch
             if is_first_message {
@@ -138,7 +137,8 @@ pub async fn handle_text_message(
                 let storage_clone = storage.clone();
                 let msg_clone = msg.clone();
                 tokio::spawn(async move {
-                    execute_batch(bot_clone, batch_storage, chat_id, storage_clone, msg_clone).await;
+                    execute_batch(bot_clone, batch_storage, chat_id, storage_clone, msg_clone)
+                        .await;
                 });
             }
         } else {
@@ -152,18 +152,18 @@ pub async fn handle_text_message(
                                 .await;
                         if let Err(e) = exec_result {
                             log::error!("Failed to execute command: {}", e);
-                            send_message_markdown!(
-                                bot,
+                            bot.send_markdown_message(
                                 chat_id,
-                                "❌ Error: {}",
-                                e.to_string()
-                            ).await?;
+                                markdown!("❌ Error: {}", e.to_string()),
+                            )
+                            .await?;
                         }
                     }
                     Err(err_msg) => {
                         // Send error message to user
                         log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
-                        send_message_markdown!(bot, chat_id, "❌ {}", err_msg).await?;
+                        bot.send_markdown_message(chat_id, markdown!("❌ {}", err_msg))
+                            .await?;
                     }
                 }
             }

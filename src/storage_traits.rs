@@ -91,11 +91,7 @@ pub trait FilterPageStorageTrait: Send + Sync {
 #[async_trait::async_trait]
 pub trait BatchStorageTrait: Send + Sync {
     /// Add commands to batch and return whether this is the first message in the batch
-    async fn add_to_batch(
-        &self,
-        chat_id: ChatId,
-        commands: Vec<Result<Command, String>>,
-    ) -> bool;
+    async fn add_to_batch(&self, chat_id: ChatId, commands: Vec<Result<Command, String>>) -> bool;
 
     /// Consume and remove batch data for a chat
     async fn consume_batch(&self, chat_id: ChatId) -> Option<Vec<Result<Command, String>>>;

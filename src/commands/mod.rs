@@ -25,8 +25,9 @@ use crate::{
         report::report_command,
     },
     handlers::CallbackData,
+    markdown,
+    markdown_string::MarkdownStringSendMessage,
     parser::extract_words,
-    send_message_markdown,
     storage_traits::{CategoryStorageTrait, StorageTrait},
 };
 
@@ -215,41 +216,66 @@ impl From<Command> for String {
             Command::AddCategory { name } => {
                 let name_str = name.unwrap_or_else(|| "<name>".to_string());
                 format!("{} {}", Command::ADD_CATEGORY, name_str)
-            },
+            }
             Command::AddFilter { category, pattern } => {
                 let category_str = category.unwrap_or_else(|| "<category>".to_string());
                 let pattern_str = pattern.unwrap_or_else(|| "<pattern>".to_string());
                 format!("{} {} {}", Command::ADD_FILTER, category_str, pattern_str)
-            },
+            }
             Command::RemoveCategory { name } => {
                 let name_str = name.unwrap_or_else(|| "<name>".to_string());
                 format!("{} {}", Command::REMOVE_CATEGORY, name_str)
-            },
+            }
             Command::RemoveFilter { category, position } => {
                 let category_str = category.unwrap_or_else(|| "<category>".to_string());
-                let position_str = position.map(|p| p.to_string()).unwrap_or_else(|| "<position>".to_string());
-                format!("{} {} {}", Command::REMOVE_FILTER, category_str, position_str)
-            },
+                let position_str = position
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "<position>".to_string());
+                format!(
+                    "{} {} {}",
+                    Command::REMOVE_FILTER,
+                    category_str,
+                    position_str
+                )
+            }
             Command::EditFilter {
                 category,
                 position,
                 pattern,
             } => {
                 let category_str = category.unwrap_or_else(|| "<category>".to_string());
-                let position_str = position.map(|p| p.to_string()).unwrap_or_else(|| "<position>".to_string());
+                let position_str = position
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "<position>".to_string());
                 let pattern_str = pattern.unwrap_or_else(|| "<pattern>".to_string());
-                format!("{} {} {} {}", Command::EDIT_FILTER, category_str, position_str, pattern_str)
-            },
+                format!(
+                    "{} {} {} {}",
+                    Command::EDIT_FILTER,
+                    category_str,
+                    position_str,
+                    pattern_str
+                )
+            }
             Command::Expense {
                 date,
                 description,
                 amount,
             } => {
-                let date_str = date.map(|d| d.format("%Y-%m-%d").to_string()).unwrap_or_else(|| "<date>".to_string());
+                let date_str = date
+                    .map(|d| d.format("%Y-%m-%d").to_string())
+                    .unwrap_or_else(|| "<date>".to_string());
                 let description_str = description.unwrap_or_else(|| "<description>".to_string());
-                let amount_str = amount.map(|a| a.to_string()).unwrap_or_else(|| "<amount>".to_string());
-                format!("{} {} {} {}", Command::EXPENSE, date_str, description_str, amount_str)
-            },
+                let amount_str = amount
+                    .map(|a| a.to_string())
+                    .unwrap_or_else(|| "<amount>".to_string());
+                format!(
+                    "{} {} {} {}",
+                    Command::EXPENSE,
+                    date_str,
+                    description_str,
+                    amount_str
+                )
+            }
         }
     }
 }
@@ -269,7 +295,8 @@ pub async fn clear_categories_command(
     let chat_id = msg.chat.id;
     storage.clear_chat_categories(chat_id).await;
 
-    send_message_markdown!(bot, chat_id, "🗑️ All categories cleared\\!").await?;
+    bot.send_markdown_message(chat_id, markdown!("🗑️ All categories cleared\\!"))
+        .await?;
     Ok(())
 }
 
@@ -399,10 +426,11 @@ pub async fn show_filter_word_suggestions(
         // Escape each word and combine with case-insensitive OR pattern with word boundaries
         let escaped_words: Vec<String> = selected_words.iter().map(|w| regex::escape(w)).collect();
         let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
-        Command::AddFilter { 
-            category: Some(category_name.clone()), 
-            pattern: Some(pattern) 
-        }.to_string()
+        Command::AddFilter {
+            category: Some(category_name.clone()),
+            pattern: Some(pattern),
+        }
+        .to_string()
     } else {
         // No words selected, just put category name
         format!("{} {} ", Command::ADD_FILTER, category_name)

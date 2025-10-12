@@ -31,7 +31,14 @@ pub async fn add_filter_command(
                     chat_id,
                     format!(
                         "❌ Category `{}` does not exist\\. Create it first with {}",
-                        escape(&category), escape(Command::AddCategory { name: Some(category.clone()) }.to_string().as_str())
+                        escape(&category),
+                        escape(
+                            Command::AddCategory {
+                                name: Some(category.clone())
+                            }
+                            .to_string()
+                            .as_str()
+                        )
                     ),
                 )
                 .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -77,7 +84,13 @@ pub async fn add_filter_command(
                 chat_id,
                 format!(
                     "❌ Missing pattern\\. Usage: {}",
-                    escape(&Command::AddFilter { category: Some(category.clone()), pattern: Some("pattern".to_string()) }.to_string())
+                    escape(
+                        &Command::AddFilter {
+                            category: Some(category.clone()),
+                            pattern: Some("pattern".to_string())
+                        }
+                        .to_string()
+                    )
                 ),
             )
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -88,7 +101,13 @@ pub async fn add_filter_command(
                 chat_id,
                 format!(
                     "❌ Missing category\\. Usage: {}",
-                    escape(&Command::AddFilter { category: Some("category".to_string()), pattern: Some("pattern".to_string()) }.to_string())
+                    escape(
+                        &Command::AddFilter {
+                            category: Some("category".to_string()),
+                            pattern: Some("pattern".to_string())
+                        }
+                        .to_string()
+                    )
                 ),
             )
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -182,7 +201,13 @@ pub async fn remove_filter_command(
                 chat_id,
                 format!(
                     "❌ Missing position\\. Usage: {}",
-                    escape(&Command::RemoveFilter { category: Some(category.clone()), position: Some(0) }.to_string())
+                    escape(
+                        &Command::RemoveFilter {
+                            category: Some(category.clone()),
+                            position: Some(0)
+                        }
+                        .to_string()
+                    )
                 ),
             )
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -193,7 +218,13 @@ pub async fn remove_filter_command(
                 chat_id,
                 format!(
                     "❌ Missing category\\. Usage: {}",
-                    escape(&Command::RemoveFilter { category: Some("category".to_string()), position: Some(0) }.to_string())
+                    escape(
+                        &Command::RemoveFilter {
+                            category: Some("category".to_string()),
+                            position: Some(0)
+                        }
+                        .to_string()
+                    )
                 ),
             )
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -308,11 +339,14 @@ pub async fn edit_filter_command(
                 chat_id,
                 format!(
                     "❌ Missing pattern\\. Usage: {}",
-                    escape(&Command::EditFilter { 
-                        category: Some(category.clone()), 
-                        position: Some(position), 
-                        pattern: Some("new_pattern".to_string()) 
-                    }.to_string())
+                    escape(
+                        &Command::EditFilter {
+                            category: Some(category.clone()),
+                            position: Some(position),
+                            pattern: Some("new_pattern".to_string())
+                        }
+                        .to_string()
+                    )
                 ),
             )
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -323,11 +357,14 @@ pub async fn edit_filter_command(
                 chat_id,
                 format!(
                     "❌ Missing position\\. Usage: {}",
-                    escape(&Command::EditFilter { 
-                        category: Some(category.clone()), 
-                        position: Some(0), 
-                        pattern: Some("new_pattern".to_string()) 
-                    }.to_string())
+                    escape(
+                        &Command::EditFilter {
+                            category: Some(category.clone()),
+                            position: Some(0),
+                            pattern: Some("new_pattern".to_string())
+                        }
+                        .to_string()
+                    )
                 ),
             )
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -338,11 +375,14 @@ pub async fn edit_filter_command(
                 chat_id,
                 format!(
                     "❌ Missing category\\. Usage: {}",
-                    escape(&Command::EditFilter { 
-                        category: Some("category".to_string()), 
-                        position: Some(0), 
-                        pattern: Some("new_pattern".to_string()) 
-                    }.to_string())
+                    escape(
+                        &Command::EditFilter {
+                            category: Some("category".to_string()),
+                            position: Some(0),
+                            pattern: Some("new_pattern".to_string())
+                        }
+                        .to_string()
+                    )
                 ),
             )
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)

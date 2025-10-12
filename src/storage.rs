@@ -5,12 +5,12 @@ use crate::storage_traits::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::path::PathBuf;
+use std::sync::Arc;
 use teloxide::types::ChatId;
 use teloxide::utils::markdown::escape;
-use tokio::sync::Mutex;
 use tokio::fs;
+use tokio::sync::Mutex;
 
 /// Serializable structure for category data that can be saved/loaded as YAML
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -25,11 +25,11 @@ impl CategoryData {
             categories: HashMap::new(),
         }
     }
-    
+
     pub fn from_hashmap(categories: HashMap<String, Vec<String>>) -> Self {
         Self { categories }
     }
-    
+
     pub fn into_hashmap(self) -> HashMap<String, Vec<String>> {
         self.categories
     }
@@ -208,7 +208,7 @@ impl PersistentCategoryStorage {
     /// Load categories from disk for a specific chat ID
     async fn load_chat_categories(&self, chat_id: ChatId) -> HashMap<String, Vec<String>> {
         let file_path = self.get_file_path(chat_id);
-        
+
         match fs::read_to_string(&file_path).await {
             Ok(content) => {
                 match serde_yaml::from_str::<CategoryData>(&content) {
@@ -227,13 +227,17 @@ impl PersistentCategoryStorage {
     }
 
     /// Save categories to disk for a specific chat ID
-    async fn save_chat_categories(&self, chat_id: ChatId, categories: &HashMap<String, Vec<String>>) -> Result<(), std::io::Error> {
+    async fn save_chat_categories(
+        &self,
+        chat_id: ChatId,
+        categories: &HashMap<String, Vec<String>>,
+    ) -> Result<(), std::io::Error> {
         // Create directory if it doesn't exist
         fs::create_dir_all(&self.storage_dir).await?;
 
         let file_path = self.get_file_path(chat_id);
         let category_data = CategoryData::from_hashmap(categories.clone());
-        
+
         match serde_yaml::to_string(&category_data) {
             Ok(content) => fs::write(&file_path, content).await,
             Err(e) => Err(std::io::Error::new(
@@ -246,7 +250,7 @@ impl PersistentCategoryStorage {
     /// Ensure categories are loaded for a chat ID (lazy loading)
     async fn ensure_loaded(&self, chat_id: ChatId) -> HashMap<String, Vec<String>> {
         let loaded_guard = self.loaded_chats.lock().await;
-        
+
         if loaded_guard.get(&chat_id).copied().unwrap_or(false) {
             // Already loaded, get from memory storage
             drop(loaded_guard);
@@ -256,22 +260,20 @@ impl PersistentCategoryStorage {
         // Not loaded yet, load from disk
         drop(loaded_guard); // Release lock while doing I/O
         let categories = self.load_chat_categories(chat_id).await;
-        
+
         // Store in memory storage
         for (category_name, patterns) in &categories {
             for pattern in patterns {
-                self.memory_storage.add_category_filter(
-                    chat_id, 
-                    category_name.clone(), 
-                    pattern.clone()
-                ).await;
+                self.memory_storage
+                    .add_category_filter(chat_id, category_name.clone(), pattern.clone())
+                    .await;
             }
         }
-        
+
         // Mark as loaded
         let mut loaded_guard = self.loaded_chats.lock().await;
         loaded_guard.insert(chat_id, true);
-        
+
         categories
     }
 }
@@ -286,14 +288,17 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
 
     async fn add_category(&self, chat_id: ChatId, category_name: String) -> Result<(), String> {
         self.ensure_loaded(chat_id).await;
-        let result = self.memory_storage.add_category(chat_id, category_name.clone()).await;
-        
+        let result = self
+            .memory_storage
+            .add_category(chat_id, category_name.clone())
+            .await;
+
         if result.is_ok() {
             // Save updated categories to disk
             let categories = self.memory_storage.get_chat_categories(chat_id).await;
             let _ = self.save_chat_categories(chat_id, &categories).await;
         }
-        
+
         result
     }
 
@@ -304,8 +309,10 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         regex_pattern: String,
     ) {
         self.ensure_loaded(chat_id).await;
-        self.memory_storage.add_category_filter(chat_id, category_name, regex_pattern).await;
-        
+        self.memory_storage
+            .add_category_filter(chat_id, category_name, regex_pattern)
+            .await;
+
         // Save updated categories to disk
         let categories = self.memory_storage.get_chat_categories(chat_id).await;
         let _ = self.save_chat_categories(chat_id, &categories).await;
@@ -318,8 +325,10 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         regex_pattern: &str,
     ) {
         self.ensure_loaded(chat_id).await;
-        self.memory_storage.remove_category_filter(chat_id, category_name, regex_pattern).await;
-        
+        self.memory_storage
+            .remove_category_filter(chat_id, category_name, regex_pattern)
+            .await;
+
         // Save updated categories to disk
         let categories = self.memory_storage.get_chat_categories(chat_id).await;
         let _ = self.save_chat_categories(chat_id, &categories).await;
@@ -327,8 +336,10 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
 
     async fn remove_category(&self, chat_id: ChatId, category_name: &str) {
         self.ensure_loaded(chat_id).await;
-        self.memory_storage.remove_category(chat_id, category_name).await;
-        
+        self.memory_storage
+            .remove_category(chat_id, category_name)
+            .await;
+
         // Save updated categories to disk
         let categories = self.memory_storage.get_chat_categories(chat_id).await;
         let _ = self.save_chat_categories(chat_id, &categories).await;
@@ -337,7 +348,7 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
     async fn clear_chat_categories(&self, chat_id: ChatId) {
         self.ensure_loaded(chat_id).await;
         self.memory_storage.clear_chat_categories(chat_id).await;
-        
+
         // Save empty categories to disk (creates empty file)
         let categories = HashMap::new();
         let _ = self.save_chat_categories(chat_id, &categories).await;
@@ -443,11 +454,7 @@ impl BatchStorage {
 /// Implement BatchStorageTrait for BatchStorage
 #[async_trait::async_trait]
 impl BatchStorageTrait for BatchStorage {
-    async fn add_to_batch(
-        &self,
-        chat_id: ChatId,
-        commands: Vec<Result<Command, String>>,
-    ) -> bool {
+    async fn add_to_batch(&self, chat_id: ChatId, commands: Vec<Result<Command, String>>) -> bool {
         let mut storage_guard = self.data.lock().await;
         match storage_guard.get_mut(&chat_id) {
             Some(state) => {
@@ -537,14 +544,20 @@ mod tests {
     #[test]
     fn test_category_data_yaml_serialization() {
         let mut categories = HashMap::new();
-        categories.insert("food".to_string(), vec!["restaurant".to_string(), "grocery".to_string()]);
-        categories.insert("transport".to_string(), vec!["uber".to_string(), "taxi".to_string(), "bus".to_string()]);
-        
+        categories.insert(
+            "food".to_string(),
+            vec!["restaurant".to_string(), "grocery".to_string()],
+        );
+        categories.insert(
+            "transport".to_string(),
+            vec!["uber".to_string(), "taxi".to_string(), "bus".to_string()],
+        );
+
         let category_data = CategoryData::from_hashmap(categories.clone());
-        
+
         // Test serialization to YAML
         let yaml_str = serde_yaml::to_string(&category_data).expect("Failed to serialize to YAML");
-        
+
         // Verify YAML contains expected content
         assert!(yaml_str.contains("categories:"));
         assert!(yaml_str.contains("food:"));
@@ -552,25 +565,28 @@ mod tests {
         assert!(yaml_str.contains("- restaurant"));
         assert!(yaml_str.contains("- grocery"));
         assert!(yaml_str.contains("- uber"));
-        
+
         // Test deserialization from YAML
-        let deserialized: CategoryData = serde_yaml::from_str(&yaml_str).expect("Failed to deserialize from YAML");
+        let deserialized: CategoryData =
+            serde_yaml::from_str(&yaml_str).expect("Failed to deserialize from YAML");
         let deserialized_map = deserialized.into_hashmap();
-        
+
         // Verify the deserialized data matches original
         assert_eq!(deserialized_map, categories);
     }
-    
+
     #[test]
     fn test_category_data_empty() {
         let category_data = CategoryData::new();
-        
+
         // Test serialization of empty data
-        let yaml_str = serde_yaml::to_string(&category_data).expect("Failed to serialize empty data");
+        let yaml_str =
+            serde_yaml::to_string(&category_data).expect("Failed to serialize empty data");
         assert!(yaml_str.contains("categories: {}"));
-        
+
         // Test deserialization of empty data
-        let deserialized: CategoryData = serde_yaml::from_str(&yaml_str).expect("Failed to deserialize empty data");
+        let deserialized: CategoryData =
+            serde_yaml::from_str(&yaml_str).expect("Failed to deserialize empty data");
         assert!(deserialized.into_hashmap().is_empty());
     }
 }

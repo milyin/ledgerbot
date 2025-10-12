@@ -1,13 +1,9 @@
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::sync::Arc;
-use teloxide::{
-    prelude::*,
-    types::Message,
-    utils::command::ParseError,
-};
+use teloxide::{prelude::*, types::Message, utils::command::ParseError};
 
-use crate::send_message_markdown;
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
+use crate::{markdown, markdown_string::MarkdownStringSendMessage};
 
 /// Format timestamp as YYYY-MM-DD string
 fn format_timestamp(timestamp: i64) -> String {
@@ -71,7 +67,8 @@ pub async fn list_command(
     let chat_expenses = storage.get_chat_expenses(chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
 
-    send_message_markdown!(bot, chat_id, "{}", expenses_list).await?;
+    bot.send_markdown_message(chat_id, markdown!("{}", expenses_list))
+        .await?;
     Ok(())
 }
 
@@ -144,23 +141,27 @@ pub async fn expense_command(
                     dt.format("%Y-%m-%d").to_string()
                 };
 
-                send_message_markdown!(
-                    bot,
+                bot.send_markdown_message(
                     chat_id,
-                    "✅ Expense added: **{}** `{}` **${}**",
-                    date_display,
-                    desc,
-                    amount_val.to_string()
-                ).await?;
+                    markdown!(
+                        "✅ Expense added: **{}** `{}` **${}**",
+                        date_display,
+                        desc,
+                        amount_val.to_string()
+                    ),
+                )
+                .await?;
             }
         }
         (Some(desc), None) => {
-            send_message_markdown!(
-                bot,
+            bot.send_markdown_message(
                 chat_id,
-                "❌ Invalid amount for `{}`\\. Please provide a valid number\\.",
-                desc
-            ).await?;
+                markdown!(
+                    "❌ Invalid amount for `{}`\\. Please provide a valid number\\.",
+                    desc
+                ),
+            )
+            .await?;
         }
         _ => {
             // Handle other cases if necessary, e.g., no description
@@ -179,7 +180,8 @@ pub async fn clear_command(
     let chat_id = msg.chat.id;
     storage.clear_chat_expenses(chat_id).await;
 
-    send_message_markdown!(bot, chat_id, "🗑️ All expenses cleared\\!").await?;
+    bot.send_markdown_message(chat_id, markdown!("🗑️ All expenses cleared\\!"))
+        .await?;
     Ok(())
 }
 
@@ -227,6 +229,9 @@ mod tests {
         // Test with no expenses
         let expenses = Vec::new();
         let result = format_expenses_chronological(&expenses);
-        assert_eq!(result, "📝 No expenses recorded yet. Send a message like `2024-10-09 Coffee 5.50` to add one.");
+        assert_eq!(
+            result,
+            "📝 No expenses recorded yet. Send a message like `2024-10-09 Coffee 5.50` to add one."
+        );
     }
 }
