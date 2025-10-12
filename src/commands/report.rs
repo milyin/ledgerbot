@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use teloxide::{
     Bot,
-    payloads::SendMessageSetters,
     prelude::{Requester, ResponseResult},
     types::Message,
     utils::markdown::escape,
@@ -11,6 +10,7 @@ use teloxide::{
 
 use crate::{
     parser::format_timestamp,
+    send_message_markdown,
     storage_traits::{CategoryStorageTrait, Expense, ExpenseStorageTrait},
 };
 
@@ -112,17 +112,13 @@ pub async fn report_command(
 
     // Check for category conflicts before generating report
     if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
-        bot.send_message(chat_id, conflict_message)
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await?;
+        send_message_markdown!(bot, chat_id, "{}", conflict_message).await?;
         return Ok(());
     }
 
     let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
 
-    bot.send_message(chat_id, expenses_list)
-        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-        .await?;
+    send_message_markdown!(bot, chat_id, "{}", expenses_list).await?;
     Ok(())
 }
 

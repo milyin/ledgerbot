@@ -1,8 +1,9 @@
 use std::sync::Arc;
-use teloxide::{payloads::SendMessageSetters, prelude::*, utils::markdown::escape};
+use teloxide::prelude::*;
 
 use crate::commands::{Command, execute_command};
 use crate::config::BATCH_TIMEOUT_SECONDS;
+use crate::send_message_markdown;
 use crate::storage_traits::{BatchStorageTrait, StorageTrait};
 
 /// Add expense data to batch and return whether this is the first message in the batch
@@ -56,33 +57,25 @@ pub async fn execute_batch(
                         target_chat_id,
                         err_msg
                     );
-                    if let Err(e) = bot
-                        .send_message(target_chat_id, format!("❌ {}", escape(&err_msg)))
-                        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                        .await
-                    {
+                    if let Err(e) = send_message_markdown!(bot, target_chat_id, "❌ {}", err_msg).await {
                         log::error!("Failed to send error message: {}", e);
                     }
                 }
             }
         }
 
-        let report = format!(
+        if let Err(e) = send_message_markdown!(
+            bot,
+            target_chat_id,
             "✅ **Batch Summary Report**\n\n\
             Expense records parsed: {}\n\
             Total amount: {}\n\n\
             Use {} or {} to see all expenses\\.",
-            escape(&expense_count.to_string()),
-            escape(&total_amount.to_string()),
-            escape(Command::LIST),
-            escape(Command::REPORT)
-        );
-
-        if let Err(e) = bot
-            .send_message(target_chat_id, report)
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await
-        {
+            expense_count.to_string(),
+            total_amount.to_string(),
+            Command::LIST,
+            Command::REPORT
+        ).await {
             log::error!("Failed to send batch report: {}", e);
         }
     }

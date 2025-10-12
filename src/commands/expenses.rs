@@ -1,10 +1,9 @@
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::sync::Arc;
 use teloxide::{
-    payloads::SendMessageSetters,
     prelude::*,
     types::Message,
-    utils::{command::ParseError, markdown::escape},
+    utils::command::ParseError,
 };
 
 use crate::send_message_markdown;
@@ -72,7 +71,7 @@ pub async fn list_command(
     let chat_expenses = storage.get_chat_expenses(chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
 
-    bot.send_message(chat_id, expenses_list).await?;
+    send_message_markdown!(bot, chat_id, "{}", expenses_list).await?;
     Ok(())
 }
 
@@ -145,29 +144,23 @@ pub async fn expense_command(
                     dt.format("%Y-%m-%d").to_string()
                 };
 
-                bot.send_message(
+                send_message_markdown!(
+                    bot,
                     chat_id,
-                    format!(
-                        "✅ Expense added: **{}** `{}` **${}**",
-                        escape(&date_display),
-                        escape(&desc),
-                        escape(&amount_val.to_string())
-                    ),
-                )
-                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                .await?;
+                    "✅ Expense added: **{}** `{}` **${}**",
+                    date_display,
+                    desc,
+                    amount_val.to_string()
+                ).await?;
             }
         }
         (Some(desc), None) => {
-            bot.send_message(
+            send_message_markdown!(
+                bot,
                 chat_id,
-                format!(
-                    "❌ Invalid amount for `{}`\\. Please provide a valid number\\.",
-                    escape(&desc)
-                ),
-            )
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await?;
+                "❌ Invalid amount for `{}`\\. Please provide a valid number\\.",
+                desc
+            ).await?;
         }
         _ => {
             // Handle other cases if necessary, e.g., no description
