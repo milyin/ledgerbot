@@ -3,6 +3,7 @@ mod commands;
 mod config;
 mod handlers;
 mod macros;
+mod markdown_string;
 mod parser;
 mod storage;
 mod storage_traits;
