@@ -5,7 +5,7 @@ use teloxide::{Bot, prelude::ResponseResult, types::Message, utils::markdown::es
 
 use crate::{
     markdown,
-    markdown_string::MarkdownStringSendMessage,
+    markdown_string::{MarkdownString, MarkdownStringSendMessage},
     parser::format_timestamp,
     storage_traits::{CategoryStorageTrait, Expense, ExpenseStorageTrait},
 };
@@ -115,18 +115,18 @@ pub async fn report_command(
 
     let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
 
-    bot.send_markdown_message(chat_id, markdown!("{}", expenses_list))
+    bot.send_markdown_message(chat_id, expenses_list)
         .await?;
     Ok(())
 }
 
 /// Format expenses as a readable list with total, grouped by categories
-fn format_expenses_list(expenses: &[Expense], categories: &HashMap<String, Vec<String>>) -> String {
+fn format_expenses_list(expenses: &[Expense], categories: &HashMap<String, Vec<String>>) -> MarkdownString {
     if expenses.is_empty() {
-        return "No expenses recorded yet\\.".to_string();
+        return markdown!("No expenses recorded yet\\.");
     }
 
-    let mut result = String::new();
+    let mut result = MarkdownString::new();
     let mut total = 0.0;
 
     // Build regex matchers for each category (from all patterns)
@@ -173,39 +173,84 @@ fn format_expenses_list(expenses: &[Expense], categories: &HashMap<String, Vec<S
     // Display categorized expenses
     for category_name in category_names {
         if let Some(items) = categorized.get(&category_name) {
-            total += format_category_section(&mut result, &category_name, items);
+            let (section, category_total) = format_category_section(&category_name, items);
+            result = result + section;
+            total += category_total;
         }
     }
 
     // Display uncategorized expenses
     if !uncategorized.is_empty() {
-        total += format_category_section(&mut result, "Other", &uncategorized);
+        let (section, category_total) = format_category_section("Other", &uncategorized);
+        result = result + section;
+        total += category_total;
     }
 
-    result.push_str(&format!("*Total: {}*", escape(&total.to_string())));
-    result
+    let total_line = markdown!("*Total: {}*", total.to_string());
+    result + total_line
 }
 
 /// Helper function to format a single category section with its expenses
-fn format_category_section(result: &mut String, category_name: &str, expenses: &[Expense]) -> f64 {
+fn format_category_section(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {
     let mut category_total = 0.0;
-    result.push_str(&format!("*{}*:\n", escape(category_name)));
+    let mut section = markdown!("*{}*:\n", category_name);
 
     for expense in expenses {
         let date_str = format_timestamp(expense.timestamp);
-        result.push_str(&format!(
+        let expense_line = markdown!(
             "  • {} {} {}\n",
-            escape(&date_str),
-            escape(&expense.description),
-            escape(&expense.amount.to_string()),
-        ));
+            date_str,
+            expense.description,
+            expense.amount.to_string()
+        );
+        section = section + expense_line;
         category_total += expense.amount;
     }
 
-    result.push_str(&format!(
+    let subtotal_line = markdown!(
         "  *Subtotal: {}*\n\n",
-        escape(&category_total.to_string())
-    ));
+        category_total.to_string()
+    );
+    section = section + subtotal_line;
 
-    category_total
+    (section, category_total)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn test_format_expenses_list_returns_markdown_string() {
+        // Test that the function returns a MarkdownString
+        let expenses = vec![
+            Expense {
+                description: "Test expense".to_string(),
+                amount: 25.50,
+                timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
+            }
+        ];
+        let categories = HashMap::new();
+        
+        let result = format_expenses_list(&expenses, &categories);
+        
+        // The function should return a MarkdownString
+        // We can verify the type by calling methods that are specific to MarkdownString
+        assert!(!result.as_str().is_empty());
+        assert!(result.as_str().contains("Test expense"));
+        assert!(result.as_str().contains("25")); // Check for the amount
+        assert!(result.as_str().contains("*Total:")); // Check for the total line
+    }
+
+    #[test]
+    fn test_format_expenses_list_empty_returns_markdown_string() {
+        let expenses = vec![];
+        let categories = HashMap::new();
+        
+        let result = format_expenses_list(&expenses, &categories);
+        
+        // Should return the "No expenses recorded yet" message as MarkdownString
+        assert_eq!(result.as_str(), "No expenses recorded yet\\.");
+    }
 }

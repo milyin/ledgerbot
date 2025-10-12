@@ -144,7 +144,7 @@ pub async fn expense_command(
                 bot.send_markdown_message(
                     chat_id,
                     markdown!(
-                        "✅ Expense added: **{}** `{}` **${}**",
+                        "✅ Expense added: {} {} {}",
                         date_display,
                         desc,
                         amount_val.to_string()

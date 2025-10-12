@@ -10,7 +10,8 @@ use teloxide::prelude::Requester;
 /// This struct can only be constructed through safe methods:
 /// 1. `markdown!` macro - statically validates the format string at compile time
 /// 2. `escape` constructor - automatically escapes markdown characters in the input
-/// 3. `From`/`Into` trait - automatically escapes the input for safety
+/// 3. `new` constructor - creates an empty MarkdownString
+/// 4. `From`/`Into` trait - automatically escapes the input for safety
 ///
 /// Direct construction is not allowed to ensure all content is either validated or escaped.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +30,18 @@ impl MarkdownString {
         let input_string = input.into();
         let escaped = teloxide::utils::markdown::escape(&input_string);
         MarkdownString(escaped)
+    }
+
+    /// Creates an empty MarkdownString.
+    /// This is equivalent to `MarkdownString::escape("")` but more idiomatic.
+    ///
+    /// # Example
+    /// ```rust
+    /// let markdown = MarkdownString::new();
+    /// assert_eq!(markdown.as_str(), "");
+    /// ```
+    pub fn new() -> Self {
+        MarkdownString(String::new())
     }
 
     /// Private constructor for use by the markdown! macro after compile-time validation.
@@ -53,6 +66,13 @@ impl MarkdownString {
     /// Consumes the MarkdownString and returns the inner String
     pub fn into_string(self) -> String {
         self.0
+    }
+}
+
+impl Default for MarkdownString {
+    /// Creates an empty MarkdownString using `MarkdownString::new()`.
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -334,6 +354,32 @@ mod tests {
             markdown.as_str(),
             "\\!\\.\\-\\+\\=\\>\\#\\{\\}\\[\\]\\(\\)\\~\\|"
         );
+    }
+
+    #[test]
+    fn test_new_constructor() {
+        // Test creating an empty MarkdownString
+        let markdown = MarkdownString::new();
+        assert_eq!(markdown.as_str(), "");
+        
+        // Test that it's equivalent to escaping an empty string
+        let escaped_empty = MarkdownString::escape("");
+        assert_eq!(markdown.as_str(), escaped_empty.as_str());
+    }
+
+    #[test]
+    fn test_default_constructor() {
+        // Test creating an empty MarkdownString using Default
+        let markdown = MarkdownString::default();
+        assert_eq!(markdown.as_str(), "");
+        
+        // Test that it's equivalent to new()
+        let new_markdown = MarkdownString::new();
+        assert_eq!(markdown.as_str(), new_markdown.as_str());
+        
+        // Test using Default::default()
+        let default_markdown: MarkdownString = Default::default();
+        assert_eq!(default_markdown.as_str(), "");
     }
 
     #[test]
