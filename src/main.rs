@@ -2,6 +2,7 @@ mod batch;
 mod commands;
 mod config;
 mod handlers;
+mod macros;
 mod parser;
 mod storage;
 mod storage_traits;

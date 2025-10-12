@@ -6,7 +6,6 @@ pub mod report;
 
 use chrono::NaiveDate;
 use teloxide::{
-    payloads::SendMessageSetters,
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
     utils::{
@@ -27,6 +26,7 @@ use crate::{
     },
     handlers::CallbackData,
     parser::extract_words,
+    send_message_markdown,
     storage_traits::{CategoryStorageTrait, StorageTrait},
 };
 
@@ -269,9 +269,7 @@ pub async fn clear_categories_command(
     let chat_id = msg.chat.id;
     storage.clear_chat_categories(chat_id).await;
 
-    bot.send_message(chat_id, "🗑️ All categories cleared!")
-        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-        .await?;
+    send_message_markdown!(bot, chat_id, "🗑️ All categories cleared\\!").await?;
     Ok(())
 }
 

@@ -2,9 +2,10 @@ use teloxide::{
     payloads::SendMessageSetters,
     prelude::*,
     types::{KeyboardButton, Message, ReplyMarkup},
-    utils::{command::BotCommands, markdown::escape},
+    utils::command::BotCommands,
 };
 
+use crate::send_message_markdown;
 use super::Command;
 
 /// Display help message with inline keyboard buttons
@@ -25,14 +26,12 @@ pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
 
 pub async fn start_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     // Send a follow-up message to set the persistent reply keyboard menu
-    bot.send_message(
+    send_message_markdown!(
+        bot,
         msg.chat.id,
-        format!(
-            "🤖 **Expense Bot v{}**\nMenu buttons are available ⬇️",
-            escape(env!("CARGO_PKG_VERSION")),
-        ),
+        "🤖 *Expense Bot v{}*\nMenu buttons are available",
+        env!("CARGO_PKG_VERSION")
     )
-    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
     .reply_markup(create_menu_keyboard())
     .await?;
 

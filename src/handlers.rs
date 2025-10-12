@@ -1,8 +1,10 @@
 use std::str::FromStr;
 use std::sync::Arc;
 use teloxide::{
-    payloads::SendMessageSetters, prelude::*, types::CallbackQuery, utils::markdown::escape,
+    prelude::*, types::CallbackQuery,
 };
+
+use crate::send_message_markdown;
 
 use crate::batch::{add_to_batch, execute_batch};
 use crate::commands::categories::{
@@ -150,20 +152,18 @@ pub async fn handle_text_message(
                                 .await;
                         if let Err(e) = exec_result {
                             log::error!("Failed to execute command: {}", e);
-                            bot.send_message(
+                            send_message_markdown!(
+                                bot,
                                 chat_id,
-                                format!("❌ Error: {}", escape(&e.to_string())),
-                            )
-                            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                            .await?;
+                                "❌ Error: {}",
+                                e.to_string()
+                            ).await?;
                         }
                     }
                     Err(err_msg) => {
                         // Send error message to user
                         log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
-                        bot.send_message(chat_id, format!("❌ {}", escape(&err_msg)))
-                            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                            .await?;
+                        send_message_markdown!(bot, chat_id, "❌ {}", err_msg).await?;
                     }
                 }
             }

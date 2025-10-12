@@ -7,6 +7,7 @@ use teloxide::{
     utils::{command::ParseError, markdown::escape},
 };
 
+use crate::send_message_markdown;
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
 
 /// Format timestamp as YYYY-MM-DD string
@@ -185,9 +186,7 @@ pub async fn clear_command(
     let chat_id = msg.chat.id;
     storage.clear_chat_expenses(chat_id).await;
 
-    bot.send_message(chat_id, "🗑️ All expenses cleared!")
-        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-        .await?;
+    send_message_markdown!(bot, chat_id, "🗑️ All expenses cleared\\!").await?;
     Ok(())
 }
 
