@@ -180,99 +180,6 @@ impl Add<&MarkdownString> for &MarkdownString {
     }
 }
 
-/// Creates a MarkdownString with compile-time validation of the format string.
-///
-/// This macro validates that the format string is valid MarkdownV2 syntax at compile time,
-/// ensuring balanced formatting characters and properly escaped special characters.
-///
-/// # Example
-/// ```rust
-/// let name = "John";
-/// let markdown = markdown!("Hello *{}*\\!", name);
-/// ```
-///
-/// # Compile-time errors
-/// The following would cause compile-time errors:
-/// ```compile_fail
-/// markdown!("*unmatched bold"); // Unmatched asterisk
-/// markdown!("Hello!"); // Unescaped exclamation mark
-/// ```
-#[macro_export]
-macro_rules! markdown {
-    ($format_str:expr $(, $arg:expr)*) => {{
-        // Compile-time validation for Telegram MarkdownV2 format compatibility
-        const _: () = $crate::markdown_validate::validate_markdownv2_format($format_str);
-
-        // Escape all arguments and format the message
-        let formatted_message = format!($format_str $(, teloxide::utils::markdown::escape(&$arg.to_string()))*);
-
-        $crate::markdown_string::MarkdownString::from_validated_string(formatted_message)
-    }};
-}
-
-/// Formats a MarkdownString using any type that can be converted to MarkdownString as the format template.
-///
-/// This macro is similar to the standard `format!` macro, but:
-/// - Takes any type that implements `Into<MarkdownString>` as the format string (instead of a string literal)
-/// - Returns a `MarkdownString` (instead of a regular String)
-/// - Automatically converts all arguments using `Into<MarkdownString>` for safe MarkdownV2 usage
-///
-/// # Important Notes
-///
-/// When using string types (`&str`, `String`) as templates, they will be automatically escaped,
-/// which means placeholders like `{}` become `\{\}` and won't work for formatting.
-///
-/// **For templates with placeholders**, use the `markdown!` macro:
-/// - `markdown!("template with {}", ...)` - for compile-time validated templates (recommended)
-///
-/// **For safe user content**, string types work well as they automatically escape:
-/// - `markdown_format!("Safe user input", ...)` - content gets escaped automatically
-///
-/// # Examples
-/// ```rust
-/// // Using markdown! macro for templates (recommended approach)
-/// let template = markdown!("Hello *{}*\\! Your balance is: ${}");
-/// let result = markdown_format!(template, name, balance);
-///
-/// // Using escaped content (good for user input without placeholders)
-/// let user_message = "User said: Hello!";  // Gets escaped automatically
-/// let result = markdown_format!(user_message);
-/// ```
-///
-/// # Note
-/// Unlike the `markdown!` macro, this macro cannot perform compile-time validation
-/// of the format string since it accepts a runtime value that implements `Into<MarkdownString>`.
-/// For templates with placeholders, prefer creating them with the `markdown!` macro first.
-#[macro_export]
-macro_rules! markdown_format {
-    ($format_markdown:expr $(, $arg:expr)*) => {{
-        // Convert the input to MarkdownString using Into trait
-        let markdown_string: $crate::markdown_string::MarkdownString = $format_markdown.into();
-
-        // Get the format string from the MarkdownString
-        let format_str = markdown_string.as_str();
-
-        // Convert all arguments to strings for replacement
-        // For MarkdownString: use .as_str() to avoid double-escaping
-        // For other types: use Into<MarkdownString> which will escape them
-        let escaped_args: Vec<String> = vec![$({
-            // Try to convert to MarkdownString first for type safety
-            let arg_markdown: $crate::markdown_string::MarkdownString = $arg.into();
-            arg_markdown.as_str().to_string()
-        }),*];
-
-        // Replace placeholders with converted arguments
-        let mut result = format_str.to_string();
-        for escaped_arg in escaped_args {
-            if let Some(placeholder_pos) = result.find("{}") {
-                result.replace_range(placeholder_pos..placeholder_pos + 2, &escaped_arg);
-            }
-        }
-
-        $crate::markdown_string::MarkdownString::from_validated_string(result)
-    }};
-}
-
 /// Trait for sending markdown messages with Bot
 ///
 /// This trait provides a convenient method for sending MarkdownString messages
@@ -334,6 +241,7 @@ impl MarkdownStringSendMessage for teloxide::Bot {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{markdown, markdown_format};
 
     #[test]
     fn test_escape_constructor() {
@@ -804,7 +712,7 @@ mod tests {
     #[test]
     fn test_markdown_string_send_message_trait_exists() {
         // This test ensures the trait is properly defined and accessible
-        use crate::markdown_string::MarkdownStringSendMessage;
+        use crate::api::markdown::string::MarkdownStringSendMessage;
 
         // If this compiles, the trait is properly defined
         fn _test_trait_bound<T: MarkdownStringSendMessage>(_bot: T) {}

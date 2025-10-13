@@ -1,17 +1,13 @@
 //! Yoroolbot - A library crate for yoroolbot functionality
 
-pub mod markdown {}
+// Private API modules
+mod api;
 
-pub fn hello_yoroolbot() -> String {
-    "Hello from Yoroolbot!".to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_hello_yoroolbot() {
-        assert_eq!(hello_yoroolbot(), "Hello from Yoroolbot!");
-    }
+// Public markdown module with re-exports
+pub mod markdown {
+    // Re-export types and traits from internal API
+    pub use crate::api::markdown::{
+        string::{MarkdownString, MarkdownStringSendMessage},
+        validate::validate_markdownv2_format,
+    };
 }

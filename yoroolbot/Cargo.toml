@@ -8,3 +8,4 @@ name = "yoroolbot"
 path = "src/lib.rs"
 
 [dependencies]
+teloxide = { workspace = true }
