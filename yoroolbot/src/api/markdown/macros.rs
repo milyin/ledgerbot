@@ -1,4 +1,3 @@
-
 /// Creates a MarkdownString with compile-time validation of the format string.
 #[macro_export]
 macro_rules! markdown {
