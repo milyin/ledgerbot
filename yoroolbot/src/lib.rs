@@ -1,5 +1,7 @@
 //! Yoroolbot - A library crate for yoroolbot functionality
 
+pub mod markdown {}
+
 pub fn hello_yoroolbot() -> String {
     "Hello from Yoroolbot!".to_string()
 }
