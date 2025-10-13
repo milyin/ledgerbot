@@ -1,11 +1,10 @@
 use std::sync::Arc;
 use teloxide::prelude::*;
-use yoroolbot::markdown::MarkdownStringSendMessage;
-use yoroolbot::markdown_format;
 
 use crate::commands::{Command, execute_command};
 use crate::config::BATCH_TIMEOUT_SECONDS;
 use crate::storage_traits::{BatchStorageTrait, StorageTrait};
+use crate::{markdown, markdown_string::MarkdownStringSendMessage};
 
 /// Add expense data to batch and return whether this is the first message in the batch
 pub async fn add_to_batch(
@@ -59,7 +58,7 @@ pub async fn execute_batch(
                         err_msg
                     );
                     if let Err(e) = bot
-                        .send_markdown_message(target_chat_id, markdown_format!("❌ {}", err_msg))
+                        .send_markdown_message(target_chat_id, markdown_string!("❌ {}", err_msg))
                         .await
                     {
                         log::error!("Failed to send error message: {}", e);
@@ -71,13 +70,13 @@ pub async fn execute_batch(
         if let Err(e) = bot
             .send_markdown_message(
                 target_chat_id,
-                markdown_format!(
+                markdown_string!(
                     "✅ **Batch Summary Report**\n\n\
             Expense records parsed: {}\n\
             Total amount: {}\n\n\
             Use {} or {} to see all expenses\\.",
-                    expense_count,
-                    total_amount,
+                    expense_count.to_string(),
+                    total_amount.to_string(),
                     Command::LIST,
                     Command::REPORT
                 ),

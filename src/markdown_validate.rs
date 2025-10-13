@@ -311,7 +311,7 @@ mod tests {
         }
     }
 
-    // Note: These patterns would cause compile errors if used with the markdown! macro:
+    // Note: These patterns would cause compile errors if used with the markdown_string! macro:
     // Invalid examples (unbalanced formatting):
     // "*unmatched bold" - unmatched asterisk
     // "_unmatched italic" - unmatched underscore

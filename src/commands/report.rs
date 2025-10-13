@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use teloxide::{Bot, prelude::ResponseResult, types::Message, utils::markdown::escape};
-use yoroolbot::{markdown::{MarkdownString, MarkdownStringSendMessage}, markdown_format, markdown_string};
 
 use crate::{
+    markdown,
+    markdown_string::{MarkdownString, MarkdownStringSendMessage},
     parser::format_timestamp,
     storage_traits::{CategoryStorageTrait, Expense, ExpenseStorageTrait},
 };
@@ -107,7 +108,7 @@ pub async fn report_command(
 
     // Check for category conflicts before generating report
     if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
-        bot.send_markdown_message(chat_id, markdown_format!("{}", conflict_message))
+        bot.send_markdown_message(chat_id, markdown_string!("{}", conflict_message))
             .await?;
         return Ok(());
     }
@@ -185,30 +186,30 @@ fn format_expenses_list(expenses: &[Expense], categories: &HashMap<String, Vec<S
         total += category_total;
     }
 
-    let total_line = markdown_format!("*Total: {}*", total);
+    let total_line = markdown_string!("*Total: {}*", total.to_string());
     result + total_line
 }
 
 /// Helper function to format a single category section with its expenses
 fn format_category_section(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {
     let mut category_total = 0.0;
-    let mut section = markdown_format!("*{}*:\n", category_name);
+    let mut section = markdown_string!("*{}*:\n", category_name);
 
     for expense in expenses {
         let date_str = format_timestamp(expense.timestamp);
-        let expense_line = markdown_format!(
+        let expense_line = markdown_string!(
             "  • {} {} {}\n",
             date_str,
-            &*expense.description,
-            expense.amount
+            expense.description,
+            expense.amount.to_string()
         );
         section = section + expense_line;
         category_total += expense.amount;
     }
 
-    let subtotal_line = markdown_format!(
+    let subtotal_line = markdown_string!(
         "  *Subtotal: {}*\n\n",
-        category_total
+        category_total.to_string()
     );
     section = section + subtotal_line;
 

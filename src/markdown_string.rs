@@ -8,7 +8,7 @@ use teloxide::prelude::Requester;
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
 ///
 /// This struct can only be constructed through safe methods:
-/// 1. `markdown!` macro - statically validates the format string at compile time
+/// 1. `markdown_string!` macro - statically validates the format string at compile time
 /// 2. `escape` constructor - automatically escapes markdown characters in the input
 /// 3. `new` constructor - creates an empty MarkdownString
 /// 4. `From`/`Into` trait - automatically escapes the input for safety
@@ -44,7 +44,7 @@ impl MarkdownString {
         MarkdownString(String::new())
     }
 
-    /// Private constructor for use by the markdown! macro after compile-time validation.
+    /// Private constructor for use by the markdown_string! macro after compile-time validation.
     /// This should only be called by trusted code that has already validated the input.
     #[doc(hidden)]
     pub fn from_validated_string(s: String) -> Self {
@@ -188,14 +188,14 @@ impl Add<&MarkdownString> for &MarkdownString {
 /// # Example
 /// ```rust
 /// let name = "John";
-/// let markdown = markdown!("Hello *{}*\\!", name);
+/// let markdown = markdown_string!("Hello *{}*\\!", name);
 /// ```
 ///
 /// # Compile-time errors
 /// The following would cause compile-time errors:
 /// ```compile_fail
-/// markdown!("*unmatched bold"); // Unmatched asterisk
-/// markdown!("Hello!"); // Unescaped exclamation mark
+/// markdown_string!("*unmatched bold"); // Unmatched asterisk
+/// markdown_string!("Hello!"); // Unescaped exclamation mark
 /// ```
 #[macro_export]
 macro_rules! markdown {
@@ -222,16 +222,16 @@ macro_rules! markdown {
 /// When using string types (`&str`, `String`) as templates, they will be automatically escaped,
 /// which means placeholders like `{}` become `\{\}` and won't work for formatting.
 ///
-/// **For templates with placeholders**, use the `markdown!` macro:
-/// - `markdown!("template with {}", ...)` - for compile-time validated templates (recommended)
+/// **For templates with placeholders**, use the `markdown_string!` macro:
+/// - `markdown_string!("template with {}", ...)` - for compile-time validated templates (recommended)
 ///
 /// **For safe user content**, string types work well as they automatically escape:
 /// - `markdown_format!("Safe user input", ...)` - content gets escaped automatically
 ///
 /// # Examples
 /// ```rust
-/// // Using markdown! macro for templates (recommended approach)
-/// let template = markdown!("Hello *{}*\\! Your balance is: ${}");
+/// // Using markdown_string! macro for templates (recommended approach)
+/// let template = markdown_string!("Hello *{}*\\! Your balance is: ${}");
 /// let result = markdown_format!(template, name, balance);
 ///
 /// // Using escaped content (good for user input without placeholders)
@@ -240,9 +240,9 @@ macro_rules! markdown {
 /// ```
 ///
 /// # Note
-/// Unlike the `markdown!` macro, this macro cannot perform compile-time validation
+/// Unlike the `markdown_string!` macro, this macro cannot perform compile-time validation
 /// of the format string since it accepts a runtime value that implements `Into<MarkdownString>`.
-/// For templates with placeholders, prefer creating them with the `markdown!` macro first.
+/// For templates with placeholders, prefer creating them with the `markdown_string!` macro first.
 #[macro_export]
 macro_rules! markdown_format {
     ($format_markdown:expr $(, $arg:expr)*) => {{
@@ -399,21 +399,21 @@ mod tests {
 
     #[test]
     fn test_markdown_macro_basic() {
-        let markdown = markdown!("Hello *world*\\!");
+        let markdown = markdown_string!("Hello *world*\\!");
         assert_eq!(markdown.as_str(), "Hello *world*\\!");
     }
 
     #[test]
     fn test_markdown_macro_with_arguments() {
         let name = "John";
-        let markdown = markdown!("Hello *{}*\\!", name);
+        let markdown = markdown_string!("Hello *{}*\\!", name);
         assert_eq!(markdown.as_str(), "Hello *John*\\!");
     }
 
     #[test]
     fn test_markdown_macro_with_special_chars_in_args() {
         let text = "special! chars* here_";
-        let markdown = markdown!("Message: `{}`", text);
+        let markdown = markdown_string!("Message: `{}`", text);
         assert_eq!(markdown.as_str(), "Message: `special\\! chars\\* here\\_`");
     }
 
@@ -422,7 +422,7 @@ mod tests {
         let user = "Alice";
         let amount = 100;
         let category = "food*";
-        let markdown = markdown!(
+        let markdown = markdown_string!(
             "*User:* {} \n*Amount:* {} \n*Category:* `{}`",
             user,
             amount,
@@ -533,7 +533,7 @@ mod tests {
         let safe_content = MarkdownString::escape(user_input);
         assert_eq!(safe_content.as_str(), "User typed: Hello \\*world\\*\\!");
 
-        // Pattern 2: Using direct construction for templates (when markdown! can't be used)
+        // Pattern 2: Using direct construction for templates (when markdown_string! can't be used)
         let template = MarkdownString::test_template("Message: *{}* with balance ${}");
         let formatted = markdown_format!(template, "Alice", "50.00");
         assert_eq!(formatted.as_str(), "Message: *Alice* with balance $50\\.00");
@@ -612,7 +612,7 @@ mod tests {
         );
 
         // Using markdown macro for formatted messages (compile-time validated)
-        let formatted_notification = markdown!(
+        let formatted_notification = markdown_string!(
             "💰 *Expense Added*\n\n*User:* {}\n*Amount:* ${}\n*Category:* `{}`\n*Date:* {}",
             user,
             amount,
@@ -690,8 +690,8 @@ mod tests {
         let user = "Alice";
         let amount = "50.00";
 
-        // Using markdown! macro with direct args
-        let direct_result = markdown!("*User:* {} spent ${}", user, amount);
+        // Using markdown_string! macro with direct args
+        let direct_result = markdown_string!("*User:* {} spent ${}", user, amount);
 
         // Using markdown_format! macro with pre-constructed template
         let template = MarkdownString::test_template("*User:* {} spent ${}");
@@ -769,7 +769,7 @@ mod tests {
         assert_eq!(result6.as_str(), "Proper *bold* template with `code`");
     }
 
-    // The following tests verify that the markdown! macro would catch invalid syntax
+    // The following tests verify that the markdown_string! macro would catch invalid syntax
     // at compile time. These are included as documentation but commented out since
     // they would actually fail compilation.
 
@@ -777,25 +777,25 @@ mod tests {
     #[test]
     fn test_compile_time_validation_unmatched_bold() {
         // This would fail at compile time:
-        // let markdown = markdown!("*unmatched bold");
+        // let markdown = markdown_string!("*unmatched bold");
     }
 
     #[test]
     fn test_compile_time_validation_unescaped_exclamation() {
         // This would fail at compile time:
-        // let markdown = markdown!("Hello!");
+        // let markdown = markdown_string!("Hello!");
     }
 
     #[test]
     fn test_compile_time_validation_unmatched_italic() {
         // This would fail at compile time:
-        // let markdown = markdown!("_unmatched italic");
+        // let markdown = markdown_string!("_unmatched italic");
     }
 
     #[test]
     fn test_compile_time_validation_unmatched_code() {
         // This would fail at compile time:
-        // let markdown = markdown!("`unmatched code");
+        // let markdown = markdown_string!("`unmatched code");
     }
     */
 

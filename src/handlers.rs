@@ -1,8 +1,8 @@
 use std::str::FromStr;
 use std::sync::Arc;
 use teloxide::{prelude::*, types::CallbackQuery};
-use yoroolbot::markdown::{MarkdownStringSendMessage};
-use yoroolbot::markdown_format;
+
+use crate::{markdown, markdown_string::MarkdownStringSendMessage};
 
 use crate::batch::{add_to_batch, execute_batch};
 use crate::commands::categories::{
@@ -154,7 +154,7 @@ pub async fn handle_text_message(
                             log::error!("Failed to execute command: {}", e);
                             bot.send_markdown_message(
                                 chat_id,
-                                markdown_format!("❌ Error: {}", e.to_string()),
+                                markdown_string!("❌ Error: {}", e.to_string()),
                             )
                             .await?;
                         }
@@ -162,7 +162,7 @@ pub async fn handle_text_message(
                     Err(err_msg) => {
                         // Send error message to user
                         log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
-                        bot.send_markdown_message(chat_id, markdown_format!("❌ {}", err_msg))
+                        bot.send_markdown_message(chat_id, markdown_string!("❌ {}", err_msg))
                             .await?;
                     }
                 }

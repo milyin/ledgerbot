@@ -13,7 +13,6 @@ use teloxide::{
         markdown::escape,
     },
 };
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_string};
 
 use std::sync::Arc;
 
@@ -26,6 +25,8 @@ use crate::{
         report::report_command,
     },
     handlers::CallbackData,
+    markdown,
+    markdown_string::MarkdownStringSendMessage,
     parser::extract_words,
     storage_traits::{CategoryStorageTrait, StorageTrait},
 };

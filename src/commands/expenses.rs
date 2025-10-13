@@ -1,9 +1,9 @@
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format, markdown_string};
 use std::sync::Arc;
 use teloxide::{prelude::*, types::Message, utils::command::ParseError};
 
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
+use crate::{markdown, markdown_string::MarkdownStringSendMessage};
 
 /// Format timestamp as YYYY-MM-DD string
 fn format_timestamp(timestamp: i64) -> String {
@@ -67,7 +67,7 @@ pub async fn list_command(
     let chat_expenses = storage.get_chat_expenses(chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
 
-    bot.send_markdown_message(chat_id, markdown_format!("{}", expenses_list))
+    bot.send_markdown_message(chat_id, markdown_string!("{}", expenses_list))
         .await?;
     Ok(())
 }
@@ -143,7 +143,7 @@ pub async fn expense_command(
 
                 bot.send_markdown_message(
                     chat_id,
-                    markdown_format!(
+                    markdown_string!(
                         "✅ Expense added: {} {} {}",
                         date_display,
                         desc,
@@ -156,7 +156,7 @@ pub async fn expense_command(
         (Some(desc), None) => {
             bot.send_markdown_message(
                 chat_id,
-                markdown_format!(
+                markdown_string!(
                     "❌ Invalid amount for `{}`\\. Please provide a valid number\\.",
                     desc
                 ),

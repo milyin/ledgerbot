@@ -3,20 +3,20 @@ use teloxide::{
     types::{KeyboardButton, Message, ReplyMarkup},
     utils::command::BotCommands,
 };
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
 
 use super::Command;
+use crate::{markdown, markdown_string::MarkdownStringSendMessage};
 
 /// Display help message with inline keyboard buttons
 pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     // Send message with both inline keyboard (for buttons in message) and reply keyboard (menu button)
     bot.send_markdown_message(
         msg.chat.id,
-        markdown_format!(
+        markdown_string!(
             "To add expenses forward messages or send text with lines in format:\n\
         `\\[\\<yyyy\\-mm\\-dd\\>\\] \\<description\\> \\<amount\\>`\n\n\
         {}",
-            Command::descriptions().to_string()
+            Command::descriptions()
         ),
     )
     .await?;
@@ -27,7 +27,7 @@ pub async fn start_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     // Send a follow-up message to set the persistent reply keyboard menu
     bot.send_markdown_message(
         msg.chat.id,
-        markdown_format!(
+        markdown_string!(
             "🤖 *Expense Bot v{}*\nMenu buttons are available",
             env!("CARGO_PKG_VERSION")
         ),

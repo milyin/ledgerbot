@@ -2,8 +2,6 @@ mod batch;
 mod commands;
 mod config;
 mod handlers;
-mod markdown_string;
-mod markdown_validate;
 mod parser;
 mod storage;
 mod storage_traits;

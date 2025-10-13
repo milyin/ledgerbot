@@ -1,7 +1,7 @@
 //! Yoroolbot - A library crate for yoroolbot functionality
 
 // Private API modules
-mod api;
+pub(crate)mod api;
 
 // Public markdown module with re-exports
 pub mod markdown {
