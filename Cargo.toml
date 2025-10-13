@@ -1,5 +1,5 @@
 [workspace]
-members = ["ledgerbot"]
+members = ["ledgerbot", "yoroolbot"]
 resolver = "2"
 
 [workspace.dependencies]

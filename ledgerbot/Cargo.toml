@@ -18,3 +18,4 @@ serde = { workspace = true }
 serde_yaml = { workspace = true }
 chrono = { workspace = true }
 async-trait = { workspace = true }
+yoroolbot = { path = "../yoroolbot" }
