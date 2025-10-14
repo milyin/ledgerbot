@@ -1,5 +1,6 @@
-use clap::Parser;
 use std::path::PathBuf;
+
+use clap::Parser;
 
 pub const PREDEFINED_BOT_TOKEN_RELEASE: Option<&str> = option_env!("PREDEFINED_BOT_TOKEN_RELEASE");
 pub const PREDEFINED_BOT_TOKEN_DEBUG: Option<&str> = option_env!("PREDEFINED_BOT_TOKEN_DEBUG");

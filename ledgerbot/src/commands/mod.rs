@@ -3,6 +3,8 @@ pub mod expenses;
 pub mod filters;
 pub mod help;
 pub mod report;
+pub mod command_add_category;
+pub mod command_trait;
 
 use chrono::NaiveDate;
 use teloxide::{
@@ -19,11 +21,7 @@ use std::sync::Arc;
 
 use crate::{
     commands::{
-        categories::{categories_command, category_command, remove_category_command},
-        expenses::{clear_command, expense_command, list_command, parse_expense},
-        filters::{add_filter_command, edit_filter_command, remove_filter_command},
-        help::{help_command, start_command},
-        report::report_command,
+        categories::{categories_command, category_command, remove_category_command}, command_add_category::CommandAddCategory, command_trait::CommandTrait, expenses::{clear_command, expense_command, list_command, parse_expense}, filters::{add_filter_command, edit_filter_command, remove_filter_command}, help::{help_command, start_command}, report::report_command
     },
     handlers::CallbackData,
     parser::extract_words,
@@ -137,9 +135,9 @@ pub enum Command {
     #[command(
         description = "add expense category",
         rename = "add_category",
-        parse_with = parse_optional_string
+        parse_with = CommandAddCategory::parse_arguments
     )]
-    AddCategory { name: Option<String> },
+    AddCategory(CommandAddCategory),
     #[command(
         description = "add filter to category",
         rename = "add_filter",
@@ -212,8 +210,9 @@ impl From<Command> for String {
             Command::Clear => Command::CLEAR.to_string(),
             Command::Categories => Command::CATEGORIES.to_string(),
             Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
-            Command::AddCategory { name } => {
-                let name_str = name.unwrap_or_else(|| "<name>".to_string());
+            Command::AddCategory(add_category) => {
+                // let name_str = add_category.name.unwrap_or_else(|| "<name>".to_string());
+                let name_str = add_category.name;
                 format!("{} {}", Command::ADD_CATEGORY, name_str)
             }
             Command::AddFilter { category, pattern } => {
@@ -524,12 +523,12 @@ pub async fn execute_command(
             )
             .await?;
         }
-        Command::AddCategory { name } => {
+        Command::AddCategory(add_category) => {
             category_command(
                 bot.clone(),
                 msg.clone(),
                 storage.clone().as_category_storage(),
-                name,
+                Some(add_category.name),
             )
             .await?;
         }

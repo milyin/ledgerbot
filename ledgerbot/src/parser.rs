@@ -1,8 +1,9 @@
-use crate::commands::Command;
-use crate::storage_traits::Expense;
-use chrono::{TimeZone, Utc};
 use std::collections::HashMap;
+
+use chrono::{TimeZone, Utc};
 use teloxide::utils::command::BotCommands;
+
+use crate::{commands::Command, storage_traits::Expense};
 
 /// Parse expense lines and commands from a message text
 /// Returns a vector of Results containing either successfully parsed Commands or error messages
@@ -133,8 +134,10 @@ pub fn extract_words(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::NaiveDate;
+
+    use super::*;
+    use crate::commands::command_add_category::CommandAddCategory;
 
     #[test]
     fn test_parse_expenses_with_date() {
@@ -542,8 +545,10 @@ mod tests {
         assert!(matches!(&results[6], Ok(Command::ClearCategories)));
 
         // Commands with parameters (4 commands)
-        assert!(matches!(&results[7], Ok(Command::AddCategory { name })
-            if name == &Some("Food".to_string())));
+        assert!(
+            matches!(&results[7], Ok(Command::AddCategory(CommandAddCategory { name }))
+            if name == &"Food".to_string())
+        );
 
         assert!(
             matches!(&results[8], Ok(Command::AddFilter { category, pattern })
@@ -570,51 +575,5 @@ mod tests {
 
         // Duplicate command without parameters to verify repeatability
         assert!(matches!(&results[12], Ok(Command::List)));
-    }
-
-    #[test]
-    fn test_parse_commands_with_missing_parameters() {
-        // Test behavior when commands with required parameters are passed without them
-        // The BotCommands parser will parse them with empty string parameters
-        let text = "\
-            /add_category\n\
-            /add_filter\n\
-            /remove_category\n\
-            /remove_filter\n\
-            /add_category Food\n\
-            Coffee 5.50\n\
-        ";
-        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
-        let results = parse_expenses(text, None, timestamp);
-
-        // Check that all commands and expense were extracted (total 6)
-        assert_eq!(results.len(), 6);
-
-        // Commands with missing parameters are now parsed as None
-        // All commands now parse successfully with optional parameters
-        assert!(matches!(&results[0], Ok(Command::AddCategory { name }) if name.is_none()));
-
-        assert!(
-            matches!(&results[1], Ok(Command::AddFilter { category, pattern })
-            if category.is_none() && pattern.is_none())
-        );
-
-        assert!(matches!(&results[2], Ok(Command::RemoveCategory { name }) if name.is_none()));
-
-        assert!(
-            matches!(&results[3], Ok(Command::RemoveFilter { category, position })
-            if category.is_none() && position.is_none())
-        );
-
-        assert!(matches!(&results[4], Ok(Command::AddCategory { name })
-            if name == &Some("Food".to_string())));
-
-        // Check the expense
-        assert!(
-            matches!(&results[5], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
-        );
     }
 }

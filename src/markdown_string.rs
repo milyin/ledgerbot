@@ -1,7 +1,6 @@
 //! MarkdownString type for safe Telegram MarkdownV2 messages
 
-use std::fmt;
-use std::ops::Add;
+use std::{fmt, ops::Add};
 
 use teloxide::prelude::Requester;
 
@@ -322,8 +321,7 @@ impl MarkdownStringSendMessage for teloxide::Bot {
     where
         C: Into<teloxide::types::Recipient>,
     {
-        use teloxide::payloads::SendMessageSetters;
-        use teloxide::types::ParseMode;
+        use teloxide::{payloads::SendMessageSetters, types::ParseMode};
 
         // Create a message request using teloxide's request building API
         self.send_message(chat_id, text)
@@ -361,7 +359,7 @@ mod tests {
         // Test creating an empty MarkdownString
         let markdown = MarkdownString::new();
         assert_eq!(markdown.as_str(), "");
-        
+
         // Test that it's equivalent to escaping an empty string
         let escaped_empty = MarkdownString::escape("");
         assert_eq!(markdown.as_str(), escaped_empty.as_str());
@@ -372,11 +370,11 @@ mod tests {
         // Test creating an empty MarkdownString using Default
         let markdown = MarkdownString::default();
         assert_eq!(markdown.as_str(), "");
-        
+
         // Test that it's equivalent to new()
         let new_markdown = MarkdownString::new();
         assert_eq!(markdown.as_str(), new_markdown.as_str());
-        
+
         // Test using Default::default()
         let default_markdown: MarkdownString = Default::default();
         assert_eq!(default_markdown.as_str(), "");

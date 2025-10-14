@@ -7,7 +7,7 @@ use teloxide::{
     utils::markdown::escape,
 };
 
-use crate::commands::Command;
+use crate::commands::{command_add_category::CommandAddCategory, Command};
 use crate::handlers::CallbackData;
 use crate::storage_traits::CategoryStorageTrait;
 
@@ -33,9 +33,9 @@ pub async fn add_filter_command(
                         "❌ Category `{}` does not exist\\. Create it first with {}",
                         escape(&category),
                         escape(
-                            Command::AddCategory {
-                                name: Some(category.clone())
-                            }
+                            Command::AddCategory(
+                                CommandAddCategory { name: category.clone() }
+                            )
                             .to_string()
                             .as_str()
                         )
