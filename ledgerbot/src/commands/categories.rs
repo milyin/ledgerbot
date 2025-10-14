@@ -7,53 +7,13 @@ use teloxide::{
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
     utils::markdown::escape,
 };
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{Command, command_add_category::CommandAddCategory, command_trait::CommandTrait},
+    commands::{Command, command_add_category::CommandAddCategory},
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
-
-/// Add a category (name only)
-pub async fn category_command(
-    bot: Bot,
-    msg: Message,
-    storage: Arc<dyn CategoryStorageTrait>,
-    name: Option<String>,
-) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-
-    // Check if name is provided
-    match name {
-        None => {
-            // Show the add category menu instead
-            let sent_msg = bot.send_message(chat_id, "➕ Add Category").await?;
-            add_category_menu(bot, chat_id, sent_msg.id).await?;
-        }
-        Some(name) => match storage.add_category(chat_id, name.clone()).await {
-            Ok(()) => {
-                bot.send_message(
-                    chat_id,
-                    format!(
-                        "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
-                        escape(&name),
-                        escape(Command::ADD_FILTER)
-                    ),
-                )
-                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                .await?;
-            }
-            Err(err_msg) => {
-                bot.send_message(chat_id, format!("ℹ️ {}", escape(&err_msg)))
-                    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                    .await?;
-            }
-        },
-    }
-
-    Ok(())
-}
 
 /// List all categories as executable commands
 pub async fn categories_command(
@@ -188,31 +148,6 @@ pub async fn remove_category_menu(
             .reply_markup(keyboard)
             .await?;
     }
-
-    Ok(())
-}
-
-/// Show add category menu
-pub async fn add_category_menu(
-    bot: Bot,
-    chat_id: ChatId,
-    message_id: MessageId,
-) -> ResponseResult<()> {
-    let text = "➕ **Add a new category:**\n\nClick the button below and type the category name\\.";
-
-    let keyboard = InlineKeyboardMarkup::new(vec![vec![
-        InlineKeyboardButton::switch_inline_query_current_chat(
-            "➕ Add Category",
-            format!("{} ", CommandAddCategory::NAME),
-        ),
-    ]]);
-
-    bot.edit_message_text(chat_id, message_id, text)
-        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-        .await?;
-    bot.edit_message_reply_markup(chat_id, message_id)
-        .reply_markup(keyboard)
-        .await?;
 
     Ok(())
 }

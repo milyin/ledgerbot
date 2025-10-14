@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use teloxide::{prelude::*, types::CallbackQuery};
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
     batch::{add_to_batch, execute_batch},

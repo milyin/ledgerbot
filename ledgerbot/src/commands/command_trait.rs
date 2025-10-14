@@ -157,5 +157,5 @@ pub trait CommandTrait: Sized {
         j: Option<Self::J>,
     ) -> Self;
 
-    fn run(bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()>;
+    async fn run(&self, bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()>;
 }

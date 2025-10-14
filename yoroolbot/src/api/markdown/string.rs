@@ -2,7 +2,16 @@
 
 use std::{fmt, ops::Add};
 
-use teloxide::prelude::Requester;
+use teloxide::{
+    Bot,
+    payloads::{EditMessageTextSetters, SendMessage, SendMessageSetters},
+    prelude::Requester,
+    types::{
+        MessageId,
+        ParseMode::{self, MarkdownV2},
+        Recipient,
+    },
+};
 
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
 ///
@@ -213,7 +222,7 @@ impl Add<&MarkdownString> for &MarkdownString {
 /// The trait allows you to use `Bot::send_message` with `MarkdownString` parameters
 /// while automatically applying the correct parse mode, making it safer and more
 /// convenient than manually setting the parse mode each time.
-pub trait MarkdownStringSendMessage {
+pub trait MarkdownStringMessage: Requester {
     /// Send a message with MarkdownString content
     ///
     /// This method has the same signature as teloxide's `Bot::send_message`,
@@ -223,26 +232,45 @@ pub trait MarkdownStringSendMessage {
         &self,
         chat_id: C,
         text: MarkdownString,
-    ) -> teloxide::requests::JsonRequest<teloxide::payloads::SendMessage>
+    ) -> teloxide::requests::JsonRequest<SendMessage>
     where
-        C: Into<teloxide::types::Recipient>;
+        C: Into<Recipient>;
+
+    fn edit_markdown_message_text<C>(
+        &self,
+        chat_id: C,
+        message_id: MessageId,
+        text: MarkdownString,
+    ) -> <Self as Requester>::EditMessageText
+    where
+        C: Into<Recipient>;
 }
 
 /// Implementation of MarkdownStringSendMessage for teloxide Bot
-impl MarkdownStringSendMessage for teloxide::Bot {
+impl MarkdownStringMessage for Bot {
     fn send_markdown_message<C>(
         &self,
         chat_id: C,
         text: MarkdownString,
-    ) -> teloxide::requests::JsonRequest<teloxide::payloads::SendMessage>
+    ) -> teloxide::requests::JsonRequest<SendMessage>
     where
-        C: Into<teloxide::types::Recipient>,
+        C: Into<Recipient>,
     {
-        use teloxide::{payloads::SendMessageSetters, types::ParseMode};
-
-        // Create a message request using teloxide's request building API
         self.send_message(chat_id, text)
             .parse_mode(ParseMode::MarkdownV2)
+    }
+
+    fn edit_markdown_message_text<C>(
+        &self,
+        chat_id: C,
+        message_id: MessageId,
+        text: MarkdownString,
+    ) -> <Self as Requester>::EditMessageText
+    where
+        C: Into<Recipient>,
+    {
+        self.edit_message_text(chat_id, message_id, text)
+            .parse_mode(MarkdownV2)
     }
 }
 
@@ -707,10 +735,10 @@ mod tests {
     #[test]
     fn test_markdown_string_send_message_trait_exists() {
         // This test ensures the trait is properly defined and accessible
-        use crate::api::markdown::string::MarkdownStringSendMessage;
+        use crate::api::markdown::string::MarkdownStringMessage;
 
         // If this compiles, the trait is properly defined
-        fn _test_trait_bound<T: MarkdownStringSendMessage>(_bot: T) {}
+        fn _test_trait_bound<T: MarkdownStringMessage>(_bot: T) {}
 
         // Test that MarkdownString can be created for the trait method
         let _message = MarkdownString::escape("Test message");

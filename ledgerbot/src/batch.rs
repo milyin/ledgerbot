@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use teloxide::prelude::*;
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
     commands::{Command, execute_command},

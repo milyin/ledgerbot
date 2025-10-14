@@ -7,7 +7,7 @@ pub(crate) mod api;
 pub mod markdown {
     // Re-export types and traits from internal API
     pub use crate::api::markdown::{
-        string::{MarkdownString, MarkdownStringSendMessage},
+        string::{MarkdownString, MarkdownStringMessage},
         validate::validate_markdownv2_format,
     };
 }

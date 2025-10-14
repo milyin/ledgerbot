@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use teloxide::{prelude::*, types::Message, utils::command::ParseError};
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format, markdown_string};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, markdown_string};
 
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
 

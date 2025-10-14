@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use teloxide::{Bot, prelude::ResponseResult, types::Message, utils::markdown::escape};
 use yoroolbot::{
-    markdown::{MarkdownString, MarkdownStringSendMessage},
+    markdown::{MarkdownString, MarkdownStringMessage},
     markdown_format, markdown_string,
 };
 

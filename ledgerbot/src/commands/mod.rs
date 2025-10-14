@@ -17,11 +17,11 @@ use teloxide::{
         markdown::escape,
     },
 };
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_string};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_string};
 
 use crate::{
     commands::{
-        categories::{categories_command, category_command, remove_category_command},
+        categories::{categories_command, remove_category_command},
         command_add_category::CommandAddCategory,
         command_trait::CommandTrait,
         expenses::{clear_command, expense_command, list_command, parse_expense},
@@ -525,13 +525,13 @@ pub async fn execute_command(
             .await?;
         }
         Command::AddCategory(add_category) => {
-            category_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_category_storage(),
-                add_category.name,
-            )
-            .await?;
+            add_category
+                .run(
+                    bot.clone(),
+                    msg.clone(),
+                    storage.clone().as_category_storage(),
+                )
+                .await?;
         }
         Command::Categories => {
             categories_command(

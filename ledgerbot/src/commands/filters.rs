@@ -7,7 +7,7 @@ use teloxide::{
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
     utils::markdown::escape,
 };
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
     commands::{Command, command_add_category::CommandAddCategory},

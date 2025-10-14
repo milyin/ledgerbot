@@ -1,11 +1,20 @@
 use std::{fmt::Display, sync::Arc};
 
-use teloxide::{Bot, prelude::Message};
+use teloxide::{
+    Bot,
+    payloads::EditMessageReplyMarkupSetters,
+    prelude::{Message, Requester, ResponseResult},
+    types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
+};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, markdown_string};
 
 use crate::{
-    commands::command_trait::{
-        CommandTrait, EmptyArg1, EmptyArg2, EmptyArg3, EmptyArg4, EmptyArg5, EmptyArg6, EmptyArg7,
-        EmptyArg8, EmptyArg9,
+    commands::{
+        Command,
+        command_trait::{
+            CommandTrait, EmptyArg1, EmptyArg2, EmptyArg3, EmptyArg4, EmptyArg5, EmptyArg6,
+            EmptyArg7, EmptyArg8, EmptyArg9,
+        },
     },
     storage_traits::CategoryStorageTrait,
 };
@@ -52,12 +61,42 @@ impl CommandTrait for CommandAddCategory {
         CommandAddCategory { name: a }
     }
 
-    fn run(
+    async fn run(
+        &self,
         bot: Bot,
         msg: Message,
-        context: Self::Context,
+        storage: Self::Context,
     ) -> teloxide::prelude::ResponseResult<()> {
-        todo!()
+        let chat_id = msg.chat.id;
+
+        // Check if name is provided
+        match &self.name {
+            None => {
+                // Show the add category menu instead
+                let sent_msg = bot
+                    .send_markdown_message(chat_id, markdown_string!("➕ Add Category"))
+                    .await?;
+                add_category_menu(bot, chat_id, sent_msg.id).await?;
+            }
+            Some(name) => match storage.add_category(chat_id, name.clone()).await {
+                Ok(()) => {
+                    bot.send_markdown_message(
+                        chat_id,
+                        markdown_format!(
+                            "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
+                            name,
+                            Command::ADD_FILTER
+                        ),
+                    )
+                    .await?;
+                }
+                Err(err_msg) => {
+                    bot.send_markdown_message(chat_id, markdown_format!("ℹ️ {}", &err_msg))
+                        .await?;
+                }
+            },
+        }
+        Ok(())
     }
 }
 
@@ -81,4 +120,29 @@ impl Display for CommandAddCategory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", String::from(self.clone()))
     }
+}
+
+/// Show add category menu
+pub async fn add_category_menu(
+    bot: Bot,
+    chat_id: ChatId,
+    message_id: MessageId,
+) -> ResponseResult<()> {
+    let text = markdown_string!(
+        "➕ **Add a new category:**\n\nClick the button below and type the category name\\."
+    );
+    let keyboard = InlineKeyboardMarkup::new(vec![vec![
+        InlineKeyboardButton::switch_inline_query_current_chat(
+            "➕ Add Category",
+            format!("{} ", CommandAddCategory::NAME),
+        ),
+    ]]);
+
+    bot.edit_markdown_message_text(chat_id, message_id, text)
+        .await?;
+    bot.edit_message_reply_markup(chat_id, message_id)
+        .reply_markup(keyboard)
+        .await?;
+
+    Ok(())
 }

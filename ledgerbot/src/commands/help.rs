@@ -3,7 +3,7 @@ use teloxide::{
     types::{KeyboardButton, Message, ReplyMarkup},
     utils::command::BotCommands,
 };
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use super::Command;
 
