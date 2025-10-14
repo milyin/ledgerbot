@@ -22,6 +22,8 @@ impl MarkdownString {
     ///
     /// # Example
     /// ```rust
+    /// use yoroolbot::markdown::MarkdownString;
+    ///
     /// let markdown = MarkdownString::escape("Hello! This has special chars: *bold* _italic_");
     /// // Result: "Hello\\! This has special chars: \\*bold\\* \\_italic\\_"
     /// ```
@@ -36,6 +38,8 @@ impl MarkdownString {
     ///
     /// # Example
     /// ```rust
+    /// use yoroolbot::markdown::MarkdownString;
+    ///
     /// let markdown = MarkdownString::new();
     /// assert_eq!(markdown.as_str(), "");
     /// ```
@@ -187,10 +191,10 @@ impl Add<&MarkdownString> for &MarkdownString {
 /// # Example
 ///
 /// ```rust
-/// use ledgerbot::markdown_string::{MarkdownString, MarkdownStringSendMessage};
-/// use teloxide::Bot;
+/// use yoroolbot::markdown::{MarkdownString, MarkdownStringSendMessage};
+/// use teloxide::{Bot, prelude::Requester, types::ChatId};
 ///
-/// async fn send_markdown_example(bot: Bot, chat_id: teloxide::types::ChatId) {
+/// async fn send_markdown_example(bot: Bot, chat_id: ChatId) {
 ///     // Create a MarkdownString (safely escaped)
 ///     let message = MarkdownString::escape("Hello *world*!");
 ///     
@@ -239,7 +243,7 @@ impl MarkdownStringSendMessage for teloxide::Bot {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{markdown, markdown_format, markdown_string};
+    use crate::{markdown_format, markdown_string};
 
     #[test]
     fn test_escape_constructor() {
@@ -638,7 +642,7 @@ mod tests {
 
     #[test]
     fn test_markdown_format_with_into_trait() {
-        // Test that the macro works with different types that implement Into<MarkdownString>
+        // Test that the macro works with MarkdownString templates
 
         // Using MarkdownString directly (constructed without escaping)
         let markdown_template = MarkdownString::test_template("Using MarkdownString: {}");
@@ -650,29 +654,16 @@ mod tests {
         let result2 = markdown_format!(direct_template, "test");
         assert_eq!(result2.as_str(), "Using direct template: test");
 
-        // Using String for safe content without placeholders (gets escaped)
-        let safe_content = "Safe user content with *special* chars".to_string();
-        let result3 = markdown_format!(safe_content);
-        assert_eq!(
-            result3.as_str(),
-            "Safe user content with \\*special\\* chars"
-        );
-
-        // Using &str for safe content without placeholders (gets escaped)
-        let safe_str = "Another safe string with !exclamation";
-        let result4 = markdown_format!(safe_str);
-        assert_eq!(result4.as_str(), "Another safe string with \\!exclamation");
-
-        // Demonstrate that string templates with placeholders get escaped (and thus don't work as templates)
-        let string_with_placeholders = "This {} won't work as template".to_string();
-        let result5 = markdown_format!(string_with_placeholders, "arg");
+        // Using escaped content as template (placeholders get escaped)
+        let escaped_template = MarkdownString::escape("This {} won't work as template");
+        let result3 = markdown_format!(escaped_template, "arg");
         // The {} gets escaped to \{\}, so "arg" doesn't replace anything
-        assert_eq!(result5.as_str(), "This \\{\\} won't work as template");
+        assert_eq!(result3.as_str(), "This \\{\\} won't work as template");
 
         // Show the correct way to use templates with markdown formatting
         let proper_template = MarkdownString::test_template("Proper *{}* template with `{}`");
-        let result6 = markdown_format!(proper_template, "bold", "code");
-        assert_eq!(result6.as_str(), "Proper *bold* template with `code`");
+        let result4 = markdown_format!(proper_template, "bold", "code");
+        assert_eq!(result4.as_str(), "Proper *bold* template with `code`");
     }
 
     // The following tests verify that the markdown_string! macro would catch invalid syntax
