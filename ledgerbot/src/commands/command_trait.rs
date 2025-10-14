@@ -24,6 +24,7 @@ where
 macro_rules! impl_empty_arg_fromstr {
     ($($name:ident, $idx:expr);*) => {
         $(
+            #[allow(dead_code)]
             #[derive(Default)]
             pub struct $name<const EXPECTED: usize>;
 
@@ -63,7 +64,7 @@ impl_empty_arg_fromstr!(
     EmptyArg9, 9
 );
 
-fn get<A>(args: &Vec<String>, pos: usize) -> Result<A, ParseError>
+fn get<A>(args: &[String], pos: usize) -> Result<A, ParseError>
 where A: ArgFromStr + Default,
 {
     let arg = args.get(pos)
@@ -137,5 +138,6 @@ where
         Ok((Self::from_arguments(a, b, c, d, e, f, g, h, i, j),))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn from_arguments(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J) -> Self;
 }
