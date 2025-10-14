@@ -111,41 +111,40 @@ fn split(arg: &str) -> Vec<String> {
     args
 }
 
-pub trait CommandTrait<A, B, C, D, E, F, G, H, I, J>
-where
-    A: ArgFromStr + Default,
-    B: ArgFromStr + Default,
-    C: ArgFromStr + Default,
-    D: ArgFromStr + Default,
-    E: ArgFromStr + Default,
-    F: ArgFromStr + Default,
-    G: ArgFromStr + Default,
-    H: ArgFromStr + Default,
-    I: ArgFromStr + Default,
-    J: ArgFromStr + Default,
-    Self: Sized,
+pub trait CommandTrait: Sized
 {
+    type A: ArgFromStr + Default;
+    type B: ArgFromStr + Default;
+    type C: ArgFromStr + Default;
+    type D: ArgFromStr + Default;
+    type E: ArgFromStr + Default;
+    type F: ArgFromStr + Default;
+    type G: ArgFromStr + Default;
+    type H: ArgFromStr + Default;
+    type I: ArgFromStr + Default;
+    type J: ArgFromStr + Default;
+
     type Context;
 
     const NAME: &'static str;
 
     fn parse_arguments(args: String) -> Result<(Self,), ParseError> {
         let args = split(&args);
-        let a: A = get(&args, 0)?;
-        let b: B = get(&args, 1)?;
-        let c: C = get(&args, 2)?;
-        let d: D = get(&args, 3)?;
-        let e: E = get(&args, 4)?;
-        let f: F = get(&args, 5)?;
-        let g: G = get(&args, 6)?;
-        let h: H = get(&args, 7)?;
-        let i: I = get(&args, 8)?;
-        let j: J = get(&args, 9)?;
+        let a: Self::A = get(&args, 0)?;
+        let b: Self::B = get(&args, 1)?;
+        let c: Self::C = get(&args, 2)?;
+        let d: Self::D = get(&args, 3)?;
+        let e: Self::E = get(&args, 4)?;
+        let f: Self::F = get(&args, 5)?;
+        let g: Self::G = get(&args, 6)?;
+        let h: Self::H = get(&args, 7)?;
+        let i: Self::I = get(&args, 8)?;
+        let j: Self::J = get(&args, 9)?;
         Ok((Self::from_arguments(a, b, c, d, e, f, g, h, i, j),))
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn from_arguments(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J) -> Self;
+    fn from_arguments(a: Self::A, b: Self::B, c: Self::C, d: Self::D, e: Self::E, f: Self::F, g: Self::G, h: Self::H, i: Self::I, j: Self::J) -> Self;
 
     fn run(bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()>;
 }

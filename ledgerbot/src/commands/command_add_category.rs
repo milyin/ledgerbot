@@ -12,35 +12,34 @@ pub struct CommandAddCategory {
     pub name: String,
 }
 
-impl
-    CommandTrait<
-        String,
-        EmptyArg1<1>,
-        EmptyArg2<1>,
-        EmptyArg3<1>,
-        EmptyArg4<1>,
-        EmptyArg5<1>,
-        EmptyArg6<1>,
-        EmptyArg7<1>,
-        EmptyArg8<1>,
-        EmptyArg9<1>,
-    > for CommandAddCategory
+impl CommandTrait for CommandAddCategory
 {
+    type A = String;
+    type B = EmptyArg1<1>;
+    type C = EmptyArg2<1>;
+    type D = EmptyArg3<1>;
+    type E = EmptyArg4<1>;
+    type F = EmptyArg5<1>;
+    type G = EmptyArg6<1>;
+    type H = EmptyArg7<1>;
+    type I = EmptyArg8<1>;
+    type J = EmptyArg9<1>;
+
     type Context = Arc<dyn CategoryStorageTrait>;
     
     const NAME: &'static str = "add_category";
 
     fn from_arguments(
-        a: String,
-        _: EmptyArg1<1>,
-        _: EmptyArg2<1>,
-        _: EmptyArg3<1>,
-        _: EmptyArg4<1>,
-        _: EmptyArg5<1>,
-        _: EmptyArg6<1>,
-        _: EmptyArg7<1>,
-        _: EmptyArg8<1>,
-        _: EmptyArg9<1>,
+        a: Self::A,
+        _: Self::B,
+        _: Self::C,
+        _: Self::D,
+        _: Self::E,
+        _: Self::F,
+        _: Self::G,
+        _: Self::H,
+        _: Self::I,
+        _: Self::J,
     ) -> Self {
         CommandAddCategory { name: a }
     }
