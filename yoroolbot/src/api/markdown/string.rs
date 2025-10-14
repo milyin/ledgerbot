@@ -103,6 +103,12 @@ impl From<String> for MarkdownString {
     }
 }
 
+impl From<&String> for MarkdownString {
+    fn from(s: &String) -> Self {
+        MarkdownString::escape(s)
+    }
+}
+
 impl From<&str> for MarkdownString {
     fn from(s: &str) -> Self {
         MarkdownString::escape(s)

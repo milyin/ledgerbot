@@ -1,4 +1,5 @@
 use std::sync::Arc;
+
 use teloxide::{
     Bot,
     payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters, SendMessageSetters},
@@ -7,9 +8,7 @@ use teloxide::{
     utils::markdown::escape,
 };
 
-use crate::commands::Command;
-use crate::handlers::CallbackData;
-use crate::storage_traits::CategoryStorageTrait;
+use crate::{commands::Command, handlers::CallbackData, storage_traits::CategoryStorageTrait};
 
 /// Add a category (name only)
 pub async fn category_command(

@@ -1,4 +1,5 @@
 use std::sync::Arc;
+
 use teloxide::{
     Bot,
     payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters, SendMessageSetters},
@@ -8,9 +9,11 @@ use teloxide::{
 };
 use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
 
-use crate::commands::{command_add_category::CommandAddCategory, command_trait::CommandTrait, Command};
-use crate::handlers::CallbackData;
-use crate::storage_traits::CategoryStorageTrait;
+use crate::{
+    commands::{Command, command_add_category::CommandAddCategory, command_trait::CommandTrait},
+    handlers::CallbackData,
+    storage_traits::CategoryStorageTrait,
+};
 
 /// Add a category (name only)
 pub async fn category_command(
@@ -66,10 +69,7 @@ pub async fn categories_command(
             chat_id,
             markdown_format!(
                 "📂 No categories defined yet\\. Use {} to create one\\.",
-                Command::AddCategory(CommandAddCategory {
-                    name: "<name>".into()
-                })
-                .to_string()
+                CommandAddCategory::default().to_string()
             ),
         )
         .await?;
@@ -82,9 +82,7 @@ pub async fn categories_command(
 
         for (name, patterns) in sorted_categories {
             // First create the category
-            result.push_str(
-                &Command::AddCategory(CommandAddCategory { name: name.clone() }).to_string(),
-            );
+            result.push_str(&CommandAddCategory::new(name.clone()).to_string());
             result.push('\n');
 
             // Then assign patterns if they exist

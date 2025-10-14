@@ -1,9 +1,13 @@
-use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::sync::Arc;
+
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use teloxide::{prelude::*, types::Message, utils::command::ParseError};
 
-use crate::storage_traits::{Expense, ExpenseStorageTrait};
-use crate::{markdown, markdown_string::MarkdownStringSendMessage};
+use crate::{
+    markdown,
+    markdown_string::MarkdownStringSendMessage,
+    storage_traits::{Expense, ExpenseStorageTrait},
+};
 
 /// Format timestamp as YYYY-MM-DD string
 fn format_timestamp(timestamp: i64) -> String {

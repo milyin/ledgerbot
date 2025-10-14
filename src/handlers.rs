@@ -1,17 +1,20 @@
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
+
 use teloxide::{prelude::*, types::CallbackQuery};
 
-use crate::{markdown, markdown_string::MarkdownStringSendMessage};
-
-use crate::batch::{add_to_batch, execute_batch};
-use crate::commands::categories::{
-    show_category_filters_for_editing, show_category_filters_for_removal,
+use crate::{
+    batch::{add_to_batch, execute_batch},
+    commands::{
+        categories::{show_category_filters_for_editing, show_category_filters_for_removal},
+        execute_command,
+        filters::{add_filter_menu, edit_filter_menu, remove_filter_menu},
+        show_filter_word_suggestions,
+    },
+    markdown,
+    markdown_string::MarkdownStringSendMessage,
+    parser::parse_expenses,
+    storage_traits::StorageTrait,
 };
-use crate::commands::filters::{add_filter_menu, edit_filter_menu, remove_filter_menu};
-use crate::commands::{execute_command, show_filter_word_suggestions};
-use crate::parser::parse_expenses;
-use crate::storage_traits::StorageTrait;
 
 /// Represents all possible callback data from inline keyboard buttons
 #[derive(Debug, Clone, PartialEq)]

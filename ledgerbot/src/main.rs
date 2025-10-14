@@ -6,15 +6,14 @@ mod parser;
 mod storage;
 mod storage_traits;
 
-use clap::Parser;
-use std::path::PathBuf;
-use std::sync::Arc;
-use teloxide::prelude::*;
+use std::{path::PathBuf, sync::Arc};
 
+use clap::Parser;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
 use storage::{PersistentCategoryStorage, Storage};
 use storage_traits::StorageTrait;
+use teloxide::prelude::*;
 
 #[tokio::main]
 async fn main() {

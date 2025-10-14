@@ -1,19 +1,27 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
-use teloxide::{prelude::Message, Bot};
+use teloxide::{Bot, prelude::Message};
 
-use crate::{commands::command_trait::{
-    CommandTrait, EmptyArg1, EmptyArg2, EmptyArg3, EmptyArg4, EmptyArg5, EmptyArg6, EmptyArg7,
-    EmptyArg8, EmptyArg9,
-}, storage_traits::CategoryStorageTrait};
+use crate::{
+    commands::command_trait::{
+        CommandTrait, EmptyArg1, EmptyArg2, EmptyArg3, EmptyArg4, EmptyArg5, EmptyArg6, EmptyArg7,
+        EmptyArg8, EmptyArg9,
+    },
+    storage_traits::CategoryStorageTrait,
+};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddCategory {
-    pub name: String,
+    pub name: Option<String>,
 }
 
-impl CommandTrait for CommandAddCategory
-{
+impl CommandAddCategory {
+    pub fn new(name: String) -> Self {
+        CommandAddCategory { name: Some(name) }
+    }
+}
+
+impl CommandTrait for CommandAddCategory {
     type A = String;
     type B = EmptyArg1<1>;
     type C = EmptyArg2<1>;
@@ -26,29 +34,31 @@ impl CommandTrait for CommandAddCategory
     type J = EmptyArg9<1>;
 
     type Context = Arc<dyn CategoryStorageTrait>;
-    
+
     const NAME: &'static str = "add_category";
 
     fn from_arguments(
-        a: Self::A,
-        _: Self::B,
-        _: Self::C,
-        _: Self::D,
-        _: Self::E,
-        _: Self::F,
-        _: Self::G,
-        _: Self::H,
-        _: Self::I,
-        _: Self::J,
+        a: Option<Self::A>,
+        _: Option<Self::B>,
+        _: Option<Self::C>,
+        _: Option<Self::D>,
+        _: Option<Self::E>,
+        _: Option<Self::F>,
+        _: Option<Self::G>,
+        _: Option<Self::H>,
+        _: Option<Self::I>,
+        _: Option<Self::J>,
     ) -> Self {
         CommandAddCategory { name: a }
     }
-    
-    fn run(bot: Bot, msg: Message, context: Self::Context) -> teloxide::prelude::ResponseResult<()> {
+
+    fn run(
+        bot: Bot,
+        msg: Message,
+        context: Self::Context,
+    ) -> teloxide::prelude::ResponseResult<()> {
         todo!()
     }
-
-    
 }
 
 impl From<CommandAddCategory> for crate::commands::Command {
@@ -59,6 +69,16 @@ impl From<CommandAddCategory> for crate::commands::Command {
 
 impl From<CommandAddCategory> for String {
     fn from(cmd: CommandAddCategory) -> Self {
-        format!("{} {}", CommandAddCategory::NAME, cmd.name)
+        format!(
+            "{} {}",
+            CommandAddCategory::NAME,
+            cmd.name.unwrap_or("<name>".into())
+        )
+    }
+}
+
+impl Display for CommandAddCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", String::from(self.clone()))
     }
 }

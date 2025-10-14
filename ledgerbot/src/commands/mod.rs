@@ -1,10 +1,12 @@
 pub mod categories;
+pub mod command_add_category;
+pub mod command_trait;
 pub mod expenses;
 pub mod filters;
 pub mod help;
 pub mod report;
-pub mod command_add_category;
-pub mod command_trait;
+
+use std::sync::Arc;
 
 use chrono::NaiveDate;
 use teloxide::{
@@ -17,11 +19,15 @@ use teloxide::{
 };
 use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_string};
 
-use std::sync::Arc;
-
 use crate::{
     commands::{
-        categories::{categories_command, category_command, remove_category_command}, command_add_category::CommandAddCategory, command_trait::CommandTrait, expenses::{clear_command, expense_command, list_command, parse_expense}, filters::{add_filter_command, edit_filter_command, remove_filter_command}, help::{help_command, start_command}, report::report_command
+        categories::{categories_command, category_command, remove_category_command},
+        command_add_category::CommandAddCategory,
+        command_trait::CommandTrait,
+        expenses::{clear_command, expense_command, list_command, parse_expense},
+        filters::{add_filter_command, edit_filter_command, remove_filter_command},
+        help::{help_command, start_command},
+        report::report_command,
     },
     handlers::CallbackData,
     parser::extract_words,
@@ -209,9 +215,7 @@ impl From<Command> for String {
             Command::Clear => Command::CLEAR.to_string(),
             Command::Categories => Command::CATEGORIES.to_string(),
             Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
-            Command::AddCategory(add_category) => {
-                add_category.into()
-            }
+            Command::AddCategory(add_category) => add_category.into(),
             Command::AddFilter { category, pattern } => {
                 let category_str = category.unwrap_or_else(|| "<category>".to_string());
                 let pattern_str = pattern.unwrap_or_else(|| "<pattern>".to_string());
@@ -525,7 +529,7 @@ pub async fn execute_command(
                 bot.clone(),
                 msg.clone(),
                 storage.clone().as_category_storage(),
-                Some(add_category.name),
+                add_category.name,
             )
             .await?;
         }

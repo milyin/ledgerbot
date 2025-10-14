@@ -1,4 +1,5 @@
 use std::sync::Arc;
+
 use teloxide::{
     Bot,
     payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters, SendMessageSetters},
@@ -6,10 +7,13 @@ use teloxide::{
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
     utils::markdown::escape,
 };
+use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
 
-use crate::commands::{command_add_category::CommandAddCategory, Command};
-use crate::handlers::CallbackData;
-use crate::storage_traits::CategoryStorageTrait;
+use crate::{
+    commands::{Command, command_add_category::CommandAddCategory},
+    handlers::CallbackData,
+    storage_traits::CategoryStorageTrait,
+};
 
 /// Add a filter to a category
 pub async fn add_filter_command(
@@ -27,18 +31,12 @@ pub async fn add_filter_command(
 
             // Check if category exists
             if !categories.contains_key(&category) {
-                bot.send_message(
+                bot.send_markdown_message(
                     chat_id,
-                    format!(
+                    markdown_format!(
                         "❌ Category `{}` does not exist\\. Create it first with {}",
-                        escape(&category),
-                        escape(
-                            Command::AddCategory(
-                                CommandAddCategory { name: category.clone() }
-                            )
-                            .to_string()
-                            .as_str()
-                        )
+                        &category,
+                        CommandAddCategory::new(category).to_string().as_str()
                     ),
                 )
                 .parse_mode(teloxide::types::ParseMode::MarkdownV2)

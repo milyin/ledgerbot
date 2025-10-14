@@ -1,11 +1,13 @@
 use std::sync::Arc;
-use teloxide::prelude::*;
-use yoroolbot::markdown::MarkdownStringSendMessage;
-use yoroolbot::markdown_format;
 
-use crate::commands::{Command, execute_command};
-use crate::config::BATCH_TIMEOUT_SECONDS;
-use crate::storage_traits::{BatchStorageTrait, StorageTrait};
+use teloxide::prelude::*;
+use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
+
+use crate::{
+    commands::{Command, execute_command},
+    config::BATCH_TIMEOUT_SECONDS,
+    storage_traits::{BatchStorageTrait, StorageTrait},
+};
 
 /// Add expense data to batch and return whether this is the first message in the batch
 pub async fn add_to_batch(

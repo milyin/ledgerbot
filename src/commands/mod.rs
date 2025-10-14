@@ -4,6 +4,8 @@ pub mod filters;
 pub mod help;
 pub mod report;
 
+use std::sync::Arc;
+
 use chrono::NaiveDate;
 use teloxide::{
     prelude::*,
@@ -13,8 +15,6 @@ use teloxide::{
         markdown::escape,
     },
 };
-
-use std::sync::Arc;
 
 use crate::{
     commands::{

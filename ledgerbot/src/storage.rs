@@ -1,16 +1,16 @@
-use crate::commands::Command;
-use crate::storage_traits::{
-    BatchStorageTrait, CategoryStorageTrait, Expense, ExpenseStorageTrait, FilterPageStorageTrait,
-    FilterSelectionStorageTrait, StorageTrait,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Arc;
-use teloxide::types::ChatId;
-use teloxide::utils::markdown::escape;
-use tokio::fs;
-use tokio::sync::Mutex;
+use teloxide::{types::ChatId, utils::markdown::escape};
+use tokio::{fs, sync::Mutex};
+
+use crate::{
+    commands::Command,
+    storage_traits::{
+        BatchStorageTrait, CategoryStorageTrait, Expense, ExpenseStorageTrait,
+        FilterPageStorageTrait, FilterSelectionStorageTrait, StorageTrait,
+    },
+};
 
 /// Serializable structure for category data that can be saved/loaded as YAML
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -538,8 +538,9 @@ impl StorageTrait for Storage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashMap;
+
+    use super::*;
 
     #[test]
     fn test_category_data_yaml_serialization() {

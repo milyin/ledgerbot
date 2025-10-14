@@ -1,12 +1,8 @@
 use std::str::FromStr;
 
-use teloxide::utils::command::ParseError;
-
-use teloxide::{
-    Bot, types::Message, prelude::ResponseResult,
-};
+use teloxide::{Bot, prelude::ResponseResult, types::Message, utils::command::ParseError};
 pub trait ArgFromStr {
-    fn arg_from_str(s: &str) -> Result<Self, ParseError>
+    fn arg_from_str(s: &str) -> Result<Option<Self>, ParseError>
     where
         Self: Sized;
 }
@@ -16,11 +12,16 @@ where
     T: FromStr,
     T::Err: std::error::Error + Send + Sync + 'static,
 {
-    fn arg_from_str(s: &str) -> Result<Self, ParseError>
+    fn arg_from_str(s: &str) -> Result<Option<Self>, ParseError>
     where
         Self: Sized,
     {
-        s.parse::<T>().map_err(|e| ParseError::Custom(Box::new(e)))
+        if s.is_empty() {
+            return Ok(None);
+        }
+        s.parse::<T>()
+            .map(Some)
+            .map_err(|e| ParseError::Custom(Box::new(e)))
     }
 }
 
@@ -32,12 +33,12 @@ macro_rules! impl_empty_arg_fromstr {
             pub struct $name<const EXPECTED: usize>;
 
             impl<const EXPECTED: usize> ArgFromStr for $name<EXPECTED> {
-                fn arg_from_str(s: &str) -> Result<Self, ParseError>
+                fn arg_from_str(s: &str) -> Result<Option<Self>, ParseError>
                 where
                     Self: Sized,
                 {
                     if s.is_empty() {
-                        Ok($name)
+                        Ok(None)
                     } else {
                         Err(ParseError::TooManyArguments {
                             expected: EXPECTED,
@@ -67,7 +68,7 @@ impl_empty_arg_fromstr!(
     EmptyArg9, 9
 );
 
-fn get<A>(args: &[String], pos: usize) -> Result<A, ParseError>
+fn get<A>(args: &[String], pos: usize) -> Result<Option<A>, ParseError>
 where
     A: ArgFromStr + Default,
 {
@@ -111,8 +112,7 @@ fn split(arg: &str) -> Vec<String> {
     args
 }
 
-pub trait CommandTrait: Sized
-{
+pub trait CommandTrait: Sized {
     type A: ArgFromStr + Default;
     type B: ArgFromStr + Default;
     type C: ArgFromStr + Default;
@@ -130,21 +130,32 @@ pub trait CommandTrait: Sized
 
     fn parse_arguments(args: String) -> Result<(Self,), ParseError> {
         let args = split(&args);
-        let a: Self::A = get(&args, 0)?;
-        let b: Self::B = get(&args, 1)?;
-        let c: Self::C = get(&args, 2)?;
-        let d: Self::D = get(&args, 3)?;
-        let e: Self::E = get(&args, 4)?;
-        let f: Self::F = get(&args, 5)?;
-        let g: Self::G = get(&args, 6)?;
-        let h: Self::H = get(&args, 7)?;
-        let i: Self::I = get(&args, 8)?;
-        let j: Self::J = get(&args, 9)?;
+        let a = get::<Self::A>(&args, 0)?;
+        let b = get::<Self::B>(&args, 1)?;
+        let c = get::<Self::C>(&args, 2)?;
+        let d = get::<Self::D>(&args, 3)?;
+        let e = get::<Self::E>(&args, 4)?;
+        let f = get::<Self::F>(&args, 5)?;
+        let g = get::<Self::G>(&args, 6)?;
+        let h = get::<Self::H>(&args, 7)?;
+        let i = get::<Self::I>(&args, 8)?;
+        let j = get::<Self::J>(&args, 9)?;
         Ok((Self::from_arguments(a, b, c, d, e, f, g, h, i, j),))
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn from_arguments(a: Self::A, b: Self::B, c: Self::C, d: Self::D, e: Self::E, f: Self::F, g: Self::G, h: Self::H, i: Self::I, j: Self::J) -> Self;
+    fn from_arguments(
+        a: Option<Self::A>,
+        b: Option<Self::B>,
+        c: Option<Self::C>,
+        d: Option<Self::D>,
+        e: Option<Self::E>,
+        f: Option<Self::F>,
+        g: Option<Self::G>,
+        h: Option<Self::H>,
+        i: Option<Self::I>,
+        j: Option<Self::J>,
+    ) -> Self;
 
     fn run(bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()>;
 }

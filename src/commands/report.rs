@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use teloxide::{Bot, prelude::ResponseResult, types::Message, utils::markdown::escape};
 
@@ -115,13 +114,15 @@ pub async fn report_command(
 
     let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
 
-    bot.send_markdown_message(chat_id, expenses_list)
-        .await?;
+    bot.send_markdown_message(chat_id, expenses_list).await?;
     Ok(())
 }
 
 /// Format expenses as a readable list with total, grouped by categories
-fn format_expenses_list(expenses: &[Expense], categories: &HashMap<String, Vec<String>>) -> MarkdownString {
+fn format_expenses_list(
+    expenses: &[Expense],
+    categories: &HashMap<String, Vec<String>>,
+) -> MarkdownString {
     if expenses.is_empty() {
         return markdown_string!("No expenses recorded yet\\.");
     }
@@ -207,10 +208,7 @@ fn format_category_section(category_name: &str, expenses: &[Expense]) -> (Markdo
         category_total += expense.amount;
     }
 
-    let subtotal_line = markdown_string!(
-        "  *Subtotal: {}*\n\n",
-        category_total.to_string()
-    );
+    let subtotal_line = markdown_string!("  *Subtotal: {}*\n\n", category_total.to_string());
     section = section + subtotal_line;
 
     (section, category_total)
@@ -218,23 +216,25 @@ fn format_category_section(category_name: &str, expenses: &[Expense]) -> (Markdo
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::*;
 
     #[test]
     fn test_format_expenses_list_returns_markdown_string() {
         // Test that the function returns a MarkdownString
-        let expenses = vec![
-            Expense {
-                description: "Test expense".to_string(),
-                amount: 25.50,
-                timestamp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64,
-            }
-        ];
+        let expenses = vec![Expense {
+            description: "Test expense".to_string(),
+            amount: 25.50,
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+        }];
         let categories = HashMap::new();
-        
+
         let result = format_expenses_list(&expenses, &categories);
-        
+
         // The function should return a MarkdownString
         // We can verify the type by calling methods that are specific to MarkdownString
         assert!(!result.as_str().is_empty());
@@ -247,9 +247,9 @@ mod tests {
     fn test_format_expenses_list_empty_returns_markdown_string() {
         let expenses = vec![];
         let categories = HashMap::new();
-        
+
         let result = format_expenses_list(&expenses, &categories);
-        
+
         // Should return the "No expenses recorded yet" message as MarkdownString
         assert_eq!(result.as_str(), "No expenses recorded yet\\.");
     }

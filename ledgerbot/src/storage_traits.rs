@@ -1,6 +1,6 @@
+use std::{collections::HashMap, sync::Arc};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
 use teloxide::types::ChatId;
 
 // Forward declaration - full import would create circular dependency
