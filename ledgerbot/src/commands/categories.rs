@@ -66,7 +66,7 @@ pub async fn categories_command(
             chat_id,
             markdown_format!(
                 "📂 No categories defined yet\\. Use {} to create one\\.",
-                &Command::AddCategory(CommandAddCategory {
+                Command::AddCategory(CommandAddCategory {
                     name: "<name>".into()
                 })
                 .to_string()
