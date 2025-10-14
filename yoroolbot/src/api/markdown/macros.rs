@@ -8,19 +8,27 @@ macro_rules! markdown_string {
     }};
 }
 
-/// Formats a MarkdownString using any type that can be converted to MarkdownString as the format template.
+/// Formats a MarkdownString using either a &str literal (with compile-time validation) or a MarkdownString as the template.
+///
+/// If a &str literal is provided, it will be validated at compile-time using `markdown_string!`.
+/// Arguments must be types that can be converted to MarkdownString.
 #[macro_export]
 macro_rules! markdown_format {
+    // Match string literals and apply compile-time validation
+    ($format_str:literal $(, $arg:expr)*) => {
+        $crate::markdown_format!($crate::markdown_string!($format_str) $(, $arg)*)
+    };
+    // Match MarkdownString expressions
     ($format_markdown:expr $(, $arg:expr)*) => {{
-        // Convert the input to MarkdownString using Into trait
-        let markdown_string: $crate::markdown::MarkdownString = $format_markdown.into();
+        // Use the MarkdownString directly
+        let markdown_string: $crate::markdown::MarkdownString = $format_markdown;
 
         // Get the format string from the MarkdownString
         let format_str = markdown_string.as_str();
 
         // Convert all arguments to strings for replacement
         let escaped_args: Vec<String> = vec![$({
-            // Try to convert to MarkdownString first for type safety
+            // Convert to MarkdownString for type safety
             let arg_markdown: $crate::markdown::MarkdownString = $arg.into();
             arg_markdown.as_str().to_string()
         }),*];
