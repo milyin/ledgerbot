@@ -2,6 +2,9 @@ use std::str::FromStr;
 
 use teloxide::utils::command::ParseError;
 
+use teloxide::{
+    Bot, types::Message, prelude::ResponseResult,
+};
 pub trait ArgFromStr {
     fn arg_from_str(s: &str) -> Result<Self, ParseError>
     where
@@ -65,11 +68,10 @@ impl_empty_arg_fromstr!(
 );
 
 fn get<A>(args: &[String], pos: usize) -> Result<A, ParseError>
-where A: ArgFromStr + Default,
+where
+    A: ArgFromStr + Default,
 {
-    let arg = args.get(pos)
-        .map(|s| s.as_str())
-        .unwrap_or("");
+    let arg = args.get(pos).map(|s| s.as_str()).unwrap_or("");
     ArgFromStr::arg_from_str(arg)
 }
 
@@ -123,6 +125,10 @@ where
     J: ArgFromStr + Default,
     Self: Sized,
 {
+    type Context;
+
+    const NAME: &'static str;
+
     fn parse_arguments(args: String) -> Result<(Self,), ParseError> {
         let args = split(&args);
         let a: A = get(&args, 0)?;
@@ -140,4 +146,6 @@ where
 
     #[allow(clippy::too_many_arguments)]
     fn from_arguments(a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J) -> Self;
+
+    fn run(bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()>;
 }

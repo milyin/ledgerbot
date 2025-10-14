@@ -6,9 +6,8 @@ use teloxide::{
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
     utils::markdown::escape,
 };
-use yoroolbot::{markdown::MarkdownStringSendMessage, markdown_format};
 
-use crate::commands::{command_add_category::CommandAddCategory, command_trait::CommandTrait, Command};
+use crate::commands::Command;
 use crate::handlers::CallbackData;
 use crate::storage_traits::CategoryStorageTrait;
 
@@ -62,16 +61,19 @@ pub async fn categories_command(
     let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
-        bot.send_markdown_message(
+        bot.send_message(
             chat_id,
-            markdown_format!(
+            format!(
                 "📂 No categories defined yet\\. Use {} to create one\\.",
-                Command::AddCategory(CommandAddCategory {
-                    name: "<name>".into()
-                })
-                .to_string()
+                escape(
+                    &Command::AddCategory {
+                        name: Some("<name>".into())
+                    }
+                    .to_string()
+                )
             ),
         )
+        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
         .await?;
     } else {
         let mut result = String::new();
@@ -83,7 +85,10 @@ pub async fn categories_command(
         for (name, patterns) in sorted_categories {
             // First create the category
             result.push_str(
-                &Command::AddCategory(CommandAddCategory { name: name.clone() }).to_string(),
+                &Command::AddCategory {
+                    name: Some(name.clone()),
+                }
+                .to_string(),
             );
             result.push('\n');
 

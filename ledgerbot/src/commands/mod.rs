@@ -192,7 +192,6 @@ impl Command {
     pub const CLEAR: &'static str = "/clear";
     pub const CATEGORIES: &'static str = "/categories";
     pub const CLEAR_CATEGORIES: &'static str = "/clear_categories";
-    pub const ADD_CATEGORY: &'static str = "/add_category";
     pub const ADD_FILTER: &'static str = "/add_filter";
     pub const REMOVE_CATEGORY: &'static str = "/remove_category";
     pub const REMOVE_FILTER: &'static str = "/remove_filter";
@@ -211,9 +210,7 @@ impl From<Command> for String {
             Command::Categories => Command::CATEGORIES.to_string(),
             Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
             Command::AddCategory(add_category) => {
-                // let name_str = add_category.name.unwrap_or_else(|| "<name>".to_string());
-                let name_str = add_category.name;
-                format!("{} {}", Command::ADD_CATEGORY, name_str)
+                add_category.into()
             }
             Command::AddFilter { category, pattern } => {
                 let category_str = category.unwrap_or_else(|| "<category>".to_string());

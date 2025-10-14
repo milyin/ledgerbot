@@ -215,7 +215,7 @@ impl From<Command> for String {
             Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
             Command::AddCategory { name } => {
                 let name_str = name.unwrap_or_else(|| "<name>".to_string());
-                format!("{} {}", Command::ADD_CATEGORY, name_str)
+                format!("{} {}", CommandAddCategory::NAME, name_str)
             }
             Command::AddFilter { category, pattern } => {
                 let category_str = category.unwrap_or_else(|| "<category>".to_string());
