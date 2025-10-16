@@ -10,8 +10,9 @@ use super::Command;
 /// Display help message with inline keyboard buttons
 pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     // Send message with both inline keyboard (for buttons in message) and reply keyboard (menu button)
-    bot.send_markdown_message(
+    bot.markdown_message(
         msg.chat.id,
+        None,
         markdown_format!(
             "To add expenses forward messages or send text with lines in format:\n\
         `\\[\\<yyyy\\-mm\\-dd\\>\\] \\<description\\> \\<amount\\>`\n\n\

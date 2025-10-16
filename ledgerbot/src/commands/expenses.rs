@@ -68,7 +68,7 @@ pub async fn list_command(
     let chat_expenses = storage.get_chat_expenses(chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
 
-    bot.send_markdown_message(chat_id, markdown_format!("{}", expenses_list))
+    bot.markdown_message(chat_id,  None, markdown_format!("{}", expenses_list))
         .await?;
     Ok(())
 }
@@ -142,8 +142,9 @@ pub async fn expense_command(
                     dt.format("%Y-%m-%d").to_string()
                 };
 
-                bot.send_markdown_message(
+                bot.markdown_message(
                     chat_id,
+                    None,
                     markdown_format!(
                         "✅ Expense added: {} {} {}",
                         date_display,
@@ -155,8 +156,9 @@ pub async fn expense_command(
             }
         }
         (Some(desc), None) => {
-            bot.send_markdown_message(
+            bot.markdown_message(
                 chat_id,
+                None,
                 markdown_format!(
                     "❌ Invalid amount for `{}`\\. Please provide a valid number\\.",
                     desc
@@ -181,7 +183,7 @@ pub async fn clear_command(
     let chat_id = msg.chat.id;
     storage.clear_chat_expenses(chat_id).await;
 
-    bot.send_markdown_message(chat_id, markdown_string!("🗑️ All expenses cleared\\!"))
+    bot.markdown_message(chat_id, None, markdown_string!("🗑️ All expenses cleared\\!"))
         .await?;
     Ok(())
 }

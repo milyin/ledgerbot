@@ -61,7 +61,7 @@ impl CommandTrait for CommandEditFilter {
     }
 
     async fn run0(&self, bot: Bot, chat: Chat, _msg_id: Option<MessageId>, storage: Self::Context) -> ResponseResult<()> {
-        let sent_msg = bot.send_markdown_message(chat.id, markdown_format!("✏️ Edit Filter")).await?;
+        let sent_msg = bot.markdown_message(chat.id, None, markdown_format!("✏️ Edit Filter")).await?;
         select_category_menu(bot, chat.id, sent_msg.id, storage).await?;
         Ok(())
     }
@@ -76,7 +76,7 @@ pub async fn select_category_menu(
     let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
-        bot.edit_markdown_message_text(chat_id, message_id, markdown_format!("No categories available"))
+        bot.markdown_message(chat_id, Some(message_id), markdown_format!("No categories available"))
             .await?;
     } else {
         let text = "✏️ **Select category to edit filter:**\n\nClick a button to see filters for that category\\.";
@@ -98,14 +98,14 @@ pub async fn select_category_menu(
             .collect();
 
         if buttons.is_empty() {
-            bot.edit_markdown_message_text(chat_id, message_id, markdown_format!("No filters defined in any category"))
+            bot.markdown_message(chat_id, Some(message_id), markdown_format!("No filters defined in any category"))
                 .await?;
             return Ok(());
         }
 
         let keyboard = InlineKeyboardMarkup::new(buttons);
 
-        bot.edit_markdown_message_text(chat_id, message_id, markdown_format!("{}", text))
+        bot.markdown_message(chat_id, Some(message_id), markdown_format!("{}", text))
             .await?;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)

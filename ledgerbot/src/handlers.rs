@@ -152,8 +152,9 @@ pub async fn handle_text_message(
                                 .await;
                         if let Err(e) = exec_result {
                             log::error!("Failed to execute command: {}", e);
-                            bot.send_markdown_message(
+                            bot.markdown_message(
                                 msg.chat.id,
+                                None,
                                 markdown_format!("❌ Error: {}", e.to_string()),
                             )
                             .await?;

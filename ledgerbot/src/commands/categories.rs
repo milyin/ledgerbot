@@ -25,8 +25,9 @@ pub async fn categories_command(
     let categories = storage.get_chat_categories(chat_id).await;
 
     if categories.is_empty() {
-        bot.send_markdown_message(
+        bot.markdown_message(
             chat_id,
+            None,
             markdown_format!(
                 "📂 No categories defined yet\\. Use {} to create one\\.",
                 CommandAddCategory::default().to_command_string(true)

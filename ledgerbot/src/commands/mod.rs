@@ -275,7 +275,7 @@ pub async fn clear_categories_command(
     let chat_id = msg.chat.id;
     storage.clear_chat_categories(chat_id).await;
 
-    bot.send_markdown_message(chat_id, markdown_string!("🗑️ All categories cleared\\!"))
+    bot.markdown_message(chat_id,  None, markdown_string!("🗑️ All categories cleared\\!"))
         .await?;
     Ok(())
 }

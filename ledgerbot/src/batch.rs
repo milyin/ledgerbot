@@ -61,7 +61,7 @@ pub async fn execute_batch(
                         err_msg
                     );
                     if let Err(e) = bot
-                        .send_markdown_message(chat.id, markdown_format!("❌ {}", err_msg))
+                        .markdown_message(chat.id, None, markdown_format!("❌ {}", err_msg))
                         .await
                     {
                         log::error!("Failed to send error message: {}", e);
@@ -71,8 +71,9 @@ pub async fn execute_batch(
         }
 
         if let Err(e) = bot
-            .send_markdown_message(
+            .markdown_message(
                 chat.id,
+                None,
                 markdown_format!(
                     "✅ **Batch Summary Report**\n\n\
             Expense records parsed: {}\n\

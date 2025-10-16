@@ -31,15 +31,15 @@ pub async fn add_filter_command(
 
             // Check if category exists
             if !categories.contains_key(&category) {
-                bot.send_markdown_message(
+                bot.markdown_message(
                     chat_id,
+                    None,
                     markdown_format!(
                         "❌ Category `{}` does not exist\\. Create it first with {}",
                         &category,
                         CommandAddCategory::new(category).to_command_string(true)
                     ),
                 )
-                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
                 return Ok(());
             }
@@ -63,8 +63,9 @@ pub async fn add_filter_command(
                     .await?;
                 }
                 Err(e) => {
-                    bot.send_markdown_message(
+                    bot.markdown_message(
                         chat_id,
+                        None,
                         markdown_format!("❌ Invalid regex pattern: `{}`", e.to_string()),
                     )
                     .await?;
@@ -77,8 +78,9 @@ pub async fn add_filter_command(
             add_filter_menu(bot, chat_id, sent_msg.id, storage).await?;
         }
         (Some(category), None) => {
-            bot.send_markdown_message(
+            bot.markdown_message(
                 chat_id,
+                None,
                 markdown_format!(
                     "❌ Missing pattern\\. Usage: {}",
                     &Command::AddFilter {
@@ -88,13 +90,13 @@ pub async fn add_filter_command(
                     .to_string()
                 ),
             )
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
         (None, Some(_)) => {
-            bot.send_message(
+            bot.markdown_message(
                 chat_id,
-                format!(
+                None,
+                markdown_format!(
                     "❌ Missing category\\. Usage: {}",
                     escape(
                         &Command::AddFilter {
@@ -105,7 +107,6 @@ pub async fn add_filter_command(
                     )
                 ),
             )
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
     }
@@ -330,8 +331,9 @@ pub async fn edit_filter_command(
             edit_filter_menu(bot, chat_id, sent_msg.id, storage).await?;
         }
         (Some(category), Some(position), None) => {
-            bot.send_markdown_message(
+            bot.markdown_message(
                 chat_id,
+                None,
                 markdown_format!(
                     "❌ Missing pattern\\. Usage: {}",
                         &CommandEditFilter {

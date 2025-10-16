@@ -109,14 +109,14 @@ pub async fn report_command(
 
     // Check for category conflicts before generating report
     if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
-        bot.send_markdown_message(chat_id, markdown_format!("{}", conflict_message))
+        bot.markdown_message(chat_id,  None, markdown_format!("{}", conflict_message))
             .await?;
         return Ok(());
     }
 
     let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
 
-    bot.send_markdown_message(chat_id, expenses_list).await?;
+    bot.markdown_message(chat_id,  None, expenses_list).await?;
     Ok(())
 }
 

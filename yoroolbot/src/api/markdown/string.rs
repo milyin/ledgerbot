@@ -3,14 +3,12 @@
 use std::{fmt, ops::Add};
 
 use teloxide::{
-    Bot,
     payloads::{EditMessageTextSetters, SendMessage, SendMessageSetters},
-    prelude::Requester,
+    prelude::{Requester, ResponseResult},
     types::{
-        MessageId,
-        ParseMode::{self, MarkdownV2},
-        Recipient,
+        Message, MessageId, ParseMode::{self, MarkdownV2}, Recipient
     },
+    Bot,
 };
 
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
@@ -222,12 +220,23 @@ impl Add<&MarkdownString> for &MarkdownString {
 /// The trait allows you to use `Bot::send_message` with `MarkdownString` parameters
 /// while automatically applying the correct parse mode, making it safer and more
 /// convenient than manually setting the parse mode each time.
+#[allow(async_fn_in_trait)]
 pub trait MarkdownStringMessage: Requester {
     /// Send a message with MarkdownString content
     ///
     /// This method has the same signature as teloxide's `Bot::send_message`,
     /// but accepts a MarkdownString instead of regular text and automatically
     /// sets the parse mode to MarkdownV2.
+    async fn markdown_message<C>(
+        &self,
+        chat_id: C,
+        message_id: Option<MessageId>,
+        text: MarkdownString,
+    ) -> ResponseResult<Message>
+    
+    where
+        C: Into<Recipient>;
+
     fn send_markdown_message<C>(
         &self,
         chat_id: C,
@@ -271,6 +280,23 @@ impl MarkdownStringMessage for Bot {
     {
         self.edit_message_text(chat_id, message_id, text)
             .parse_mode(MarkdownV2)
+    }
+    async fn markdown_message<C>(
+        &self,
+        chat_id: C,
+        message_id: Option<MessageId>,
+        text: MarkdownString,
+    ) -> ResponseResult<Message>
+    where
+        C: Into<Recipient>,
+    {
+        if let Some(message_id) = message_id {
+             self.edit_message_text(chat_id, message_id, text)
+                .parse_mode(ParseMode::MarkdownV2).await
+        } else {
+            self.send_message(chat_id, text)
+                .parse_mode(ParseMode::MarkdownV2).await
+        }
     }
 }
 

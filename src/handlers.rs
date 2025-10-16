@@ -165,7 +165,7 @@ pub async fn handle_text_message(
                     Err(err_msg) => {
                         // Send error message to user
                         log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
-                        bot.send_markdown_message(chat_id, markdown_string!("❌ {}", err_msg))
+                        bot.markdown_message(chat_id,  None, markdown_string!("❌ {}", err_msg))
                             .await?;
                     }
                 }

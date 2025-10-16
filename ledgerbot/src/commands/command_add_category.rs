@@ -68,7 +68,7 @@ impl CommandTrait for CommandAddCategory {
         _storage: Self::Context,
     ) -> teloxide::prelude::ResponseResult<()> {
         let sent_msg = bot
-            .send_markdown_message(chat.id, markdown_string!("➕ Add Category"))
+            .markdown_message(chat.id, None, markdown_string!("➕ Add Category"))
             .await?;
         add_category_menu(bot, chat.id, sent_msg.id).await?;
         Ok(())
@@ -84,8 +84,9 @@ impl CommandTrait for CommandAddCategory {
     ) -> teloxide::prelude::ResponseResult<()> {
         match storage.add_category(chat.id, name.clone()).await {
             Ok(()) => {
-                bot.send_markdown_message(
+                bot.markdown_message(
                     chat.id,
+                    None,
                     markdown_format!(
                         "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
                         name,
@@ -95,7 +96,7 @@ impl CommandTrait for CommandAddCategory {
                 .await?;
             }
             Err(err_msg) => {
-                bot.send_markdown_message(chat.id, markdown_format!("ℹ️ {}", &err_msg))
+                bot.markdown_message(chat.id, None, markdown_format!("ℹ️ {}", &err_msg))
                     .await?;
             }
         }
@@ -125,7 +126,7 @@ pub async fn add_category_menu(
         ),
     ]]);
 
-    bot.edit_markdown_message_text(chat_id, message_id, text)
+    bot.markdown_message(chat_id, Some(message_id), text)
         .await?;
     bot.edit_message_reply_markup(chat_id, message_id)
         .reply_markup(keyboard)
