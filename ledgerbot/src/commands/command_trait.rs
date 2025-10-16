@@ -105,7 +105,6 @@ pub trait CommandTrait: Sized {
     type G: ParseCommandArg + Default + Display + Send + Sync + 'static;
     type H: ParseCommandArg + Default + Display + Send + Sync + 'static;
     type I: ParseCommandArg + Default + Display + Send + Sync + 'static;
-    type J: ParseCommandArg + Default + Display + Send + Sync + 'static;
 
     type Context;
 
@@ -114,7 +113,7 @@ pub trait CommandTrait: Sized {
 
     #[allow(clippy::get_first)]
     fn parse_arguments(args: String) -> Result<(Self,), ParseError> {
-        assert!(Self::PLACEHOLDERS.len() <= 10);
+        assert!(Self::PLACEHOLDERS.len() <= 9);
         assert!(
             Self::PLACEHOLDERS.get(0).is_some()
                 || TypeId::of::<Self::A>() == TypeId::of::<EmptyArg>()
@@ -151,10 +150,7 @@ pub trait CommandTrait: Sized {
             Self::PLACEHOLDERS.get(8).is_some()
                 || TypeId::of::<Self::I>() == TypeId::of::<EmptyArg>()
         );
-        assert!(
-            Self::PLACEHOLDERS.get(9).is_some()
-                || TypeId::of::<Self::J>() == TypeId::of::<EmptyArg>()
-        );
+
         let args = split_with_screened_spaces(&args);
         if args.len() > Self::PLACEHOLDERS.len() {
             return Err(ParseError::TooManyArguments {
@@ -176,8 +172,7 @@ pub trait CommandTrait: Sized {
         let g = get::<Self::G>(&args, 6)?;
         let h = get::<Self::H>(&args, 7)?;
         let i = get::<Self::I>(&args, 8)?;
-        let j = get::<Self::J>(&args, 9)?;
-        Ok((Self::from_arguments(a, b, c, d, e, f, g, h, i, j),))
+        Ok((Self::from_arguments(a, b, c, d, e, f, g, h, i),))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -191,26 +186,201 @@ pub trait CommandTrait: Sized {
         g: Option<Self::G>,
         h: Option<Self::H>,
         i: Option<Self::I>,
-        j: Option<Self::J>,
     ) -> Self;
 
-    fn param0(&self) -> Option<&Self::A>;
-    fn param1(&self) -> Option<&Self::B>;
-    fn param2(&self) -> Option<&Self::C>;
-    fn param3(&self) -> Option<&Self::D>;
-    fn param4(&self) -> Option<&Self::E>;
-    fn param5(&self) -> Option<&Self::F>;
-    fn param6(&self) -> Option<&Self::G>;
-    fn param7(&self) -> Option<&Self::H>;
-    fn param8(&self) -> Option<&Self::I>;
-    fn param9(&self) -> Option<&Self::J>;
+    fn param1(&self) -> Option<&Self::A> { assert!(TypeId::of::<Self::A>() == TypeId::of::<EmptyArg>()); None }
+    fn param2(&self) -> Option<&Self::B> { assert!(TypeId::of::<Self::B>() == TypeId::of::<EmptyArg>()); None }
+    fn param3(&self) -> Option<&Self::C> { assert!(TypeId::of::<Self::C>() == TypeId::of::<EmptyArg>()); None }
+    fn param4(&self) -> Option<&Self::D> { assert!(TypeId::of::<Self::D>() == TypeId::of::<EmptyArg>()); None }
+    fn param5(&self) -> Option<&Self::E> { assert!(TypeId::of::<Self::E>() == TypeId::of::<EmptyArg>()); None }
+    fn param6(&self) -> Option<&Self::F> { assert!(TypeId::of::<Self::F>() == TypeId::of::<EmptyArg>()); None }
+    fn param7(&self) -> Option<&Self::G> { assert!(TypeId::of::<Self::G>() == TypeId::of::<EmptyArg>()); None }
+    fn param8(&self) -> Option<&Self::H> { assert!(TypeId::of::<Self::H>() == TypeId::of::<EmptyArg>()); None }
+    fn param9(&self) -> Option<&Self::I> { assert!(TypeId::of::<Self::I>() == TypeId::of::<EmptyArg>()); None }
 
-    async fn run(&self, bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()>;
+    async fn run0(&self, _bot: Bot, _msg: Message, _context: Self::Context) -> ResponseResult<()> {
+       Ok(())
+    }
+
+    async fn run1(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    async fn run2(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+        _b: &Self::B,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    async fn run3(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+        _b: &Self::B,
+        _c: &Self::C,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn run4(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+        _b: &Self::B,
+        _c: &Self::C,
+        _d: &Self::D,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn run5(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+        _b: &Self::B,
+        _c: &Self::C,
+        _d: &Self::D,
+        _e: &Self::E,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn run6(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+        _b: &Self::B,
+        _c: &Self::C,
+        _d: &Self::D,
+        _e: &Self::E,
+        _f: &Self::F,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn run7(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+        _b: &Self::B,
+        _c: &Self::C,
+        _d: &Self::D,
+        _e: &Self::E,
+        _f: &Self::F,
+        _g: &Self::G,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn run8(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+        _b: &Self::B,
+        _c: &Self::C,
+        _d: &Self::D,
+        _e: &Self::E,
+        _f: &Self::F,
+        _g: &Self::G,
+        _h: &Self::H,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn run9(
+        &self,
+        _bot: Bot,
+        _msg: Message,
+        _context: Self::Context,
+        _a: &Self::A,
+        _b: &Self::B,
+        _c: &Self::C,
+        _d: &Self::D,
+        _e: &Self::E,
+        _f: &Self::F,
+        _g: &Self::G,
+        _h: &Self::H,
+        _i: &Self::I,
+    ) -> ResponseResult<()> {
+        Ok(())
+    }
+
+    async fn run(&self, bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()> {
+        match (
+            self.param1(),
+            self.param2(),
+            self.param3(),
+            self.param4(),
+            self.param5(),
+            self.param6(),
+            self.param7(),
+            self.param8(),
+            self.param9(),
+        ) {
+            (None, None, None, None, None, None, None, None, None) => self.run0(bot, msg, context).await,
+            (Some(a), None, None, None, None, None, None, None, None) => {
+                self.run1(bot, msg, context, a).await
+            }
+            (Some(a), Some(b), None, None, None, None, None, None, None) => {
+                self.run2(bot, msg, context, a, b).await
+            }
+            (Some(a), Some(b), Some(c), None, None, None, None, None, None) => {
+                self.run3(bot, msg, context, a, b, c).await
+            }
+            (Some(a), Some(b), Some(c), Some(d), None, None, None, None, None) => {
+                self.run4(bot, msg, context, a, b, c, d).await
+            }
+            (Some(a), Some(b), Some(c), Some(d), Some(e), None, None, None, None) => {
+                self.run5(bot, msg, context, a, b, c, d, e).await
+            }
+            (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), None, None, None) => {
+                self.run6(bot, msg, context, a, b, c, d, e, f).await
+            }
+            (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), None, None) => {
+                self.run7(bot, msg, context, a, b, c, d, e, f, g).await
+            }
+            (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), None) => {
+                self.run8(bot, msg, context, a, b, c, d, e, f, g, h).await
+            }
+            (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), Some(i)) => {
+                self.run9(bot, msg, context, a, b, c, d, e, f, g, h, i).await
+            },
+            _ => Err(teloxide::RequestError::Api(teloxide::ApiError::Unknown("Internal bot error: missing middle argument. Should not happen".into())))
+        }
+    }
 
     #[allow(clippy::needless_range_loop)]
     fn to_command_string(&self, complete: bool) -> String {
         let params: Vec<Option<String>> = vec![
-            self.param0().map(|v| v.to_string()),
             self.param1().map(|v| v.to_string()),
             self.param2().map(|v| v.to_string()),
             self.param3().map(|v| v.to_string()),
@@ -223,7 +393,7 @@ pub trait CommandTrait: Sized {
         ];
 
         let max_index = if !complete {
-            (0..10).rev().find(|&i| params[i].is_some())
+            (0..9).rev().find(|&i| params[i].is_some())
         } else if Self::PLACEHOLDERS.is_empty() {
             None
         } else {

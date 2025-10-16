@@ -39,7 +39,6 @@ impl CommandTrait for CommandAddCategory {
     type G = EmptyArg;
     type H = EmptyArg;
     type I = EmptyArg;
-    type J = EmptyArg;
 
     type Context = Arc<dyn CategoryStorageTrait>;
 
@@ -56,84 +55,51 @@ impl CommandTrait for CommandAddCategory {
         _: Option<Self::G>,
         _: Option<Self::H>,
         _: Option<Self::I>,
-        _: Option<Self::J>,
     ) -> Self {
         CommandAddCategory { name: a }
     }
 
-    fn param0(&self) -> Option<&Self::A> {
+    fn param1(&self) -> Option<&Self::A> {
         self.name.as_ref()
     }
-    fn param1(&self) -> Option<&Self::B> {
-        None
+
+    async fn run0(
+        &self,
+        bot: Bot,
+        msg: Message,
+        _storage: Self::Context,
+    ) -> teloxide::prelude::ResponseResult<()> {
+        let chat_id = msg.chat.id;
+        let sent_msg = bot
+            .send_markdown_message(chat_id, markdown_string!("➕ Add Category"))
+            .await?;
+        add_category_menu(bot, chat_id, sent_msg.id).await?;
+        Ok(())
     }
 
-    fn param2(&self) -> Option<&Self::C> {
-        None
-    }
-
-    fn param3(&self) -> Option<&Self::D> {
-        None
-    }
-
-    fn param4(&self) -> Option<&Self::E> {
-        None
-    }
-
-    fn param5(&self) -> Option<&Self::F> {
-        None
-    }
-
-    fn param6(&self) -> Option<&Self::G> {
-        None
-    }
-
-    fn param7(&self) -> Option<&Self::H> {
-        None
-    }
-
-    fn param8(&self) -> Option<&Self::I> {
-        None
-    }
-
-    fn param9(&self) -> Option<&Self::J> {
-        None
-    }
-
-    async fn run(
+    async fn run1(
         &self,
         bot: Bot,
         msg: Message,
         storage: Self::Context,
+        name: &String,
     ) -> teloxide::prelude::ResponseResult<()> {
-        let chat_id = msg.chat.id;
-
-        // Check if name is provided
-        match &self.name {
-            None => {
-                // Show the add category menu instead
-                let sent_msg = bot
-                    .send_markdown_message(chat_id, markdown_string!("➕ Add Category"))
-                    .await?;
-                add_category_menu(bot, chat_id, sent_msg.id).await?;
+        match storage.add_category(msg.chat.id, name.clone()).await {
+            Ok(()) => {
+                bot.send_markdown_message(
+                    msg.chat.id,
+                    markdown_format!(
+                        "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
+                        name,
+                        Command::ADD_FILTER
+                    ),
+                )
+                .await?;
             }
-            Some(name) => match storage.add_category(chat_id, name.clone()).await {
-                Ok(()) => {
-                    bot.send_markdown_message(
-                        chat_id,
-                        markdown_format!(
-                            "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
-                            name,
-                            Command::ADD_FILTER
-                        ),
-                    )
+            Err(err_msg) => {
+                bot.send_markdown_message(msg.chat.id, markdown_format!("ℹ️ {}", &err_msg))
                     .await?;
-                }
-                Err(err_msg) => {
-                    bot.send_markdown_message(chat_id, markdown_format!("ℹ️ {}", &err_msg))
-                        .await?;
-                }
-            },
+            }
         }
         Ok(())
     }
