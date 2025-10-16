@@ -101,8 +101,6 @@ pub async fn handle_text_message(
     msg: Message,
     storage: Arc<dyn StorageTrait>,
 ) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-
     if let Some(text) = msg.text() {
         // Get bot username for filtering
         let bot_name = bot.get_me().await.ok().map(|me| me.username().to_string());
@@ -118,7 +116,7 @@ pub async fn handle_text_message(
         log::info!(
             "Parsed {} results from chat {}",
             parsed_results.len(),
-            chat_id
+            msg.chat.id
         );
 
         // Check if we should process this message in batch mode
@@ -131,7 +129,7 @@ pub async fn handle_text_message(
             // Add to batch storage for deferred execution
             let batch_storage = storage.clone().as_batch_storage();
             let is_first_message =
-                add_to_batch(batch_storage.clone(), chat_id, parsed_results).await;
+                add_to_batch(batch_storage.clone(), msg.chat.clone(), parsed_results).await;
 
             // Start timeout task only for the first message in batch
             if is_first_message {
@@ -139,7 +137,7 @@ pub async fn handle_text_message(
                 let storage_clone = storage.clone();
                 let msg_clone = msg.clone();
                 tokio::spawn(async move {
-                    execute_batch(bot_clone, batch_storage, chat_id, storage_clone, msg_clone)
+                    execute_batch(bot_clone, batch_storage, msg_clone.chat.clone(), storage_clone, msg_clone)
                         .await;
                 });
             }
@@ -150,12 +148,12 @@ pub async fn handle_text_message(
                     Ok(cmd) => {
                         // Execute the command using the shared execute_command function
                         let exec_result =
-                            execute_command(bot.clone(), msg.clone(), storage.clone(), cmd, false)
+                            execute_command(bot.clone(), msg.chat.clone(), None, msg.clone(), storage.clone(), cmd, false)
                                 .await;
                         if let Err(e) = exec_result {
                             log::error!("Failed to execute command: {}", e);
                             bot.send_markdown_message(
-                                chat_id,
+                                msg.chat.id,
                                 markdown_format!("❌ Error: {}", e.to_string()),
                             )
                             .await?;
@@ -163,8 +161,8 @@ pub async fn handle_text_message(
                     }
                     Err(err_msg) => {
                         // Send error message to user
-                        log::warn!("Parse error in chat {}: {}", chat_id, err_msg);
-                        bot.send_markdown_message(chat_id, markdown_format!("❌ {}", err_msg))
+                        log::warn!("Parse error in chat {}: {}", msg.chat.id, err_msg);
+                        bot.send_markdown_message(msg.chat.id, markdown_format!("❌ {}", err_msg))
                             .await?;
                     }
                 }
@@ -210,7 +208,7 @@ pub async fn handle_callback_query(
     if let Ok(cmd) = Command::parse(data_str, &bot_username) {
         log::info!("Parsed command from callback: {:?}", cmd);
         // Execute the command using the shared execute_command function
-        if let Err(e) = execute_command(bot.clone(), msg.clone(), storage.clone(), cmd.clone(), false).await
+        if let Err(e) = execute_command(bot.clone(), msg.chat.clone(), Some(msg.id), msg.clone(), storage.clone(), cmd.clone(), false).await
         {
             log::error!("Failed to execute command from callback: {}", e);
             bot.send_markdown_message(

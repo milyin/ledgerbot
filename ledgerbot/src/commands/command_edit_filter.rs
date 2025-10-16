@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use teloxide::{
-    payloads::EditMessageReplyMarkupSetters, prelude::{Message, Requester, ResponseResult}, types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, MessageId}, Bot
+    payloads::EditMessageReplyMarkupSetters, prelude::{Requester, ResponseResult}, types::{Chat, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, MessageId}, Bot
 };
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::command_trait::{CommandTrait, EmptyArg}, handlers::CallbackData, storage_traits::CategoryStorageTrait
+    commands::command_trait::{CommandTrait, EmptyArg}, storage_traits::CategoryStorageTrait
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -60,10 +60,9 @@ impl CommandTrait for CommandEditFilter {
         self.pattern.as_ref()
     }
 
-    async fn run0(&self, bot: Bot, msg: Message, storage: Self::Context) -> ResponseResult<()> {
-        let chat_id = msg.chat.id;
-        let sent_msg = bot.send_markdown_message(chat_id, markdown_format!("✏️ Edit Filter")).await?;
-        select_category_menu(bot, chat_id, sent_msg.id, storage).await?;
+    async fn run0(&self, bot: Bot, chat: Chat, _msg_id: Option<MessageId>, storage: Self::Context) -> ResponseResult<()> {
+        let sent_msg = bot.send_markdown_message(chat.id, markdown_format!("✏️ Edit Filter")).await?;
+        select_category_menu(bot, chat.id, sent_msg.id, storage).await?;
         Ok(())
     }
 }

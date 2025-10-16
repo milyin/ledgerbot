@@ -1,10 +1,7 @@
 use std::sync::Arc;
 
 use teloxide::{
-    Bot,
-    payloads::EditMessageReplyMarkupSetters,
-    prelude::{Message, Requester, ResponseResult},
-    types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
+    payloads::EditMessageReplyMarkupSetters, prelude::{Requester, ResponseResult}, types::{Chat, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, MessageId}, Bot
 };
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, markdown_string};
 
@@ -66,28 +63,29 @@ impl CommandTrait for CommandAddCategory {
     async fn run0(
         &self,
         bot: Bot,
-        msg: Message,
+        chat: Chat,
+        _msg_id: Option<MessageId>,
         _storage: Self::Context,
     ) -> teloxide::prelude::ResponseResult<()> {
-        let chat_id = msg.chat.id;
         let sent_msg = bot
-            .send_markdown_message(chat_id, markdown_string!("➕ Add Category"))
+            .send_markdown_message(chat.id, markdown_string!("➕ Add Category"))
             .await?;
-        add_category_menu(bot, chat_id, sent_msg.id).await?;
+        add_category_menu(bot, chat.id, sent_msg.id).await?;
         Ok(())
     }
 
     async fn run1(
         &self,
         bot: Bot,
-        msg: Message,
+        chat: Chat,
+        _msg_id: Option<MessageId>,
         storage: Self::Context,
         name: &String,
     ) -> teloxide::prelude::ResponseResult<()> {
-        match storage.add_category(msg.chat.id, name.clone()).await {
+        match storage.add_category(chat.id, name.clone()).await {
             Ok(()) => {
                 bot.send_markdown_message(
-                    msg.chat.id,
+                    chat.id,
                     markdown_format!(
                         "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
                         name,
@@ -97,7 +95,7 @@ impl CommandTrait for CommandAddCategory {
                 .await?;
             }
             Err(err_msg) => {
-                bot.send_markdown_message(msg.chat.id, markdown_format!("ℹ️ {}", &err_msg))
+                bot.send_markdown_message(chat.id, markdown_format!("ℹ️ {}", &err_msg))
                     .await?;
             }
         }

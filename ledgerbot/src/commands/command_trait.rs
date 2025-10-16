@@ -1,6 +1,6 @@
 use std::{any::TypeId, error::Error, fmt::Display, str::FromStr};
 
-use teloxide::{Bot, prelude::ResponseResult, types::Message, utils::command::ParseError};
+use teloxide::{prelude::ResponseResult, types::{Chat, Message, MessageId}, utils::command::ParseError, Bot};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct EmptyArg;
@@ -198,14 +198,15 @@ pub trait CommandTrait: Sized {
     fn param8(&self) -> Option<&Self::H> { assert!(TypeId::of::<Self::H>() == TypeId::of::<EmptyArg>()); None }
     fn param9(&self) -> Option<&Self::I> { assert!(TypeId::of::<Self::I>() == TypeId::of::<EmptyArg>()); None }
 
-    async fn run0(&self, _bot: Bot, _msg: Message, _context: Self::Context) -> ResponseResult<()> {
+    async fn run0(&self, _bot: Bot, _chat: Chat, _msg_id: Option<MessageId>, _context: Self::Context) -> ResponseResult<()> {
        Ok(())
     }
 
     async fn run1(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
     ) -> ResponseResult<()> {
@@ -215,7 +216,8 @@ pub trait CommandTrait: Sized {
     async fn run2(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -226,7 +228,8 @@ pub trait CommandTrait: Sized {
     async fn run3(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -239,7 +242,8 @@ pub trait CommandTrait: Sized {
     async fn run4(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -253,7 +257,8 @@ pub trait CommandTrait: Sized {
     async fn run5(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -268,7 +273,8 @@ pub trait CommandTrait: Sized {
     async fn run6(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -284,7 +290,8 @@ pub trait CommandTrait: Sized {
     async fn run7(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -301,7 +308,8 @@ pub trait CommandTrait: Sized {
     async fn run8(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -319,7 +327,8 @@ pub trait CommandTrait: Sized {
     async fn run9(
         &self,
         _bot: Bot,
-        _msg: Message,
+        _chat: Chat,
+        _msg_id: Option<MessageId>,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -334,7 +343,7 @@ pub trait CommandTrait: Sized {
         Ok(())
     }
 
-    async fn run(&self, bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()> {
+    async fn run(&self, bot: Bot, chat: Chat, msg_id: Option<MessageId>, context: Self::Context) -> ResponseResult<()> {
         match (
             self.param1(),
             self.param2(),
@@ -346,33 +355,33 @@ pub trait CommandTrait: Sized {
             self.param8(),
             self.param9(),
         ) {
-            (None, None, None, None, None, None, None, None, None) => self.run0(bot, msg, context).await,
+            (None, None, None, None, None, None, None, None, None) => self.run0(bot, chat, msg_id, context).await,
             (Some(a), None, None, None, None, None, None, None, None) => {
-                self.run1(bot, msg, context, a).await
+                self.run1(bot, chat, msg_id, context, a).await
             }
             (Some(a), Some(b), None, None, None, None, None, None, None) => {
-                self.run2(bot, msg, context, a, b).await
+                self.run2(bot, chat, msg_id, context, a, b).await
             }
             (Some(a), Some(b), Some(c), None, None, None, None, None, None) => {
-                self.run3(bot, msg, context, a, b, c).await
+                self.run3(bot, chat, msg_id, context, a, b, c).await
             }
             (Some(a), Some(b), Some(c), Some(d), None, None, None, None, None) => {
-                self.run4(bot, msg, context, a, b, c, d).await
+                self.run4(bot, chat, msg_id, context, a, b, c, d).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), None, None, None, None) => {
-                self.run5(bot, msg, context, a, b, c, d, e).await
+                self.run5(bot, chat, msg_id, context, a, b, c, d, e).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), None, None, None) => {
-                self.run6(bot, msg, context, a, b, c, d, e, f).await
+                self.run6(bot, chat, msg_id, context, a, b, c, d, e, f).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), None, None) => {
-                self.run7(bot, msg, context, a, b, c, d, e, f, g).await
+                self.run7(bot, chat, msg_id, context, a, b, c, d, e, f, g).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), None) => {
-                self.run8(bot, msg, context, a, b, c, d, e, f, g, h).await
+                self.run8(bot, chat, msg_id, context, a, b, c, d, e, f, g, h).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), Some(i)) => {
-                self.run9(bot, msg, context, a, b, c, d, e, f, g, h, i).await
+                self.run9(bot, chat, msg_id, context, a, b, c, d, e, f, g, h, i).await
             },
             _ => Err(teloxide::RequestError::Api(teloxide::ApiError::Unknown("Internal bot error: missing middle argument. Should not happen".into())))
         }

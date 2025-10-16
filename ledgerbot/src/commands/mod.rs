@@ -7,12 +7,12 @@ pub mod filters;
 pub mod help;
 pub mod report;
 
-use std::{f32::consts::E, sync::Arc};
+use std::sync::Arc;
 
 use chrono::NaiveDate;
 use teloxide::{
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
+    types::{Chat, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
     utils::{
         command::{BotCommands, ParseError},
         markdown::escape,
@@ -27,7 +27,7 @@ use crate::{
         command_edit_filter::CommandEditFilter,
         command_trait::CommandTrait,
         expenses::{clear_command, expense_command, list_command, parse_expense},
-        filters::{add_filter_command, edit_filter_command, remove_filter_command},
+        filters::{add_filter_command, remove_filter_command},
         help::{help_command, start_command},
         report::report_command,
     },
@@ -444,6 +444,8 @@ pub async fn show_filter_word_suggestions(
 /// Execute a single command (helper function for batch processing and text message handling)
 pub async fn execute_command(
     bot: Bot,
+    chat: Chat,
+    msg_id: Option<MessageId>,
     msg: Message,
     storage: Arc<dyn StorageTrait>,
     cmd: Command,
@@ -509,7 +511,8 @@ pub async fn execute_command(
             add_category
                 .run(
                     bot.clone(),
-                    msg.clone(),
+                    chat,
+                    msg_id,
                     storage.clone().as_category_storage(),
                 )
                 .await?;
@@ -555,7 +558,8 @@ pub async fn execute_command(
             edit_filter
                 .run(
                     bot.clone(),
-                    msg.clone(),
+                    chat,
+                    msg_id,
                     storage.clone().as_category_storage(),
                 )
                 .await?;
