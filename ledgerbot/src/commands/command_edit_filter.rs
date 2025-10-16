@@ -1,8 +1,13 @@
 use std::sync::Arc;
 
-use teloxide::{prelude::{Message, ResponseResult}, Bot};
+use teloxide::{
+    payloads::EditMessageReplyMarkupSetters, prelude::{Message, Requester, ResponseResult}, types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, MessageId}, Bot
+};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
-use crate::{commands::command_trait::{CommandTrait, EmptyArg}, storage_traits::CategoryStorageTrait};
+use crate::{
+    commands::command_trait::{CommandTrait, EmptyArg}, handlers::CallbackData, storage_traits::CategoryStorageTrait
+};
 
 pub struct CommandEditFilter {
     category: Option<String>,
@@ -20,7 +25,6 @@ impl CommandTrait for CommandEditFilter {
     type G = EmptyArg;
     type H = EmptyArg;
     type I = EmptyArg;
-    type J = EmptyArg;
 
     type Context = Arc<dyn CategoryStorageTrait>;
 
@@ -37,7 +41,6 @@ impl CommandTrait for CommandEditFilter {
         _: Option<Self::G>,
         _: Option<Self::H>,
         _: Option<Self::I>,
-        _: Option<Self::J>,
     ) -> Self {
         CommandEditFilter {
             category: a,
@@ -46,40 +49,65 @@ impl CommandTrait for CommandEditFilter {
         }
     }
 
-    fn param0(&self) -> Option<&Self::A> {
+    fn param1(&self) -> Option<&Self::A> {
         self.category.as_ref()
     }
-    fn param1(&self) -> Option<&Self::B> {
+    fn param2(&self) -> Option<&Self::B> {
         self.position.as_ref()
     }
-    fn param2(&self) -> Option<&Self::C> {
+    fn param3(&self) -> Option<&Self::C> {
         self.pattern.as_ref()
     }
-    fn param3(&self) -> Option<&Self::D> {
-        None
-    }
-    fn param4(&self) -> Option<&Self::E> {
-        None
-    }
-    fn param5(&self) -> Option<&Self::F> {
-        None
-    }
-    fn param6(&self) -> Option<&Self::G> {
-        None
-    }
-    fn param7(&self) -> Option<&Self::H> {
-        None
-    }
-    fn param8(&self) -> Option<&Self::I> {
-        None
-    }
-    fn param9(&self) -> Option<&Self::J> {
-        None
-    }
-    
-    async fn run(&self, bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()> {
+
+    async fn run0(&self, bot: Bot, msg: Message, storage: Self::Context) -> ResponseResult<()> {
         let chat_id = msg.chat.id;
+        let sent_msg = bot.send_markdown_message(chat_id, markdown_format!("✏️ Edit Filter")).await?;
+        select_category_menu(bot, chat_id, sent_msg.id, storage).await?;
+        Ok(())
+    }
+}
+
+pub async fn select_category_menu(
+    bot: Bot,
+    chat_id: ChatId,
+    message_id: MessageId,
+    storage: Arc<dyn CategoryStorageTrait>,
+) -> ResponseResult<()> {
+    let categories = storage.get_chat_categories(chat_id).await;
+
+    if categories.is_empty() {
+        bot.edit_markdown_message_text(chat_id, message_id, markdown_format!("No categories available"))
+            .await?;
+    } else {
+        let text = "✏️ **Select category to edit filter:**\n\nClick a button to see filters for that category\\.";
+
+        // Create buttons for each category that has filters
+        let buttons: Vec<Vec<InlineKeyboardButton>> = categories
+            .iter()
+            .filter(|(_, patterns)| !patterns.is_empty())
+            .map(|(name, _)| {
+                vec![InlineKeyboardButton::callback(
+                    format!("✏️ {}", name),
+                    CallbackData::EditFilterCategory(name.clone()),
+                )]
+            })
+            .collect();
+
+        if buttons.is_empty() {
+            bot.edit_markdown_message_text(chat_id, message_id, markdown_format!("No filters defined in any category"))
+                .await?;
+            return Ok(());
+        }
+
+        let keyboard = InlineKeyboardMarkup::new(buttons);
+
+        bot.edit_markdown_message_text(chat_id, message_id, markdown_format!("{}", text))
+            .await?;
+        bot.edit_message_reply_markup(chat_id, message_id)
+            .reply_markup(keyboard)
+            .await?;
     }
 
-
+    Ok(())
 }
+
