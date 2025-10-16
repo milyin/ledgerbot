@@ -121,7 +121,7 @@ impl CommandTrait for CommandEditFilter {
         storage: Self::Context,
         name: &String,
     ) -> ResponseResult<()> {
-        let Some(filters) = read_category(
+        let Some(patterns) = read_category(
             &bot,
             chat.clone(),
             msg_id,
@@ -137,21 +137,21 @@ impl CommandTrait for CommandEditFilter {
             .markdown_message(
                 chat.id,
                 msg_id,
-                markdown_format!("✏️ **Filters in category `{}`", name),
+                markdown_format!("✏️ Edit filters in category `{}`", name),
             )
             .await?;
         let menu = create_category_filters_menu(
-            &filters,
+            &patterns,
             |idx| {
                 CommandEditFilter {
                     category: Some(name.clone()),
                     position: Some(idx),
-                    pattern: None,
+                    pattern: patterns.get(idx).cloned(),
                 }
                 .to_command_string(false)
             },
             Some(CommandEditFilter::default().to_command_string(false)),
-            false,
+            true,
         );
         bot.edit_message_reply_markup(chat.id, msg.id)
             .reply_markup(menu)
@@ -168,7 +168,7 @@ impl CommandTrait for CommandEditFilter {
         name: &String,
         idx: &usize,
     ) -> ResponseResult<()> {
-        let Some(filter) = read_category_filter(
+        let Some(pattern) = read_category_filter(
             &bot,
             chat.clone(),
             msg_id,
@@ -197,7 +197,7 @@ impl CommandTrait for CommandEditFilter {
                     "✏️ **Editing filter \\#{} in category `{}`:**\n\nCurrent pattern: `{}`",
                     *idx,
                     name,
-                    &filter
+                    &pattern
                 ),
             )
             .await?;
@@ -207,7 +207,7 @@ impl CommandTrait for CommandEditFilter {
                 CommandEditFilter {
                     category: Some(name.clone()),
                     position: Some(*idx),
-                    pattern: Some(filter),
+                    pattern: Some(pattern),
                 }
                 .to_command_string(false),
             )],
@@ -221,6 +221,103 @@ impl CommandTrait for CommandEditFilter {
                 .to_command_string(false),
             )],
         ]);
+        bot.edit_message_reply_markup(chat.id, msg.id)
+            .reply_markup(menu)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn run3(
+        &self,
+        bot: Bot,
+        chat: Chat,
+        msg_id: Option<MessageId>,
+        storage: Self::Context,
+        name: &String,
+        idx: &usize,
+        pattern: &String,
+    ) -> ResponseResult<()> {
+        let Some(old_pattern) = read_category_filter(
+            &bot,
+            chat.clone(),
+            msg_id,
+            &storage,
+            name,
+            *idx,
+            Some(
+                CommandEditFilter {
+                    category: Some(name.clone()),
+                    position: None,
+                    pattern: None,
+                }
+                .to_command_string(false),
+            ),
+        )
+        .await?
+        else {
+            return Ok(());
+        };
+
+        if let Err(e) = regex::Regex::new(&pattern) {
+            let msg = bot
+                .markdown_message(
+                    chat.id,
+                    msg_id,
+                    markdown_format!(
+                        "❌ Invalid regex pattern `{}`:\n{}",
+                        &(*pattern),
+                        &e.to_string()
+                    ),
+                )
+                .await?;
+            // append back button
+            let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
+                "↩️ Back",
+                CommandEditFilter {
+                    category: Some(name.clone()),
+                    position: Some(*idx),
+                    pattern: None,
+                }
+                .to_command_string(false),
+            )]]);
+            bot.edit_message_reply_markup(chat.id, msg.id)
+                .reply_markup(menu)
+                .await?;
+            return Ok(());
+        }
+
+        // Remove the old pattern and add the new one
+        storage
+            .remove_category_filter(chat.id, &name, &old_pattern)
+            .await;
+
+        storage
+            .add_category_filter(chat.id, name.clone(), pattern.clone())
+            .await;
+
+        let msg = bot
+            .markdown_message(
+                chat.id,
+                msg_id,
+                markdown_format!(
+                    "✅ Filter updated in category `{}`\\.\n*Old:* `{}`\n*New:* `{}`",
+                    name.clone(),
+                    old_pattern.clone(),
+                    pattern.clone()
+                ),
+            )
+            .await?;
+        // append back button
+        let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
+            "↩️ Back",
+            CommandEditFilter {
+                category: Some(name.clone()),
+                position: None,
+                pattern: None,
+            }
+            .to_command_string(false),
+        )]]);
         bot.edit_message_reply_markup(chat.id, msg.id)
             .reply_markup(menu)
             .await?;
