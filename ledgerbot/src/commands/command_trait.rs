@@ -225,6 +225,7 @@ pub trait CommandTrait: Sized {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn run3(
         &self,
         _bot: Bot,
