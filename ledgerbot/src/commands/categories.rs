@@ -10,7 +10,7 @@ use teloxide::{
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{Command, command_add_category::CommandAddCategory},
+    commands::{Command, command_add_category::CommandAddCategory, command_trait::CommandTrait},
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
@@ -29,7 +29,7 @@ pub async fn categories_command(
             chat_id,
             markdown_format!(
                 "📂 No categories defined yet\\. Use {} to create one\\.",
-                CommandAddCategory::default().to_string()
+                CommandAddCategory::default().to_command_string(true)
             ),
         )
         .await?;
@@ -42,7 +42,7 @@ pub async fn categories_command(
 
         for (name, patterns) in sorted_categories {
             // First create the category
-            result.push_str(&CommandAddCategory::new(name.clone()).to_string());
+            result.push_str(&CommandAddCategory::new(name).to_command_string(true));
             result.push('\n');
 
             // Then assign patterns if they exist

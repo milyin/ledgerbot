@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 
 use teloxide::{
     Bot,
@@ -11,10 +11,7 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, markdown_strin
 use crate::{
     commands::{
         Command,
-        command_trait::{
-            CommandTrait, EmptyArg1, EmptyArg2, EmptyArg3, EmptyArg4, EmptyArg5, EmptyArg6,
-            EmptyArg7, EmptyArg8, EmptyArg9,
-        },
+        command_trait::{CommandTrait, EmptyArg},
     },
     storage_traits::CategoryStorageTrait,
 };
@@ -25,26 +22,29 @@ pub struct CommandAddCategory {
 }
 
 impl CommandAddCategory {
-    pub fn new(name: String) -> Self {
-        CommandAddCategory { name: Some(name) }
+    pub fn new(name: impl Into<String>) -> Self {
+        CommandAddCategory {
+            name: Some(name.into()),
+        }
     }
 }
 
 impl CommandTrait for CommandAddCategory {
     type A = String;
-    type B = EmptyArg1<1>;
-    type C = EmptyArg2<1>;
-    type D = EmptyArg3<1>;
-    type E = EmptyArg4<1>;
-    type F = EmptyArg5<1>;
-    type G = EmptyArg6<1>;
-    type H = EmptyArg7<1>;
-    type I = EmptyArg8<1>;
-    type J = EmptyArg9<1>;
+    type B = EmptyArg;
+    type C = EmptyArg;
+    type D = EmptyArg;
+    type E = EmptyArg;
+    type F = EmptyArg;
+    type G = EmptyArg;
+    type H = EmptyArg;
+    type I = EmptyArg;
+    type J = EmptyArg;
 
     type Context = Arc<dyn CategoryStorageTrait>;
 
     const NAME: &'static str = "add_category";
+    const PLACEHOLDERS: &[&'static str] = &["<name>"];
 
     fn from_arguments(
         a: Option<Self::A>,
@@ -59,6 +59,45 @@ impl CommandTrait for CommandAddCategory {
         _: Option<Self::J>,
     ) -> Self {
         CommandAddCategory { name: a }
+    }
+
+    fn param0(&self) -> Option<&Self::A> {
+        self.name.as_ref()
+    }
+    fn param1(&self) -> Option<&Self::B> {
+        None
+    }
+
+    fn param2(&self) -> Option<&Self::C> {
+        None
+    }
+
+    fn param3(&self) -> Option<&Self::D> {
+        None
+    }
+
+    fn param4(&self) -> Option<&Self::E> {
+        None
+    }
+
+    fn param5(&self) -> Option<&Self::F> {
+        None
+    }
+
+    fn param6(&self) -> Option<&Self::G> {
+        None
+    }
+
+    fn param7(&self) -> Option<&Self::H> {
+        None
+    }
+
+    fn param8(&self) -> Option<&Self::I> {
+        None
+    }
+
+    fn param9(&self) -> Option<&Self::J> {
+        None
     }
 
     async fn run(
@@ -103,22 +142,6 @@ impl CommandTrait for CommandAddCategory {
 impl From<CommandAddCategory> for crate::commands::Command {
     fn from(cmd: CommandAddCategory) -> Self {
         crate::commands::Command::AddCategory(cmd)
-    }
-}
-
-impl From<CommandAddCategory> for String {
-    fn from(cmd: CommandAddCategory) -> Self {
-        format!(
-            "{} {}",
-            CommandAddCategory::NAME,
-            cmd.name.unwrap_or("<name>".into())
-        )
-    }
-}
-
-impl Display for CommandAddCategory {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", String::from(self.clone()))
     }
 }
 

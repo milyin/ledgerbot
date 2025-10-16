@@ -10,7 +10,7 @@ use teloxide::{
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{Command, command_add_category::CommandAddCategory},
+    commands::{Command, command_add_category::CommandAddCategory, command_trait::CommandTrait},
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
@@ -36,7 +36,7 @@ pub async fn add_filter_command(
                     markdown_format!(
                         "❌ Category `{}` does not exist\\. Create it first with {}",
                         &category,
-                        CommandAddCategory::new(category).to_string().as_str()
+                        CommandAddCategory::new(category).to_command_string(true)
                     ),
                 )
                 .parse_mode(teloxide::types::ParseMode::MarkdownV2)
@@ -63,11 +63,10 @@ pub async fn add_filter_command(
                     .await?;
                 }
                 Err(e) => {
-                    bot.send_message(
+                    bot.send_markdown_message(
                         chat_id,
-                        format!("❌ Invalid regex pattern: {}", escape(&e.to_string())),
+                        markdown_format!("❌ Invalid regex pattern: `{}`", e.to_string()),
                     )
-                    .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                     .await?;
                 }
             }
@@ -78,17 +77,15 @@ pub async fn add_filter_command(
             add_filter_menu(bot, chat_id, sent_msg.id, storage).await?;
         }
         (Some(category), None) => {
-            bot.send_message(
+            bot.send_markdown_message(
                 chat_id,
-                format!(
+                markdown_format!(
                     "❌ Missing pattern\\. Usage: {}",
-                    escape(
-                        &Command::AddFilter {
-                            category: Some(category.clone()),
-                            pattern: Some("pattern".to_string())
-                        }
-                        .to_string()
-                    )
+                    &Command::AddFilter {
+                        category: Some(category.clone()),
+                        pattern: Some("pattern".to_string())
+                    }
+                    .to_string()
                 ),
             )
             .parse_mode(teloxide::types::ParseMode::MarkdownV2)

@@ -1,82 +1,61 @@
-use std::str::FromStr;
+use std::{any::TypeId, error::Error, fmt::Display, str::FromStr};
 
 use teloxide::{Bot, prelude::ResponseResult, types::Message, utils::command::ParseError};
-pub trait ArgFromStr {
-    fn arg_from_str(s: &str) -> Result<Option<Self>, ParseError>
+
+#[derive(Default, Debug, Clone, PartialEq)]
+pub struct EmptyArg;
+
+pub trait ParseCommandArg {
+    fn parse_command_arg(arg: &str) -> Result<Self, ParseError>
     where
         Self: Sized;
 }
 
-impl<T> ArgFromStr for T
-where
-    T: FromStr,
-    T::Err: std::error::Error + Send + Sync + 'static,
-{
-    fn arg_from_str(s: &str) -> Result<Option<Self>, ParseError>
+impl Display for EmptyArg {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Ok(())
+    }
+}
+
+impl ParseCommandArg for EmptyArg {
+    fn parse_command_arg(arg: &str) -> Result<Self, ParseError>
     where
         Self: Sized,
     {
-        if s.is_empty() {
-            return Ok(None);
+        if arg.is_empty() {
+            Ok(EmptyArg)
+        } else {
+            Err(ParseError::Custom(Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Expected no argument for EmptyArg",
+            ))))
         }
-        s.parse::<T>()
-            .map(Some)
+    }
+}
+
+impl<T> ParseCommandArg for T
+where
+    T: FromStr,
+    T::Err: Error + Send + Sync + 'static,
+{
+    fn parse_command_arg(arg: &str) -> Result<Self, ParseError>
+    where
+        Self: Sized,
+    {
+        arg.parse::<T>()
             .map_err(|e| ParseError::Custom(Box::new(e)))
     }
 }
 
-macro_rules! impl_empty_arg_fromstr {
-    ($($name:ident, $idx:expr);*) => {
-        $(
-            #[allow(dead_code)]
-            #[derive(Default)]
-            pub struct $name<const EXPECTED: usize>;
-
-            impl<const EXPECTED: usize> ArgFromStr for $name<EXPECTED> {
-                fn arg_from_str(s: &str) -> Result<Option<Self>, ParseError>
-                where
-                    Self: Sized,
-                {
-                    if s.is_empty() {
-                        Ok(None)
-                    } else {
-                        Err(ParseError::TooManyArguments {
-                            expected: EXPECTED,
-                            found: 1,
-                            message: format!(
-                                "Expected at most {} arguments, found {}",
-                                EXPECTED, 1
-                            ),
-                        })
-                    }
-                }
-            }
-        )*
-    };
-}
-
-impl_empty_arg_fromstr!(
-    EmptyArg0, 0;
-    EmptyArg1, 1;
-    EmptyArg2, 2;
-    EmptyArg3, 3;
-    EmptyArg4, 4;
-    EmptyArg5, 5;
-    EmptyArg6, 6;
-    EmptyArg7, 7;
-    EmptyArg8, 8;
-    EmptyArg9, 9
-);
-
 fn get<A>(args: &[String], pos: usize) -> Result<Option<A>, ParseError>
 where
-    A: ArgFromStr + Default,
+    A: ParseCommandArg,
 {
-    let arg = args.get(pos).map(|s| s.as_str()).unwrap_or("");
-    ArgFromStr::arg_from_str(arg)
+    let parsed = args.get(pos).map(|s| A::parse_command_arg(s)).transpose()?;
+    Ok(parsed)
 }
 
-fn split(arg: &str) -> Vec<String> {
+fn split_with_screened_spaces(arg: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current = String::new();
     let mut chars = arg.lines().next().unwrap_or("").chars().peekable();
@@ -112,24 +91,81 @@ fn split(arg: &str) -> Vec<String> {
     args
 }
 
+fn screen_spaces(s: &str) -> String {
+    s.replace('\\', "\\\\").replace(' ', "\\ ")
+}
+
 pub trait CommandTrait: Sized {
-    type A: ArgFromStr + Default;
-    type B: ArgFromStr + Default;
-    type C: ArgFromStr + Default;
-    type D: ArgFromStr + Default;
-    type E: ArgFromStr + Default;
-    type F: ArgFromStr + Default;
-    type G: ArgFromStr + Default;
-    type H: ArgFromStr + Default;
-    type I: ArgFromStr + Default;
-    type J: ArgFromStr + Default;
+    type A: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type B: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type C: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type D: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type E: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type F: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type G: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type H: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type I: ParseCommandArg + Default + Display + Send + Sync + 'static;
+    type J: ParseCommandArg + Default + Display + Send + Sync + 'static;
 
     type Context;
 
     const NAME: &'static str;
+    const PLACEHOLDERS: &[&'static str];
 
     fn parse_arguments(args: String) -> Result<(Self,), ParseError> {
-        let args = split(&args);
+        assert!(Self::PLACEHOLDERS.len() <= 10);
+        assert!(
+            Self::PLACEHOLDERS.get(0).is_some()
+                || TypeId::of::<Self::A>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(1).is_some()
+                || TypeId::of::<Self::B>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(2).is_some()
+                || TypeId::of::<Self::C>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(3).is_some()
+                || TypeId::of::<Self::D>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(4).is_some()
+                || TypeId::of::<Self::E>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(5).is_some()
+                || TypeId::of::<Self::F>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(6).is_some()
+                || TypeId::of::<Self::G>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(7).is_some()
+                || TypeId::of::<Self::H>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(8).is_some()
+                || TypeId::of::<Self::I>() == TypeId::of::<EmptyArg>()
+        );
+        assert!(
+            Self::PLACEHOLDERS.get(9).is_some()
+                || TypeId::of::<Self::J>() == TypeId::of::<EmptyArg>()
+        );
+        let args = split_with_screened_spaces(&args);
+        if args.len() > Self::PLACEHOLDERS.len() {
+            return Err(ParseError::TooManyArguments {
+                expected: Self::PLACEHOLDERS.len(),
+                found: args.len(),
+                message: format!(
+                    "Expected at most {} arguments, found {}",
+                    Self::PLACEHOLDERS.len(),
+                    args.len()
+                ),
+            });
+        }
         let a = get::<Self::A>(&args, 0)?;
         let b = get::<Self::B>(&args, 1)?;
         let c = get::<Self::C>(&args, 2)?;
@@ -157,5 +193,50 @@ pub trait CommandTrait: Sized {
         j: Option<Self::J>,
     ) -> Self;
 
+    fn param0(&self) -> Option<&Self::A>;
+    fn param1(&self) -> Option<&Self::B>;
+    fn param2(&self) -> Option<&Self::C>;
+    fn param3(&self) -> Option<&Self::D>;
+    fn param4(&self) -> Option<&Self::E>;
+    fn param5(&self) -> Option<&Self::F>;
+    fn param6(&self) -> Option<&Self::G>;
+    fn param7(&self) -> Option<&Self::H>;
+    fn param8(&self) -> Option<&Self::I>;
+    fn param9(&self) -> Option<&Self::J>;
+
     async fn run(&self, bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()>;
+
+    fn to_command_string(&self, complete: bool) -> String {
+        let params: Vec<Option<String>> = vec![
+            self.param0().map(|v| v.to_string()),
+            self.param1().map(|v| v.to_string()),
+            self.param2().map(|v| v.to_string()),
+            self.param3().map(|v| v.to_string()),
+            self.param4().map(|v| v.to_string()),
+            self.param5().map(|v| v.to_string()),
+            self.param6().map(|v| v.to_string()),
+            self.param7().map(|v| v.to_string()),
+            self.param8().map(|v| v.to_string()),
+            self.param9().map(|v| v.to_string()),
+        ];
+
+        let max_index = if !complete {
+            (0..10).rev().find(|&i| params[i].is_some())
+        } else if Self::PLACEHOLDERS.is_empty() {
+            None
+        } else {
+            Some(Self::PLACEHOLDERS.len() - 1)
+        };
+
+        let mut command_parts = vec![Self::NAME.to_string()];
+        if let Some(max_i) = max_index {
+            for i in 0..=max_i {
+                let part = params[i]
+                    .clone()
+                    .unwrap_or(Self::PLACEHOLDERS[i].to_string());
+                command_parts.push(screen_spaces(&part));
+            }
+        }
+        command_parts.join(" ")
+    }
 }
