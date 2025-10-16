@@ -239,6 +239,10 @@ pub trait CommandTrait: Sized {
                 command_parts.push(screen_spaces(&part));
             }
         }
-        command_parts.join(" ")
+        let mut command = command_parts.join(" ");
+        if command_parts.len() < Self::PLACEHOLDERS.len() + 1 {
+            command.push(' ');
+        }
+        command
     }
 }

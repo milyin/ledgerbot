@@ -157,7 +157,7 @@ pub async fn add_category_menu(
     let keyboard = InlineKeyboardMarkup::new(vec![vec![
         InlineKeyboardButton::switch_inline_query_current_chat(
             "➕ Add Category",
-            format!("{} ", CommandAddCategory::NAME),
+            CommandAddCategory::default().to_command_string(false),
         ),
     ]]);
 
