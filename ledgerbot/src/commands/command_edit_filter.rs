@@ -9,10 +9,11 @@ use crate::{
     commands::command_trait::{CommandTrait, EmptyArg}, handlers::CallbackData, storage_traits::CategoryStorageTrait
 };
 
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandEditFilter {
-    category: Option<String>,
-    position: Option<usize>,
-    pattern: Option<String>,
+    pub category: Option<String>,
+    pub position: Option<usize>,
+    pub pattern: Option<String>,
 }
 
 impl CommandTrait for CommandEditFilter {
@@ -88,7 +89,11 @@ pub async fn select_category_menu(
             .map(|(name, _)| {
                 vec![InlineKeyboardButton::callback(
                     format!("✏️ {}", name),
-                    CallbackData::EditFilterCategory(name.clone()),
+                    CommandEditFilter {
+                        category: Some(name.clone()),
+                        position: None,
+                        pattern: None,
+                    }.to_command_string(false)
                 )]
             })
             .collect();

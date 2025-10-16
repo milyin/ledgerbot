@@ -10,7 +10,7 @@ use teloxide::{
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{Command, command_add_category::CommandAddCategory, command_trait::CommandTrait},
+    commands::{command_add_category::CommandAddCategory, command_edit_filter::CommandEditFilter, command_trait::CommandTrait, Command},
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
@@ -330,58 +330,57 @@ pub async fn edit_filter_command(
             edit_filter_menu(bot, chat_id, sent_msg.id, storage).await?;
         }
         (Some(category), Some(position), None) => {
-            bot.send_message(
+            bot.send_markdown_message(
                 chat_id,
-                format!(
+                markdown_format!(
                     "❌ Missing pattern\\. Usage: {}",
-                    escape(
-                        &Command::EditFilter {
+                        &CommandEditFilter {
                             category: Some(category.clone()),
                             position: Some(position),
-                            pattern: Some("new_pattern".to_string())
+                            pattern: None
                         }
-                        .to_string()
-                    )
+                        .to_command_string(true)
                 ),
             )
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
         (Some(category), None, _) => {
-            bot.send_message(
-                chat_id,
-                format!(
-                    "❌ Missing position\\. Usage: {}",
-                    escape(
-                        &Command::EditFilter {
-                            category: Some(category.clone()),
-                            position: Some(0),
-                            pattern: Some("new_pattern".to_string())
-                        }
-                        .to_string()
-                    )
-                ),
-            )
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await?;
+            todo!()
+            // bot.send_message(
+            //     chat_id,
+            //     format!(
+            //         "❌ Missing position\\. Usage: {}",
+            //         escape(
+            //             &Command::EditFilter {
+            //                 category: Some(category.clone()),
+            //                 position: Some(0),
+            //                 pattern: Some("new_pattern".to_string())
+            //             }
+            //             .to_string()
+            //         )
+            //     ),
+            // )
+            // .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+            // .await?;
         }
         (None, _, _) => {
-            bot.send_message(
-                chat_id,
-                format!(
-                    "❌ Missing category\\. Usage: {}",
-                    escape(
-                        &Command::EditFilter {
-                            category: Some("category".to_string()),
-                            position: Some(0),
-                            pattern: Some("new_pattern".to_string())
-                        }
-                        .to_string()
-                    )
-                ),
-            )
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await?;
+            todo!()
+            // bot.send_message(
+            //     chat_id,
+            //     format!(
+            //         "❌ Missing category\\. Usage: {}",
+            //         escape(
+            //             &Command::EditFilter {
+            //                 category: Some("category".to_string()),
+            //                 position: Some(0),
+            //                 pattern: Some("new_pattern".to_string())
+            //             }
+            //             .to_string()
+            //         )
+            //     ),
+            // )
+            // .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+            // .await?;
         }
     }
 

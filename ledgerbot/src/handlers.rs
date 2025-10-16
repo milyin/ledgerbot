@@ -1,6 +1,6 @@
 use std::{str::FromStr, sync::Arc};
 
-use teloxide::{prelude::*, types::CallbackQuery};
+use teloxide::{prelude::*, types::CallbackQuery, utils::command::BotCommands};
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
         categories::{show_category_filters_for_editing, show_category_filters_for_removal},
         execute_command,
         filters::{add_filter_menu, edit_filter_menu, remove_filter_menu},
-        show_filter_word_suggestions,
+        show_filter_word_suggestions, Command,
     },
     parser::parse_expenses,
     storage_traits::StorageTrait,
@@ -183,6 +183,7 @@ pub async fn handle_callback_query(
     q: CallbackQuery,
     storage: Arc<dyn StorageTrait>,
 ) -> ResponseResult<()> {
+    let bot_username = bot.get_me().await?.username().to_string();
     // Answer the callback query to remove the loading state
     bot.answer_callback_query(q.id.clone()).await?;
 
@@ -202,6 +203,24 @@ pub async fn handle_callback_query(
     let Some(data_str) = &q.data else {
         return Ok(());
     };
+
+    log::info!("Received callback data: {}", data_str);
+
+    // Try to parse the callback data as command
+    if let Ok(cmd) = Command::parse(data_str, &bot_username) {
+        log::info!("Parsed command from callback: {:?}", cmd);
+        // Execute the command using the shared execute_command function
+        if let Err(e) = execute_command(bot.clone(), msg.clone(), storage.clone(), cmd.clone(), false).await
+        {
+            log::error!("Failed to execute command from callback: {}", e);
+            bot.send_markdown_message(
+                chat_id,
+                markdown_format!("❌ Error executing command `{}`: {}", cmd.to_string(), e.to_string()),
+            )
+            .await?;
+        }
+        return Ok(());
+    }
 
     let callback_data = match CallbackData::from_str(data_str) {
         Ok(data) => data,

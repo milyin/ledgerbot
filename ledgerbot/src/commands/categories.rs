@@ -10,7 +10,7 @@ use teloxide::{
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{Command, command_add_category::CommandAddCategory, command_trait::CommandTrait},
+    commands::{command_add_category::CommandAddCategory, command_edit_filter::CommandEditFilter, command_trait::CommandTrait, Command},
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
@@ -246,12 +246,12 @@ pub async fn show_category_filters_for_editing(
                 .map(|(index, pattern)| {
                     vec![InlineKeyboardButton::switch_inline_query_current_chat(
                         format!("{}. {}", index, pattern),
-                        Command::EditFilter {
+                        CommandEditFilter {
                             category: Some(category_name.clone()),
                             position: Some(index),
                             pattern: Some(pattern.clone()),
                         }
-                        .to_string(),
+                        .to_command_string(true)
                     )]
                 })
                 .collect();

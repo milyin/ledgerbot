@@ -7,7 +7,7 @@ pub mod filters;
 pub mod help;
 pub mod report;
 
-use std::sync::Arc;
+use std::{f32::consts::E, sync::Arc};
 
 use chrono::NaiveDate;
 use teloxide::{
@@ -24,6 +24,7 @@ use crate::{
     commands::{
         categories::{categories_command, remove_category_command},
         command_add_category::CommandAddCategory,
+        command_edit_filter::CommandEditFilter,
         command_trait::CommandTrait,
         expenses::{clear_command, expense_command, list_command, parse_expense},
         filters::{add_filter_command, edit_filter_command, remove_filter_command},
@@ -172,13 +173,9 @@ pub enum Command {
     #[command(
         description = "edit filter in category by position",
         rename = "edit_filter",
-        parse_with = parse_category_position_and_pattern
+        parse_with = CommandEditFilter::parse_arguments
     )]
-    EditFilter {
-        category: Option<String>,
-        position: Option<usize>,
-        pattern: Option<String>,
-    },
+    EditFilter(CommandEditFilter),
     #[command(
         description = "add expense with date, description and amount",
         parse_with = parse_expense
@@ -238,24 +235,7 @@ impl From<Command> for String {
                     position_str
                 )
             }
-            Command::EditFilter {
-                category,
-                position,
-                pattern,
-            } => {
-                let category_str = category.unwrap_or_else(|| "<category>".to_string());
-                let position_str = position
-                    .map(|p| p.to_string())
-                    .unwrap_or_else(|| "<position>".to_string());
-                let pattern_str = pattern.unwrap_or_else(|| "<pattern>".to_string());
-                format!(
-                    "{} {} {} {}",
-                    Command::EDIT_FILTER,
-                    category_str,
-                    position_str,
-                    pattern_str
-                )
-            }
+            Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
             Command::Expense {
                 date,
                 description,
@@ -571,20 +551,14 @@ pub async fn execute_command(
             )
             .await?;
         }
-        Command::EditFilter {
-            category,
-            position,
-            pattern,
-        } => {
-            edit_filter_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_category_storage(),
-                category,
-                position,
-                pattern,
-            )
-            .await?;
+        Command::EditFilter(edit_filter) => {
+            edit_filter
+                .run(
+                    bot.clone(),
+                    msg.clone(),
+                    storage.clone().as_category_storage(),
+                )
+                .await?;
         }
     }
     Ok(())
