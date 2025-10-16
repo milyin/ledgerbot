@@ -112,6 +112,7 @@ pub trait CommandTrait: Sized {
     const NAME: &'static str;
     const PLACEHOLDERS: &[&'static str];
 
+    #[allow(clippy::get_first)]
     fn parse_arguments(args: String) -> Result<(Self,), ParseError> {
         assert!(Self::PLACEHOLDERS.len() <= 10);
         assert!(
@@ -206,6 +207,7 @@ pub trait CommandTrait: Sized {
 
     async fn run(&self, bot: Bot, msg: Message, context: Self::Context) -> ResponseResult<()>;
 
+    #[allow(clippy::needless_range_loop)]
     fn to_command_string(&self, complete: bool) -> String {
         let params: Vec<Option<String>> = vec![
             self.param0().map(|v| v.to_string()),
