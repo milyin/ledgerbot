@@ -228,7 +228,7 @@ pub trait CommandTrait: Sized {
             Some(Self::PLACEHOLDERS.len() - 1)
         };
 
-        let mut command_parts = vec![Self::NAME.to_string()];
+        let mut command_parts = vec![format!("/{}", Self::NAME)];
         if let Some(max_i) = max_index {
             for i in 0..=max_i {
                 let part = params[i]
