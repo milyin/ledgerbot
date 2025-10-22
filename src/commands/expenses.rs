@@ -71,7 +71,7 @@ pub async fn list_command(
     let chat_expenses = storage.get_chat_expenses(chat_id).await;
     let expenses_list = format_expenses_chronological(&chat_expenses);
 
-    bot.markdown_message(chat_id,  None, markdown_string!("{}", expenses_list))
+    bot.markdown_message(chat_id, None, markdown_string!("{}", expenses_list))
         .await?;
     Ok(())
 }
@@ -184,8 +184,12 @@ pub async fn clear_command(
     let chat_id = msg.chat.id;
     storage.clear_chat_expenses(chat_id).await;
 
-    bot.markdown_message(chat_id,  None, markdown_string!("🗑️ All expenses cleared\\!"))
-        .await?;
+    bot.markdown_message(
+        chat_id,
+        None,
+        markdown_string!("🗑️ All expenses cleared\\!"),
+    )
+    .await?;
     Ok(())
 }
 

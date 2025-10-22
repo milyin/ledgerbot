@@ -3,12 +3,14 @@
 use std::{fmt, ops::Add};
 
 use teloxide::{
+    Bot,
     payloads::{EditMessageTextSetters, SendMessage, SendMessageSetters},
     prelude::{Requester, ResponseResult},
     types::{
-        Message, MessageId, ParseMode::{self, MarkdownV2}, Recipient
+        Message, MessageId,
+        ParseMode::{self, MarkdownV2},
+        Recipient,
     },
-    Bot,
 };
 
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
@@ -233,7 +235,6 @@ pub trait MarkdownStringMessage: Requester {
         message_id: Option<MessageId>,
         text: MarkdownString,
     ) -> ResponseResult<Message>
-    
     where
         C: Into<Recipient>;
 
@@ -291,11 +292,13 @@ impl MarkdownStringMessage for Bot {
         C: Into<Recipient>,
     {
         if let Some(message_id) = message_id {
-             self.edit_message_text(chat_id, message_id, text)
-                .parse_mode(ParseMode::MarkdownV2).await
+            self.edit_message_text(chat_id, message_id, text)
+                .parse_mode(ParseMode::MarkdownV2)
+                .await
         } else {
             self.send_message(chat_id, text)
-                .parse_mode(ParseMode::MarkdownV2).await
+                .parse_mode(ParseMode::MarkdownV2)
+                .await
         }
     }
 }

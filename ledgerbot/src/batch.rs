@@ -47,19 +47,23 @@ pub async fn execute_batch(
                         expense_count += 1;
                         total_amount += amt_val;
                     }
-                    let exec_result =
-                        execute_command(bot.clone(), chat.clone(), None, msg.clone(), storage.clone(), cmd, true).await;
+                    let exec_result = execute_command(
+                        bot.clone(),
+                        chat.clone(),
+                        None,
+                        msg.clone(),
+                        storage.clone(),
+                        cmd,
+                        true,
+                    )
+                    .await;
                     if let Err(e) = exec_result {
                         log::error!("Failed to execute batched command: {}", e);
                     }
                 }
                 Err(err_msg) => {
                     // Send error message to user
-                    log::warn!(
-                        "Parse error in batch for chat {}: {}",
-                        chat.id,
-                        err_msg
-                    );
+                    log::warn!("Parse error in batch for chat {}: {}", chat.id, err_msg);
                     if let Err(e) = bot
                         .markdown_message(chat.id, None, markdown_format!("❌ {}", err_msg))
                         .await

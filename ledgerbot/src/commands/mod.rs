@@ -25,7 +25,7 @@ use crate::{
         categories::{categories_command, remove_category_command},
         command_add_category::CommandAddCategory,
         command_edit_filter::CommandEditFilter,
-        command_trait::CommandTrait,
+        command_trait::{CommandReplyTarget, CommandTrait},
         expenses::{clear_command, expense_command, list_command, parse_expense},
         filters::{add_filter_command, remove_filter_command},
         help::{help_command, start_command},
@@ -275,8 +275,12 @@ pub async fn clear_categories_command(
     let chat_id = msg.chat.id;
     storage.clear_chat_categories(chat_id).await;
 
-    bot.markdown_message(chat_id,  None, markdown_string!("🗑️ All categories cleared\\!"))
-        .await?;
+    bot.markdown_message(
+        chat_id,
+        None,
+        markdown_string!("🗑️ All categories cleared\\!"),
+    )
+    .await?;
     Ok(())
 }
 
@@ -510,9 +514,11 @@ pub async fn execute_command(
         Command::AddCategory(add_category) => {
             add_category
                 .run(
-                    bot.clone(),
-                    chat,
-                    msg_id,
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id: msg_id.clone(),
+                    },
                     storage.clone().as_category_storage(),
                 )
                 .await?;
@@ -557,9 +563,11 @@ pub async fn execute_command(
         Command::EditFilter(edit_filter) => {
             edit_filter
                 .run(
-                    bot.clone(),
-                    chat,
-                    msg_id,
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id,
+                    },
                     storage.clone().as_category_storage(),
                 )
                 .await?;

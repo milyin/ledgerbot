@@ -1,6 +1,42 @@
 use std::{any::TypeId, error::Error, fmt::Display, str::FromStr};
 
-use teloxide::{prelude::ResponseResult, types::{Chat, Message, MessageId}, utils::command::ParseError, Bot};
+use teloxide::{
+    Bot,
+    payloads::SendMessage,
+    prelude::{Message, Requester, ResponseResult},
+    requests::JsonRequest,
+    types::{Chat, MessageId, Recipient},
+    utils::command::ParseError,
+};
+use yoroolbot::markdown::{MarkdownString, MarkdownStringMessage};
+
+#[derive(Debug, Clone)]
+pub struct CommandReplyTarget {
+    pub bot: Bot,
+    pub chat: Chat,
+    pub msg_id: Option<MessageId>,
+}
+
+impl CommandReplyTarget {
+    pub async fn markdown_message(&self, text: MarkdownString) -> ResponseResult<Message> {
+        self.bot
+            .markdown_message(self.chat.id, self.msg_id, text)
+            .await
+    }
+
+    pub fn send_markdown_message(&self, text: MarkdownString) -> JsonRequest<SendMessage> {
+        self.bot.send_markdown_message(self.chat.id, text)
+    }
+
+    pub fn edit_markdown_message_text(
+        &self,
+        message_id: MessageId,
+        text: MarkdownString,
+    ) -> <Bot as Requester>::EditMessageText {
+        self.bot
+            .edit_markdown_message_text(self.chat.id, message_id, text)
+    }
+}
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct EmptyArg;
@@ -188,25 +224,54 @@ pub trait CommandTrait: Sized {
         i: Option<Self::I>,
     ) -> Self;
 
-    fn param1(&self) -> Option<&Self::A> { assert!(TypeId::of::<Self::A>() == TypeId::of::<EmptyArg>()); None }
-    fn param2(&self) -> Option<&Self::B> { assert!(TypeId::of::<Self::B>() == TypeId::of::<EmptyArg>()); None }
-    fn param3(&self) -> Option<&Self::C> { assert!(TypeId::of::<Self::C>() == TypeId::of::<EmptyArg>()); None }
-    fn param4(&self) -> Option<&Self::D> { assert!(TypeId::of::<Self::D>() == TypeId::of::<EmptyArg>()); None }
-    fn param5(&self) -> Option<&Self::E> { assert!(TypeId::of::<Self::E>() == TypeId::of::<EmptyArg>()); None }
-    fn param6(&self) -> Option<&Self::F> { assert!(TypeId::of::<Self::F>() == TypeId::of::<EmptyArg>()); None }
-    fn param7(&self) -> Option<&Self::G> { assert!(TypeId::of::<Self::G>() == TypeId::of::<EmptyArg>()); None }
-    fn param8(&self) -> Option<&Self::H> { assert!(TypeId::of::<Self::H>() == TypeId::of::<EmptyArg>()); None }
-    fn param9(&self) -> Option<&Self::I> { assert!(TypeId::of::<Self::I>() == TypeId::of::<EmptyArg>()); None }
+    fn param1(&self) -> Option<&Self::A> {
+        assert!(TypeId::of::<Self::A>() == TypeId::of::<EmptyArg>());
+        None
+    }
+    fn param2(&self) -> Option<&Self::B> {
+        assert!(TypeId::of::<Self::B>() == TypeId::of::<EmptyArg>());
+        None
+    }
+    fn param3(&self) -> Option<&Self::C> {
+        assert!(TypeId::of::<Self::C>() == TypeId::of::<EmptyArg>());
+        None
+    }
+    fn param4(&self) -> Option<&Self::D> {
+        assert!(TypeId::of::<Self::D>() == TypeId::of::<EmptyArg>());
+        None
+    }
+    fn param5(&self) -> Option<&Self::E> {
+        assert!(TypeId::of::<Self::E>() == TypeId::of::<EmptyArg>());
+        None
+    }
+    fn param6(&self) -> Option<&Self::F> {
+        assert!(TypeId::of::<Self::F>() == TypeId::of::<EmptyArg>());
+        None
+    }
+    fn param7(&self) -> Option<&Self::G> {
+        assert!(TypeId::of::<Self::G>() == TypeId::of::<EmptyArg>());
+        None
+    }
+    fn param8(&self) -> Option<&Self::H> {
+        assert!(TypeId::of::<Self::H>() == TypeId::of::<EmptyArg>());
+        None
+    }
+    fn param9(&self) -> Option<&Self::I> {
+        assert!(TypeId::of::<Self::I>() == TypeId::of::<EmptyArg>());
+        None
+    }
 
-    async fn run0(&self, _bot: Bot, _chat: Chat, _msg_id: Option<MessageId>, _context: Self::Context) -> ResponseResult<()> {
-       Ok(())
+    async fn run0(
+        &self,
+        _target: &CommandReplyTarget,
+        _context: Self::Context,
+    ) -> ResponseResult<()> {
+        Ok(())
     }
 
     async fn run1(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
     ) -> ResponseResult<()> {
@@ -215,9 +280,7 @@ pub trait CommandTrait: Sized {
 
     async fn run2(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -225,12 +288,9 @@ pub trait CommandTrait: Sized {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn run3(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -239,12 +299,9 @@ pub trait CommandTrait: Sized {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn run4(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -254,12 +311,9 @@ pub trait CommandTrait: Sized {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn run5(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -273,9 +327,7 @@ pub trait CommandTrait: Sized {
     #[allow(clippy::too_many_arguments)]
     async fn run6(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -290,9 +342,7 @@ pub trait CommandTrait: Sized {
     #[allow(clippy::too_many_arguments)]
     async fn run7(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -308,9 +358,7 @@ pub trait CommandTrait: Sized {
     #[allow(clippy::too_many_arguments)]
     async fn run8(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -327,9 +375,7 @@ pub trait CommandTrait: Sized {
     #[allow(clippy::too_many_arguments)]
     async fn run9(
         &self,
-        _bot: Bot,
-        _chat: Chat,
-        _msg_id: Option<MessageId>,
+        _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
@@ -344,7 +390,7 @@ pub trait CommandTrait: Sized {
         Ok(())
     }
 
-    async fn run(&self, bot: Bot, chat: Chat, msg_id: Option<MessageId>, context: Self::Context) -> ResponseResult<()> {
+    async fn run(&self, target: &CommandReplyTarget, context: Self::Context) -> ResponseResult<()> {
         match (
             self.param1(),
             self.param2(),
@@ -356,35 +402,39 @@ pub trait CommandTrait: Sized {
             self.param8(),
             self.param9(),
         ) {
-            (None, None, None, None, None, None, None, None, None) => self.run0(bot, chat, msg_id, context).await,
+            (None, None, None, None, None, None, None, None, None) => {
+                self.run0(target, context).await
+            }
             (Some(a), None, None, None, None, None, None, None, None) => {
-                self.run1(bot, chat, msg_id, context, a).await
+                self.run1(target, context, a).await
             }
             (Some(a), Some(b), None, None, None, None, None, None, None) => {
-                self.run2(bot, chat, msg_id, context, a, b).await
+                self.run2(target, context, a, b).await
             }
             (Some(a), Some(b), Some(c), None, None, None, None, None, None) => {
-                self.run3(bot, chat, msg_id, context, a, b, c).await
+                self.run3(target, context, a, b, c).await
             }
             (Some(a), Some(b), Some(c), Some(d), None, None, None, None, None) => {
-                self.run4(bot, chat, msg_id, context, a, b, c, d).await
+                self.run4(target, context, a, b, c, d).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), None, None, None, None) => {
-                self.run5(bot, chat, msg_id, context, a, b, c, d, e).await
+                self.run5(target, context, a, b, c, d, e).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), None, None, None) => {
-                self.run6(bot, chat, msg_id, context, a, b, c, d, e, f).await
+                self.run6(target, context, a, b, c, d, e, f).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), None, None) => {
-                self.run7(bot, chat, msg_id, context, a, b, c, d, e, f, g).await
+                self.run7(target, context, a, b, c, d, e, f, g).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), None) => {
-                self.run8(bot, chat, msg_id, context, a, b, c, d, e, f, g, h).await
+                self.run8(target, context, a, b, c, d, e, f, g, h).await
             }
             (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), Some(i)) => {
-                self.run9(bot, chat, msg_id, context, a, b, c, d, e, f, g, h, i).await
-            },
-            _ => Err(teloxide::RequestError::Api(teloxide::ApiError::Unknown("Internal bot error: missing middle argument. Should not happen".into())))
+                self.run9(target, context, a, b, c, d, e, f, g, h, i).await
+            }
+            _ => Err(teloxide::RequestError::Api(teloxide::ApiError::Unknown(
+                "Internal bot error: missing middle argument. Should not happen".into(),
+            ))),
         }
     }
 

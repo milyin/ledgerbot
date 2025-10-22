@@ -10,7 +10,10 @@ use teloxide::{
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{command_add_category::CommandAddCategory, command_edit_filter::CommandEditFilter, command_trait::CommandTrait, Command},
+    commands::{
+        Command, command_add_category::CommandAddCategory, command_edit_filter::CommandEditFilter,
+        command_trait::CommandTrait,
+    },
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
@@ -252,7 +255,7 @@ pub async fn show_category_filters_for_editing(
                             position: Some(index),
                             pattern: Some(pattern.clone()),
                         }
-                        .to_command_string(true)
+                        .to_command_string(true),
                     )]
                 })
                 .collect();

@@ -10,7 +10,10 @@ use teloxide::{
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{command_add_category::CommandAddCategory, command_edit_filter::CommandEditFilter, command_trait::CommandTrait, Command},
+    commands::{
+        Command, command_add_category::CommandAddCategory, command_edit_filter::CommandEditFilter,
+        command_trait::CommandTrait,
+    },
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
@@ -336,12 +339,12 @@ pub async fn edit_filter_command(
                 None,
                 markdown_format!(
                     "❌ Missing pattern\\. Usage: {}",
-                        &CommandEditFilter {
-                            category: Some(category.clone()),
-                            position: Some(position),
-                            pattern: None
-                        }
-                        .to_command_string(true)
+                    &CommandEditFilter {
+                        category: Some(category.clone()),
+                        position: Some(position),
+                        pattern: None
+                    }
+                    .to_command_string(true)
                 ),
             )
             .await?;

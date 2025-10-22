@@ -6,10 +6,11 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 use crate::{
     batch::{add_to_batch, execute_batch},
     commands::{
+        Command,
         categories::{show_category_filters_for_editing, show_category_filters_for_removal},
         execute_command,
         filters::{add_filter_menu, edit_filter_menu, remove_filter_menu},
-        show_filter_word_suggestions, Command,
+        show_filter_word_suggestions,
     },
     parser::parse_expenses,
     storage_traits::StorageTrait,
@@ -137,8 +138,14 @@ pub async fn handle_text_message(
                 let storage_clone = storage.clone();
                 let msg_clone = msg.clone();
                 tokio::spawn(async move {
-                    execute_batch(bot_clone, batch_storage, msg_clone.chat.clone(), storage_clone, msg_clone)
-                        .await;
+                    execute_batch(
+                        bot_clone,
+                        batch_storage,
+                        msg_clone.chat.clone(),
+                        storage_clone,
+                        msg_clone,
+                    )
+                    .await;
                 });
             }
         } else {
@@ -147,9 +154,16 @@ pub async fn handle_text_message(
                 match result {
                     Ok(cmd) => {
                         // Execute the command using the shared execute_command function
-                        let exec_result =
-                            execute_command(bot.clone(), msg.chat.clone(), None, msg.clone(), storage.clone(), cmd, false)
-                                .await;
+                        let exec_result = execute_command(
+                            bot.clone(),
+                            msg.chat.clone(),
+                            None,
+                            msg.clone(),
+                            storage.clone(),
+                            cmd,
+                            false,
+                        )
+                        .await;
                         if let Err(e) = exec_result {
                             log::error!("Failed to execute command: {}", e);
                             bot.markdown_message(
@@ -209,12 +223,25 @@ pub async fn handle_callback_query(
     if let Ok(cmd) = Command::parse(data_str, &bot_username) {
         log::info!("Parsed command from callback: {:?}", cmd);
         // Execute the command using the shared execute_command function
-        if let Err(e) = execute_command(bot.clone(), msg.chat.clone(), Some(msg.id), msg.clone(), storage.clone(), cmd.clone(), false).await
+        if let Err(e) = execute_command(
+            bot.clone(),
+            msg.chat.clone(),
+            Some(msg.id),
+            msg.clone(),
+            storage.clone(),
+            cmd.clone(),
+            false,
+        )
+        .await
         {
             log::error!("Failed to execute command from callback: {}", e);
             bot.send_markdown_message(
                 chat_id,
-                markdown_format!("❌ Error executing command `{}`: {}", cmd.to_string(), e.to_string()),
+                markdown_format!(
+                    "❌ Error executing command `{}`: {}",
+                    cmd.to_string(),
+                    e.to_string()
+                ),
             )
             .await?;
         }
