@@ -99,11 +99,7 @@ impl CommandTrait for CommandEditFilter {
                 position: Some(idx),
                 pattern: None,
             },
-            Some(CommandEditFilter {
-                category: Some(name.clone()),
-                position: None,
-                pattern: None,
-            }),
+            Some(CommandEditFilter::default()),
         )
         .await
     }
@@ -189,7 +185,7 @@ impl CommandTrait for CommandEditFilter {
 
         target
             .send_markdown_message(markdown_format!(
-                "✅ Filter updated in category `{}`\\.\n*Old:* `{}`\n*New:* `{}`",
+                "✅ Filter updated in category `{}`\\.\n`{}` *before*\n`{}` *after*",
                 name.clone(),
                 old_pattern.clone(),
                 pattern.clone()
