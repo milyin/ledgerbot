@@ -108,21 +108,55 @@ The messaging system has two layers:
 
 ### When to use each CommandReplyTarget method:
 
-**Use `send_markdown_message()` when:**
+**Use `markdown_message()` for navigation and interactive flows:**
 ```rust
-// You need to send a new message and customize it
+// Use for menus, prompts, and interactive navigation
+// This allows the bot to edit the same message when user navigates
+// Examples: displaying parameter selection menus, category lists, etc.
+
+async fn run0(&self, target: &CommandReplyTarget, storage: Self::Context) {
+    // Show interactive menu - will edit if coming from callback
+    target
+        .markdown_message(markdown_string!("Select a category:"))
+        .await?;
+    // Display category selection buttons...
+}
+```
+
+**Use `send_markdown_message()` for results and errors:**
+```rust
+// Always send a NEW message for:
+// - Action results (success/failure messages)
+// - Error messages
+// - Final outputs that should remain visible
+
+async fn run1(&self, target: &CommandReplyTarget, storage: Self::Context, name: &String) {
+    match storage.add_category(name).await {
+        Ok(()) => {
+            // Send result as a NEW message
+            target
+                .send_markdown_message(markdown_format!(
+                    "✅ Category `{}` created",
+                    name
+                ))
+                .await?;
+        }
+        Err(err) => {
+            // Send error as a NEW message
+            target
+                .send_markdown_message(markdown_format!(
+                    "❌ Error: {}",
+                    &*err
+                ))
+                .await?;
+        }
+    }
+}
+
+// When you need to customize the message
 target
     .send_markdown_message(markdown_string!("Hello!"))
     .reply_markup(keyboard)  // Can chain additional options
-    .await?;
-```
-
-**Use `markdown_message()` when:**
-```rust
-// You want automatic send-or-edit behavior
-// This is the most common case in command implementations
-target
-    .markdown_message(markdown_string!("Response"))
     .await?;
 ```
 
@@ -135,6 +169,11 @@ target
     .edit_markdown_message_text(msg.id, markdown_string!("Updated"))
     .await?;
 ```
+
+**Rule of thumb:**
+- **Navigation/Prompts** → `markdown_message()` (can edit in-place during navigation)
+- **Results/Errors** → `send_markdown_message()` (always creates new message for visibility)
+- **Specific edits** → `edit_markdown_message_text()` (when you have a specific message ID to edit)
 
 ## File Naming Convention
 
@@ -361,17 +400,27 @@ const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<new_patter
    - Implement `run1`, `run2`, etc. based on how many parameters your command accepts
    - The trait's `run()` method automatically dispatches to the correct method based on provided parameters
 
-4. **Error Handling**:
+4. **Choosing the Right Message Method**:
+   - Use `markdown_message()` for **navigation and prompts** (menus, parameter selection, interactive flows)
+     - Allows editing the same message during navigation
+     - Creates a smoother user experience for interactive workflows
+   - Use `send_markdown_message()` for **results and errors** (success/failure messages, final outputs)
+     - Always creates a new message that stays visible in chat history
+     - Important for visibility of actions performed
+     - Required when you need to customize the message (e.g., add `.reply_markup()`)
+   - Use `edit_markdown_message_text()` when you need to **edit a specific message** by its ID
+
+5. **Error Handling**:
    - Use `ResponseResult<()>` as the return type
    - Return errors with `?` operator
-   - Send user-friendly error messages using `markdown_format!` or `markdown_string!`
+   - Send user-friendly error messages using `send_markdown_message()` (always new message for visibility)
 
-5. **Message Formatting**:
+6. **Message Formatting**:
    - Always use `markdown_format!` or `markdown_string!` macros for messages
    - These macros handle proper escaping for Telegram's MarkdownV2 format
    - Never manually escape strings
 
-6. **Clippy Warnings**:
+7. **Clippy Warnings**:
    - Don't use `.clone()` on `Option<MessageId>` - it implements `Copy`
    - Use the value directly in `CommandReplyTarget`
 
