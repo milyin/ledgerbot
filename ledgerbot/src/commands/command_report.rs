@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::markdown_format;
 
 use crate::{
     commands::{
@@ -62,10 +61,8 @@ impl CommandTrait for CommandReport {
             .await;
 
         // Check for category conflicts before generating report
-        if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
-            target
-                .send_markdown_message(markdown_format!("{}", conflict_message))
-                .await?;
+        if let Some(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
+            target.send_markdown_message(conflict_message).await?;
             return Ok(());
         }
 

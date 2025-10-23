@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use teloxide::utils::markdown::escape;
 use yoroolbot::{markdown::MarkdownString, markdown_format, markdown_string};
 
 use crate::{parser::format_timestamp, storage_traits::Expense};
@@ -13,11 +12,11 @@ struct CategoryConflict {
 }
 
 /// Check if any expense matches multiple categories
-/// Returns Err with formatted error message if conflicts are found
+/// Returns Some with formatted error message if conflicts are found, None otherwise
 pub fn check_category_conflicts(
     expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
-) -> Result<(), String> {
+) -> Option<MarkdownString> {
     let mut conflicts: Vec<CategoryConflict> = Vec::new();
 
     // Build regex matchers for each category
@@ -61,33 +60,34 @@ pub fn check_category_conflicts(
 
     // If there are conflicts, format and return error message
     if !conflicts.is_empty() {
-        let mut error_message = String::from("❌ *Category Conflicts Detected*\n\n");
-        error_message.push_str("The following expenses match multiple categories\\.\n");
-        error_message.push_str("Please adjust your filters to avoid overlapping categories\\.\n\n");
+        let mut error_message = markdown_string!("❌ *Category Conflicts Detected*\n\n");
+        error_message = error_message
+            + markdown_string!(
+                "The following expenses match multiple categories\\.\n\
+                 Please adjust your filters to avoid overlapping categories\\.\n\n"
+            );
 
         for conflict in conflicts {
             let date_str = format_timestamp(conflict.expense.timestamp);
-            error_message.push_str(&format!(
-                "📝 *Expense:* {} {} {}\n",
-                escape(&date_str),
-                escape(&conflict.expense.description),
-                escape(&conflict.expense.amount.to_string())
-            ));
-            error_message.push_str("*Matching categories:*\n");
+            error_message = error_message
+                + markdown_format!(
+                    "📝 *Expense:* {} {} {}\n",
+                    &*date_str,
+                    &*conflict.expense.description,
+                    conflict.expense.amount
+                );
+            error_message = error_message + markdown_string!("*Matching categories:*\n");
             for (category_name, pattern) in conflict.matching_categories {
-                error_message.push_str(&format!(
-                    "  • {} \\(filter: `{}`\\)\n",
-                    escape(&category_name),
-                    escape(&pattern)
-                ));
+                error_message = error_message
+                    + markdown_format!("  • {} \\(filter: `{}`\\)\n", &*category_name, &*pattern);
             }
-            error_message.push('\n');
+            error_message = error_message + markdown_string!("\n");
         }
 
-        return Err(error_message);
+        return Some(error_message);
     }
 
-    Ok(())
+    None
 }
 
 /// Format expenses as a readable list with total, grouped by categories
