@@ -4,68 +4,15 @@ use teloxide::{
     Bot,
     payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters},
     prelude::{Requester, ResponseResult},
-    types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
+    types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
     utils::markdown::escape,
 };
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{
-        Command, command_add_category::CommandAddCategory, command_edit_filter::CommandEditFilter,
-        command_trait::CommandTrait,
-    },
+    commands::{Command, command_edit_filter::CommandEditFilter, command_trait::CommandTrait},
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
-
-/// List all categories as executable commands
-pub async fn categories_command(
-    bot: Bot,
-    msg: Message,
-    storage: Arc<dyn CategoryStorageTrait>,
-) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-    let categories = storage.get_chat_categories(chat_id).await;
-
-    if categories.is_empty() {
-        bot.markdown_message(
-            chat_id,
-            None,
-            markdown_format!(
-                "📂 No categories defined yet\\. Use {} to create one\\.",
-                CommandAddCategory::default().to_command_string(true)
-            ),
-        )
-        .await?;
-    } else {
-        let mut result = String::new();
-
-        // Sort categories for consistent output
-        let mut sorted_categories: Vec<_> = categories.iter().collect();
-        sorted_categories.sort_by(|a, b| a.0.cmp(b.0));
-
-        for (name, patterns) in sorted_categories {
-            // First create the category
-            result.push_str(&CommandAddCategory::new(name).to_command_string(true));
-            result.push('\n');
-
-            // Then assign patterns if they exist
-            for pattern in patterns {
-                result.push_str(
-                    &Command::AddFilter {
-                        category: Some(name.clone()),
-                        pattern: Some(pattern.clone()),
-                    }
-                    .to_string(),
-                );
-                result.push('\n');
-            }
-        }
-        bot.send_message(chat_id, result).await?;
-    }
-
-    Ok(())
-}
 
 /// Show filters for a specific category for removal
 pub async fn show_category_filters_for_removal(

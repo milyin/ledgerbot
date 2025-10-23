@@ -1,5 +1,6 @@
 pub mod categories;
 pub mod command_add_category;
+pub mod command_categories;
 pub mod command_clear;
 pub mod command_edit_filter;
 pub mod command_help;
@@ -27,8 +28,8 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_string};
 
 use crate::{
     commands::{
-        categories::categories_command,
         command_add_category::CommandAddCategory,
+        command_categories::CommandCategories,
         command_clear::CommandClear,
         command_edit_filter::CommandEditFilter,
         command_help::CommandHelp,
@@ -114,8 +115,11 @@ pub enum Command {
         parse_with = CommandClear::parse_arguments
     )]
     Clear(CommandClear),
-    #[command(description = "list all categories with filters in command format")]
-    Categories,
+    #[command(
+        description = "list all categories with filters in command format",
+        parse_with = CommandCategories::parse_arguments
+    )]
+    Categories(CommandCategories),
     #[command(description = "clear all categories", rename = "clear_categories")]
     ClearCategories,
     #[command(
@@ -189,7 +193,7 @@ impl From<Command> for String {
             Command::List(list) => list.to_command_string(true),
             Command::Report(report) => report.to_command_string(true),
             Command::Clear(clear) => clear.to_command_string(true),
-            Command::Categories => Command::CATEGORIES.to_string(),
+            Command::Categories(categories) => categories.to_command_string(true),
             Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
             Command::AddCategory(add_category) => add_category.to_command_string(true),
             Command::AddFilter { category, pattern } => {
@@ -525,13 +529,17 @@ pub async fn execute_command(
                 )
                 .await?;
         }
-        Command::Categories => {
-            categories_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_category_storage(),
-            )
-            .await?;
+        Command::Categories(categories) => {
+            categories
+                .run(
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id,
+                    },
+                    storage.clone().as_category_storage(),
+                )
+                .await?;
         }
         Command::AddFilter { category, pattern } => {
             add_filter_command(
