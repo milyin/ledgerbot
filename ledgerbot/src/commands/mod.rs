@@ -1,6 +1,7 @@
 pub mod categories;
 pub mod command_add_category;
 pub mod command_edit_filter;
+pub mod command_add_filter;
 pub mod command_trait;
 pub mod expenses;
 pub mod filters;

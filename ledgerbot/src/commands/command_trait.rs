@@ -131,7 +131,7 @@ fn screen_spaces(s: &str) -> String {
     s.replace('\\', "\\\\").replace(' ', "\\ ")
 }
 
-pub trait CommandTrait: Sized + Clone + Send + Sync + 'static {
+pub trait CommandTrait: Sized + Clone {
     type A: ParseCommandArg + Default + Display + Send + Sync + 'static;
     type B: ParseCommandArg + Default + Display + Send + Sync + 'static;
     type C: ParseCommandArg + Default + Display + Send + Sync + 'static;
@@ -311,6 +311,7 @@ pub trait CommandTrait: Sized + Clone + Send + Sync + 'static {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn run5(
         &self,
         _target: &CommandReplyTarget,

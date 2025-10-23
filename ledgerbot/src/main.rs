@@ -5,6 +5,7 @@ mod handlers;
 mod parser;
 mod storage;
 mod storage_traits;
+pub mod menus;
 
 use std::{path::PathBuf, sync::Arc};
 
