@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(results.len(), 4);
 
         // Check first command
-        assert!(matches!(&results[0], Ok(Command::Help)));
+        assert!(matches!(&results[0], Ok(Command::Help(_))));
 
         // Check first expense
         assert!(
@@ -304,7 +304,7 @@ mod tests {
         );
 
         // Check second command
-        assert!(matches!(&results[2], Ok(Command::Report)));
+        assert!(matches!(&results[2], Ok(Command::Report(_))));
 
         // Check second expense
         assert!(
@@ -333,7 +333,7 @@ mod tests {
         );
 
         // Check first command
-        assert!(matches!(&results[1], Ok(Command::Help)));
+        assert!(matches!(&results[1], Ok(Command::Help(_))));
 
         // Check second expense
         assert!(
@@ -352,7 +352,7 @@ mod tests {
         );
 
         // Check second command
-        assert!(matches!(&results[4], Ok(Command::Report)));
+        assert!(matches!(&results[4], Ok(Command::Report(_))));
     }
 
     #[test]
@@ -388,9 +388,9 @@ mod tests {
 
         assert_eq!(results.len(), 3);
 
-        assert!(matches!(&results[0], Ok(Command::Help)));
-        assert!(matches!(&results[1], Ok(Command::Report)));
-        assert!(matches!(&results[2], Ok(Command::Clear)));
+        assert!(matches!(&results[0], Ok(Command::Help(_))));
+        assert!(matches!(&results[1], Ok(Command::Report(_))));
+        assert!(matches!(&results[2], Ok(Command::Clear(_))));
     }
 
     #[test]
@@ -401,14 +401,14 @@ mod tests {
         let results = parse_expenses(text, None, timestamp);
 
         assert_eq!(results.len(), 1);
-        assert!(matches!(&results[0], Ok(Command::Report)));
+        assert!(matches!(&results[0], Ok(Command::Report(_))));
 
         // Test multiple buttons
         let text2 = "🗑️ /clear";
         let results2 = parse_expenses(text2, None, timestamp);
 
         assert_eq!(results2.len(), 1);
-        assert!(matches!(&results2[0], Ok(Command::Clear)));
+        assert!(matches!(&results2[0], Ok(Command::Clear(_))));
 
         // Test with category command
         let text3 = "📂 /categories";
@@ -536,11 +536,11 @@ mod tests {
         assert_eq!(results.len(), 13);
 
         // Commands without parameters (7 unique)
-        assert!(matches!(&results[0], Ok(Command::Start)));
-        assert!(matches!(&results[1], Ok(Command::Help)));
-        assert!(matches!(&results[2], Ok(Command::List)));
-        assert!(matches!(&results[3], Ok(Command::Report)));
-        assert!(matches!(&results[4], Ok(Command::Clear)));
+        assert!(matches!(&results[0], Ok(Command::Start(_))));
+        assert!(matches!(&results[1], Ok(Command::Help(_))));
+        assert!(matches!(&results[2], Ok(Command::List(_))));
+        assert!(matches!(&results[3], Ok(Command::Report(_))));
+        assert!(matches!(&results[4], Ok(Command::Clear(_))));
         assert!(matches!(&results[5], Ok(Command::Categories)));
         assert!(matches!(&results[6], Ok(Command::ClearCategories)));
 
@@ -574,6 +574,6 @@ mod tests {
         );
 
         // Duplicate command without parameters to verify repeatability
-        assert!(matches!(&results[12], Ok(Command::List)));
+        assert!(matches!(&results[12], Ok(Command::List(_))));
     }
 }

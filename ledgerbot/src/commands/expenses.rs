@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use teloxide::{prelude::*, types::Message, utils::command::ParseError};
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
+use yoroolbot::{markdown::MarkdownString, markdown::MarkdownStringMessage, markdown_format};
 
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
 
@@ -59,10 +59,12 @@ pub fn parse_expense(s: String) -> Result<ExpenseParams, ParseError> {
 }
 
 /// Format expenses as a chronological list without category grouping
-/// Output format: "date description price"
-pub fn format_expenses_chronological(expenses: &[Expense]) -> String {
+/// Returns Ok(String) with plain text list of expenses, or Err(MarkdownString) with error message
+pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<String, MarkdownString> {
     if expenses.is_empty() {
-        return "📝 No expenses recorded yet. Send a message like `2024-10-09 Coffee 5.50` to add one.".to_string();
+        return Err(markdown_format!(
+            "📝 No expenses recorded yet\\. Send a message like `2024\\-10\\-09 Coffee 5\\.50` to add one\\."
+        ));
     }
 
     // Sort by timestamp (chronological order)
@@ -81,7 +83,7 @@ pub fn format_expenses_chronological(expenses: &[Expense]) -> String {
         ));
     }
 
-    result
+    Ok(result)
 }
 
 /// Handle expense command with date, description, and amount
@@ -191,9 +193,10 @@ mod tests {
         let result = format_expenses_chronological(&expenses);
 
         // Check that expenses are listed in chronological order
-        // Function returns plain format: "date description amount"
+        // Function returns Ok with plain format: "date description amount"
+        assert!(result.is_ok());
         assert_eq!(
-            result,
+            result.unwrap(),
             "2021-01-01 Coffee 5.5\n2021-01-02 Lunch 12\n2021-01-03 Dinner 25\n"
         );
     }
@@ -203,9 +206,10 @@ mod tests {
         // Test with no expenses
         let expenses = Vec::new();
         let result = format_expenses_chronological(&expenses);
-        assert_eq!(
-            result,
-            "📝 No expenses recorded yet. Send a message like `2024-10-09 Coffee 5.50` to add one."
-        );
+
+        // Should return Err with error message
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err();
+        assert!(error_msg.as_str().contains("No expenses recorded yet"));
     }
 }

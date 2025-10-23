@@ -49,11 +49,20 @@ impl CommandTrait for CommandList {
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
         let chat_expenses = storage.get_chat_expenses(chat_id).await;
-        let expenses_list = format_expenses_chronological(&chat_expenses);
 
-        target
-            .send_markdown_message(markdown_format!("{}", expenses_list))
-            .await?;
+        match format_expenses_chronological(&chat_expenses) {
+            Ok(expenses_list) => {
+                // Plain text list of expenses - send as is
+                target
+                    .send_markdown_message(markdown_format!("{}", expenses_list))
+                    .await?;
+            }
+            Err(error_message) => {
+                // Error message (e.g., no expenses) - send as MarkdownString
+                target.send_markdown_message(error_message).await?;
+            }
+        }
+
         Ok(())
     }
 }
