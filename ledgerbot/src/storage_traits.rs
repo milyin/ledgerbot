@@ -55,7 +55,7 @@ pub trait CategoryStorageTrait: Send + Sync {
     );
 
     /// Remove a category from a specific chat
-    async fn remove_category(&self, chat_id: ChatId, category_name: &str);
+    async fn remove_category(&self, chat_id: ChatId, category_name: &str) -> bool;
 
     /// Clear all categories for a specific chat
     async fn clear_chat_categories(&self, chat_id: ChatId);

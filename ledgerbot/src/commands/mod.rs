@@ -2,6 +2,7 @@ pub mod categories;
 pub mod command_add_category;
 pub mod command_edit_filter;
 // pub mod command_add_filter;
+pub mod command_remove_category;
 pub mod command_trait;
 pub mod expenses;
 pub mod filters;
@@ -23,9 +24,10 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_string};
 
 use crate::{
     commands::{
-        categories::{categories_command, remove_category_command},
+        categories::categories_command,
         command_add_category::CommandAddCategory,
         command_edit_filter::CommandEditFilter,
+        command_remove_category::CommandRemoveCategory,
         command_trait::{CommandReplyTarget, CommandTrait},
         expenses::{clear_command, expense_command, list_command, parse_expense},
         filters::{add_filter_command, remove_filter_command},
@@ -36,17 +38,6 @@ use crate::{
     parser::extract_words,
     storage_traits::{CategoryStorageTrait, StorageTrait},
 };
-
-/// Custom parser for optional single string parameter
-fn parse_optional_string(s: String) -> Result<(Option<String>,), ParseError> {
-    // Take only the first line to prevent multi-line capture
-    let first_line = s.lines().next().unwrap_or("").trim();
-    if first_line.is_empty() {
-        Ok((None,))
-    } else {
-        Ok((Some(first_line.to_string()),))
-    }
-}
 
 /// Custom parser for two optional string parameters
 fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<String>), ParseError> {
@@ -124,9 +115,9 @@ pub enum Command {
     #[command(
         description = "remove expense category",
         rename = "remove_category",
-        parse_with = parse_optional_string
+        parse_with = CommandRemoveCategory::parse_arguments
     )]
-    RemoveCategory { name: Option<String> },
+    RemoveCategory(CommandRemoveCategory),
     #[command(
         description = "remove filter from category by position",
         rename = "remove_filter",
@@ -185,10 +176,7 @@ impl From<Command> for String {
                 let pattern_str = pattern.unwrap_or_else(|| "<pattern>".to_string());
                 format!("{} {} {}", Command::ADD_FILTER, category_str, pattern_str)
             }
-            Command::RemoveCategory { name } => {
-                let name_str = name.unwrap_or_else(|| "<name>".to_string());
-                format!("{} {}", Command::REMOVE_CATEGORY, name_str)
-            }
+            Command::RemoveCategory(remove_category) => remove_category.to_command_string(true),
             Command::RemoveFilter { category, position } => {
                 let category_str = category.unwrap_or_else(|| "<category>".to_string());
                 let position_str = position
@@ -507,14 +495,17 @@ pub async fn execute_command(
             )
             .await?;
         }
-        Command::RemoveCategory { name } => {
-            remove_category_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_category_storage(),
-                name,
-            )
-            .await?;
+        Command::RemoveCategory(remove_category) => {
+            remove_category
+                .run(
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id: msg_id.clone(),
+                    },
+                    storage.clone().as_category_storage(),
+                )
+                .await?;
         }
         Command::RemoveFilter { category, position } => {
             remove_filter_command(

@@ -165,11 +165,12 @@ impl CategoryStorageTrait for CategoryStorage {
         }
     }
 
-    async fn remove_category(&self, chat_id: ChatId, category_name: &str) {
+    async fn remove_category(&self, chat_id: ChatId, category_name: &str) -> bool {
         let mut storage_guard = self.data.lock().await;
         if let Some(chat_categories) = storage_guard.get_mut(&chat_id) {
-            chat_categories.remove(category_name);
+            return chat_categories.remove(category_name).is_some();
         }
+        false
     }
 
     async fn clear_chat_categories(&self, chat_id: ChatId) {
@@ -334,15 +335,18 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         let _ = self.save_chat_categories(chat_id, &categories).await;
     }
 
-    async fn remove_category(&self, chat_id: ChatId, category_name: &str) {
+    async fn remove_category(&self, chat_id: ChatId, category_name: &str) -> bool {
         self.ensure_loaded(chat_id).await;
-        self.memory_storage
+        if self.memory_storage
             .remove_category(chat_id, category_name)
-            .await;
-
-        // Save updated categories to disk
-        let categories = self.memory_storage.get_chat_categories(chat_id).await;
-        let _ = self.save_chat_categories(chat_id, &categories).await;
+            .await {
+            // Save updated categories to disk
+            let categories = self.memory_storage.get_chat_categories(chat_id).await;
+            let _ = self.save_chat_categories(chat_id, &categories).await;
+            true
+        } else {
+            false   
+        }
     }
 
     async fn clear_chat_categories(&self, chat_id: ChatId) {

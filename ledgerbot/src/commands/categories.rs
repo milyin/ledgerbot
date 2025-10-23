@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use teloxide::{
     Bot,
-    payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters, SendMessageSetters},
+    payloads::{EditMessageReplyMarkupSetters, EditMessageTextSetters},
     prelude::{Requester, ResponseResult},
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup, Message, MessageId},
     utils::markdown::escape,
@@ -62,95 +62,6 @@ pub async fn categories_command(
             }
         }
         bot.send_message(chat_id, result).await?;
-    }
-
-    Ok(())
-}
-
-/// Remove a category
-pub async fn remove_category_command(
-    bot: Bot,
-    msg: Message,
-    storage: Arc<dyn CategoryStorageTrait>,
-    name: Option<String>,
-) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-
-    match name {
-        None => {
-            // Show the remove category menu instead
-            let sent_msg = bot.send_message(chat_id, "🗑️ Remove Category").await?;
-            remove_category_menu(bot, chat_id, sent_msg.id, storage).await?;
-        }
-        Some(name) => {
-            let categories = storage.get_chat_categories(chat_id).await;
-
-            // Check if category exists
-            if !categories.contains_key(&name) {
-                bot.send_message(
-                    chat_id,
-                    format!("❌ Category `{}` does not exist\\.", escape(&name)),
-                )
-                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-                .await?;
-                return Ok(());
-            }
-
-            // Remove the category
-            storage.remove_category(chat_id, &name).await;
-            bot.send_message(
-                chat_id,
-                format!("✅ Category `{}` removed\\.", escape(&name)),
-            )
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await?;
-        }
-    }
-
-    Ok(())
-}
-
-/// Show category removal interface
-pub async fn remove_category_menu(
-    bot: Bot,
-    chat_id: ChatId,
-    message_id: MessageId,
-    storage: Arc<dyn CategoryStorageTrait>,
-) -> ResponseResult<()> {
-    let categories = storage.get_chat_categories(chat_id).await;
-
-    if categories.is_empty() {
-        bot.edit_message_text(
-            chat_id,
-            message_id,
-            "📂 No categories to remove\\. Use `/add_category <name>` to create one first\\.",
-        )
-        .await?;
-    } else {
-        let text = "🗑️ **Select category to remove:**\n\nClick a button to place the command in your input box\\.";
-
-        // Create buttons for each category using switch_inline_query_current_chat
-        let buttons: Vec<Vec<InlineKeyboardButton>> = categories
-            .keys()
-            .map(|name| {
-                vec![InlineKeyboardButton::switch_inline_query_current_chat(
-                    format!("🗑️ {}", name),
-                    Command::RemoveCategory {
-                        name: Some(name.clone()),
-                    }
-                    .to_string(),
-                )]
-            })
-            .collect();
-
-        let keyboard = InlineKeyboardMarkup::new(buttons);
-
-        bot.edit_message_text(chat_id, message_id, text)
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await?;
-        bot.edit_message_reply_markup(chat_id, message_id)
-            .reply_markup(keyboard)
-            .await?;
     }
 
     Ok(())
