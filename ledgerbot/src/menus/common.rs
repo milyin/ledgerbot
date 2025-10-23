@@ -1,9 +1,16 @@
 use std::sync::Arc;
 
-use teloxide::{payloads::EditMessageReplyMarkupSetters, prelude::{Requester, ResponseResult}, types::{InlineKeyboardButton, InlineKeyboardMarkup}};
+use teloxide::{
+    payloads::EditMessageReplyMarkupSetters,
+    prelude::{Requester, ResponseResult},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup},
+};
 use yoroolbot::markdown_format;
 
-use crate::{commands::command_trait::{CommandReplyTarget, CommandTrait}, storage_traits::CategoryStorageTrait};
+use crate::{
+    commands::command_trait::{CommandReplyTarget, CommandTrait},
+    storage_traits::CategoryStorageTrait,
+};
 
 pub fn create_buttons_menu(
     titles: &[String],
@@ -60,7 +67,10 @@ pub async fn read_category_filters_list(
     };
     if filters.is_empty() {
         let msg = target
-            .markdown_message(markdown_format!("📂 Category `{}` has no filters defined yet\\.", name))
+            .markdown_message(markdown_format!(
+                "📂 Category `{}` has no filters defined yet\\.",
+                name
+            ))
             .await?;
         if let Some(back) = back_command {
             let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(

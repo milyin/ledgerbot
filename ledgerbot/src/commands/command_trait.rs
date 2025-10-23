@@ -265,18 +265,18 @@ pub trait CommandTrait: Sized + Clone {
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     fn run1(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     fn run2(
         &self,
@@ -284,9 +284,9 @@ pub trait CommandTrait: Sized + Clone {
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     fn run3(
         &self,
@@ -295,9 +295,9 @@ pub trait CommandTrait: Sized + Clone {
         _a: &Self::A,
         _b: &Self::B,
         _c: &Self::C,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     fn run4(
         &self,
@@ -307,9 +307,9 @@ pub trait CommandTrait: Sized + Clone {
         _b: &Self::B,
         _c: &Self::C,
         _d: &Self::D,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn run5(
@@ -321,9 +321,9 @@ pub trait CommandTrait: Sized + Clone {
         _c: &Self::C,
         _d: &Self::D,
         _e: &Self::E,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn run6(
@@ -336,9 +336,9 @@ pub trait CommandTrait: Sized + Clone {
         _d: &Self::D,
         _e: &Self::E,
         _f: &Self::F,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn run7(
@@ -352,9 +352,9 @@ pub trait CommandTrait: Sized + Clone {
         _e: &Self::E,
         _f: &Self::F,
         _g: &Self::G,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn run8(
@@ -369,9 +369,9 @@ pub trait CommandTrait: Sized + Clone {
         _f: &Self::F,
         _g: &Self::G,
         _h: &Self::H,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
     #[allow(clippy::too_many_arguments)]
     fn run9(
@@ -387,57 +387,71 @@ pub trait CommandTrait: Sized + Clone {
         _g: &Self::G,
         _h: &Self::H,
         _i: &Self::I,
-    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        Ok(())
-    } }
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async { Ok(()) }
+    }
 
-    fn run(&self, target: &CommandReplyTarget, context: Self::Context) -> impl std::future::Future<Output = ResponseResult<()>> {async {
-        match (
-            self.param1(),
-            self.param2(),
-            self.param3(),
-            self.param4(),
-            self.param5(),
-            self.param6(),
-            self.param7(),
-            self.param8(),
-            self.param9(),
-        ) {
-            (None, None, None, None, None, None, None, None, None) => {
-                self.run0(target, context).await
+    fn run(
+        &self,
+        target: &CommandReplyTarget,
+        context: Self::Context,
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {
+        async {
+            match (
+                self.param1(),
+                self.param2(),
+                self.param3(),
+                self.param4(),
+                self.param5(),
+                self.param6(),
+                self.param7(),
+                self.param8(),
+                self.param9(),
+            ) {
+                (None, None, None, None, None, None, None, None, None) => {
+                    self.run0(target, context).await
+                }
+                (Some(a), None, None, None, None, None, None, None, None) => {
+                    self.run1(target, context, a).await
+                }
+                (Some(a), Some(b), None, None, None, None, None, None, None) => {
+                    self.run2(target, context, a, b).await
+                }
+                (Some(a), Some(b), Some(c), None, None, None, None, None, None) => {
+                    self.run3(target, context, a, b, c).await
+                }
+                (Some(a), Some(b), Some(c), Some(d), None, None, None, None, None) => {
+                    self.run4(target, context, a, b, c, d).await
+                }
+                (Some(a), Some(b), Some(c), Some(d), Some(e), None, None, None, None) => {
+                    self.run5(target, context, a, b, c, d, e).await
+                }
+                (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), None, None, None) => {
+                    self.run6(target, context, a, b, c, d, e, f).await
+                }
+                (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), None, None) => {
+                    self.run7(target, context, a, b, c, d, e, f, g).await
+                }
+                (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), None) => {
+                    self.run8(target, context, a, b, c, d, e, f, g, h).await
+                }
+                (
+                    Some(a),
+                    Some(b),
+                    Some(c),
+                    Some(d),
+                    Some(e),
+                    Some(f),
+                    Some(g),
+                    Some(h),
+                    Some(i),
+                ) => self.run9(target, context, a, b, c, d, e, f, g, h, i).await,
+                _ => Err(teloxide::RequestError::Api(teloxide::ApiError::Unknown(
+                    "Internal bot error: missing middle argument. Should not happen".into(),
+                ))),
             }
-            (Some(a), None, None, None, None, None, None, None, None) => {
-                self.run1(target, context, a).await
-            }
-            (Some(a), Some(b), None, None, None, None, None, None, None) => {
-                self.run2(target, context, a, b).await
-            }
-            (Some(a), Some(b), Some(c), None, None, None, None, None, None) => {
-                self.run3(target, context, a, b, c).await
-            }
-            (Some(a), Some(b), Some(c), Some(d), None, None, None, None, None) => {
-                self.run4(target, context, a, b, c, d).await
-            }
-            (Some(a), Some(b), Some(c), Some(d), Some(e), None, None, None, None) => {
-                self.run5(target, context, a, b, c, d, e).await
-            }
-            (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), None, None, None) => {
-                self.run6(target, context, a, b, c, d, e, f).await
-            }
-            (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), None, None) => {
-                self.run7(target, context, a, b, c, d, e, f, g).await
-            }
-            (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), None) => {
-                self.run8(target, context, a, b, c, d, e, f, g, h).await
-            }
-            (Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), Some(i)) => {
-                self.run9(target, context, a, b, c, d, e, f, g, h, i).await
-            }
-            _ => Err(teloxide::RequestError::Api(teloxide::ApiError::Unknown(
-                "Internal bot error: missing middle argument. Should not happen".into(),
-            ))),
         }
-    } }
+    }
 
     #[allow(clippy::needless_range_loop)]
     fn to_command_string(&self, complete: bool) -> String {

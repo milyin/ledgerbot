@@ -2,10 +2,10 @@ mod batch;
 mod commands;
 mod config;
 mod handlers;
+pub mod menus;
 mod parser;
 mod storage;
 mod storage_traits;
-pub mod menus;
 
 use std::{path::PathBuf, sync::Arc};
 

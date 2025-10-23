@@ -1,9 +1,17 @@
 use std::sync::Arc;
 
-use teloxide::{payloads::EditMessageReplyMarkupSetters, prelude::{Requester, ResponseResult}, types::InlineKeyboardMarkup};
+use teloxide::{
+    payloads::EditMessageReplyMarkupSetters,
+    prelude::{Requester, ResponseResult},
+    types::InlineKeyboardMarkup,
+};
 use yoroolbot::markdown::MarkdownString;
 
-use crate::{commands::command_trait::{CommandReplyTarget, CommandTrait}, menus::common::{create_buttons_menu, read_category_filters_list}, storage_traits::CategoryStorageTrait};
+use crate::{
+    commands::command_trait::{CommandReplyTarget, CommandTrait},
+    menus::common::{create_buttons_menu, read_category_filters_list},
+    storage_traits::CategoryStorageTrait,
+};
 
 pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
@@ -13,7 +21,8 @@ pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     next_command: impl Fn(usize) -> NEXT,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
-    let filters = read_category_filters_list(target, storage, category_name, back_command.clone()).await?;
+    let filters =
+        read_category_filters_list(target, storage, category_name, back_command.clone()).await?;
     if filters.is_empty() {
         return Ok(());
     }
@@ -31,7 +40,6 @@ pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
         .await?;
     Ok(())
 }
-
 
 pub fn create_category_filters_menu(
     filters: &[String],

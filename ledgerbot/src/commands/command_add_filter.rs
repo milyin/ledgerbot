@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
 
-use crate::{commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg}, storage_traits::CategoryStorageTrait};
+use crate::{
+    commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    storage_traits::CategoryStorageTrait,
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddFilter {
@@ -37,10 +40,7 @@ impl CommandTrait for CommandAddFilter {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandAddFilter {
-            category,
-            pattern,
-        }
+        CommandAddFilter { category, pattern }
     }
 
     async fn run0(
@@ -50,5 +50,4 @@ impl CommandTrait for CommandAddFilter {
     ) -> ResponseResult<()> {
         Ok(())
     }
-    
 }

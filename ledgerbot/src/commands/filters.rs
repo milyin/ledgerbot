@@ -10,9 +10,7 @@ use teloxide::{
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{
-        Command, command_add_category::CommandAddCategory, command_trait::CommandTrait,
-    },
+    commands::{Command, command_add_category::CommandAddCategory, command_trait::CommandTrait},
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
