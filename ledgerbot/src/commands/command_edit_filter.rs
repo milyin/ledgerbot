@@ -378,7 +378,10 @@ pub fn create_buttons_menu(
         })
         .collect();
     if let Some(back) = back_command {
-        buttons.push(vec![InlineKeyboardButton::callback("↩️ Back", back.to_command_string(false))]);
+        buttons.push(vec![InlineKeyboardButton::callback(
+            "↩️ Back",
+            back.to_command_string(false),
+        )]);
     }
     InlineKeyboardMarkup::new(buttons)
 }
