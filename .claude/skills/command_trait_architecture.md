@@ -62,13 +62,51 @@ A wrapper struct that encapsulates the context for command execution:
 
 **Important Note:** These methods are convenience wrappers that automatically use `self.bot` and `self.chat.id` from the target. They delegate to the `MarkdownStringMessage` trait which is implemented for `Bot`.
 
-### 3. EmptyArg
+### 3. MarkdownStringMessage Trait
+
+Located in: `yoroolbot/src/api/markdown/string.rs`
+
+This trait extends `teloxide::Bot` with methods that accept `MarkdownString` and automatically set `ParseMode::MarkdownV2`. The trait is implemented for `Bot` and provides the underlying functionality that `CommandReplyTarget` wraps.
+
+**Trait methods:**
+- `markdown_message(chat_id, message_id: Option<MessageId>, text)` - Smart send/edit
+- `send_markdown_message(chat_id, text)` - Always sends new message
+- `edit_markdown_message_text(chat_id, message_id, text)` - Always edits existing message
+
+**Key difference from CommandReplyTarget:**
+- **Trait methods** require explicit `chat_id` parameter
+- **CommandReplyTarget methods** use `self.chat.id` automatically from the target context
+- Both ultimately call the same trait implementation, but CommandReplyTarget provides a more convenient API within command handlers
+
+### 4. EmptyArg
 
 A marker type used for unused command parameters. Implements `ParseCommandArg` and always expects an empty string.
 
+## Understanding the Two Layers
+
+The messaging system has two layers:
+
+1. **MarkdownStringMessage trait** (low-level) - Methods on `Bot` that require explicit `chat_id`
+2. **CommandReplyTarget** (high-level) - Convenience wrapper that captures context
+
+**Comparison:**
+
+| Operation | Via MarkdownStringMessage Trait | Via CommandReplyTarget |
+|-----------|--------------------------------|------------------------|
+| Send new message | `bot.send_markdown_message(chat_id, text).await?` | `target.send_markdown_message(text).await?` |
+| Smart send/edit | `bot.markdown_message(chat_id, msg_id, text).await?` | `target.markdown_message(text).await?` |
+| Edit message | `bot.edit_markdown_message_text(chat_id, msg_id, text).await?` | `target.edit_markdown_message_text(msg_id, text).await?` |
+
+**In command implementations**, always use `CommandReplyTarget` methods (right column) because:
+- Less verbose (no need to pass `chat_id` every time)
+- Context is automatically captured
+- The `target` parameter is provided by `CommandTrait`
+
+**Outside of commands** (e.g., in standalone bot handlers), use the trait methods directly on `bot`.
+
 ## Method Usage Examples
 
-### When to use each method:
+### When to use each CommandReplyTarget method:
 
 **Use `send_markdown_message()` when:**
 ```rust
