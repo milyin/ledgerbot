@@ -32,16 +32,62 @@ The `CommandTrait` provides:
 A wrapper struct that provides:
 - `bot`: The Telegram Bot instance
 - `chat`: The chat where the command was invoked
-- `msg_id`: Optional message ID for replies
+- `msg_id`: Optional message ID (used for editing or replying to specific messages)
 
 Helper methods:
-- `markdown_message()`: Send a new markdown message
-- `send_markdown_message()`: Returns a request builder for sending messages
-- `edit_markdown_message_text()`: Edit an existing message
+
+- `markdown_message(&self, text: MarkdownString) -> ResponseResult<Message>`
+  - **Smart message handler**: If `msg_id` is `Some(id)`, edits the existing message with that ID. If `msg_id` is `None`, sends a new message.
+  - Returns the message after sending/editing
+  - Use this when you want automatic behavior based on context
+
+- `send_markdown_message(&self, text: MarkdownString) -> JsonRequest<SendMessage>`
+  - **Always sends a new message** regardless of `msg_id`
+  - Returns a request builder that can be further customized (e.g., `.reply_markup()`)
+  - Must call `.await?` to execute
+  - Use this when you need to customize the message or always want a new message
+
+- `edit_markdown_message_text(&self, message_id: MessageId, text: MarkdownString) -> EditMessageText`
+  - **Edits a specific message** by its ID
+  - Returns a request builder that can be further customized
+  - Must call `.await?` to execute
+  - Use this when you need to edit a specific message (not necessarily the one in `msg_id`)
 
 ### 3. EmptyArg
 
 A marker type used for unused command parameters. Implements `ParseCommandArg` and always expects an empty string.
+
+## Method Usage Examples
+
+### When to use each method:
+
+**Use `send_markdown_message()` when:**
+```rust
+// You need to send a new message and customize it
+target
+    .send_markdown_message(markdown_string!("Hello!"))
+    .reply_markup(keyboard)  // Can chain additional options
+    .await?;
+```
+
+**Use `markdown_message()` when:**
+```rust
+// You want automatic send-or-edit behavior
+// This is the most common case in command implementations
+target
+    .markdown_message(markdown_string!("Response"))
+    .await?;
+```
+
+**Use `edit_markdown_message_text()` when:**
+```rust
+// You need to edit a specific message (like from a callback)
+let msg = target.markdown_message(markdown_string!("Initial")).await?;
+// ... later ...
+target
+    .edit_markdown_message_text(msg.id, markdown_string!("Updated"))
+    .await?;
+```
 
 ## File Naming Convention
 
