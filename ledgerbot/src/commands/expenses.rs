@@ -58,24 +58,9 @@ pub fn parse_expense(s: String) -> Result<ExpenseParams, ParseError> {
     Ok((date, Some(description), amount))
 }
 
-/// List all expenses chronologically without category grouping
-pub async fn list_command(
-    bot: Bot,
-    msg: Message,
-    storage: Arc<dyn ExpenseStorageTrait>,
-) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-    let chat_expenses = storage.get_chat_expenses(chat_id).await;
-    let expenses_list = format_expenses_chronological(&chat_expenses);
-
-    bot.markdown_message(chat_id, None, markdown_format!("{}", expenses_list))
-        .await?;
-    Ok(())
-}
-
 /// Format expenses as a chronological list without category grouping
 /// Output format: "date description price"
-fn format_expenses_chronological(expenses: &[Expense]) -> String {
+pub fn format_expenses_chronological(expenses: &[Expense]) -> String {
     if expenses.is_empty() {
         return "📝 No expenses recorded yet. Send a message like `2024-10-09 Coffee 5.50` to add one.".to_string();
     }

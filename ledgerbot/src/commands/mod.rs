@@ -3,6 +3,7 @@ pub mod command_add_category;
 pub mod command_clear;
 pub mod command_edit_filter;
 pub mod command_help;
+pub mod command_list;
 pub mod command_remove_category;
 pub mod command_report;
 pub mod command_start;
@@ -31,11 +32,12 @@ use crate::{
         command_clear::CommandClear,
         command_edit_filter::CommandEditFilter,
         command_help::CommandHelp,
+        command_list::CommandList,
         command_remove_category::CommandRemoveCategory,
         command_report::CommandReport,
         command_start::CommandStart,
         command_trait::{CommandReplyTarget, CommandTrait},
-        expenses::{expense_command, list_command, parse_expense},
+        expenses::{expense_command, parse_expense},
         filters::{add_filter_command, remove_filter_command},
     },
     handlers::CallbackData,
@@ -97,8 +99,11 @@ pub enum Command {
         parse_with = CommandHelp::parse_arguments
     )]
     Help(CommandHelp),
-    #[command(description = "list expenses chronologically in input format")]
-    List,
+    #[command(
+        description = "list expenses chronologically in input format",
+        parse_with = CommandList::parse_arguments
+    )]
+    List(CommandList),
     #[command(
         description = "show expenses report",
         parse_with = CommandReport::parse_arguments
@@ -181,7 +186,7 @@ impl From<Command> for String {
         match val {
             Command::Start(start) => start.to_command_string(true),
             Command::Help(help) => help.to_command_string(true),
-            Command::List => Command::LIST.to_string(),
+            Command::List(list) => list.to_command_string(true),
             Command::Report(report) => report.to_command_string(true),
             Command::Clear(clear) => clear.to_command_string(true),
             Command::Categories => Command::CATEGORIES.to_string(),
@@ -465,10 +470,13 @@ pub async fn execute_command(
             )
             .await?;
         }
-        Command::List => {
-            list_command(
-                bot.clone(),
-                msg.clone(),
+        Command::List(list) => {
+            list.run(
+                &CommandReplyTarget {
+                    bot: bot.clone(),
+                    chat: chat.clone(),
+                    msg_id,
+                },
                 storage.clone().as_expense_storage(),
             )
             .await?;
