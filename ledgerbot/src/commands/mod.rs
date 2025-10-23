@@ -3,10 +3,10 @@ pub mod command_add_category;
 pub mod command_edit_filter;
 pub mod command_help;
 pub mod command_remove_category;
+pub mod command_start;
 pub mod command_trait;
 pub mod expenses;
 pub mod filters;
-pub mod help;
 pub mod report;
 
 use std::sync::Arc;
@@ -29,10 +29,10 @@ use crate::{
         command_edit_filter::CommandEditFilter,
         command_help::CommandHelp,
         command_remove_category::CommandRemoveCategory,
+        command_start::CommandStart,
         command_trait::{CommandReplyTarget, CommandTrait},
         expenses::{clear_command, expense_command, list_command, parse_expense},
         filters::{add_filter_command, remove_filter_command},
-        help::start_command,
         report::report_command,
     },
     handlers::CallbackData,
@@ -84,8 +84,11 @@ fn parse_category_and_position(s: String) -> Result<(Option<String>, Option<usiz
     description = "These commands are supported:"
 )]
 pub enum Command {
-    #[command(description = "start the bot")]
-    Start,
+    #[command(
+        description = "start the bot",
+        parse_with = CommandStart::parse_arguments
+    )]
+    Start(CommandStart),
     #[command(
         description = "display this help",
         parse_with = CommandHelp::parse_arguments
@@ -167,7 +170,7 @@ impl Command {
 impl From<Command> for String {
     fn from(val: Command) -> Self {
         match val {
-            Command::Start => Command::START.to_string(),
+            Command::Start(start) => start.to_command_string(true),
             Command::Help(help) => help.to_command_string(true),
             Command::List => Command::LIST.to_string(),
             Command::Report => Command::REPORT.to_string(),
@@ -414,8 +417,17 @@ pub async fn execute_command(
     silent: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match cmd {
-        Command::Start => {
-            start_command(bot.clone(), msg.clone()).await?;
+        Command::Start(start) => {
+            start
+                .run(
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id: msg_id.clone(),
+                    },
+                    (),
+                )
+                .await?;
         }
         Command::Help(help) => {
             help.run(
