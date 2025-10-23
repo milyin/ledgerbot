@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use teloxide::{prelude::*, types::Message, utils::command::ParseError};
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, markdown_string};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::storage_traits::{Expense, ExpenseStorageTrait};
 
@@ -171,24 +171,6 @@ pub async fn expense_command(
         }
     }
 
-    Ok(())
-}
-
-/// Clear all expenses
-pub async fn clear_command(
-    bot: Bot,
-    msg: Message,
-    storage: Arc<dyn ExpenseStorageTrait>,
-) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-    storage.clear_chat_expenses(chat_id).await;
-
-    bot.markdown_message(
-        chat_id,
-        None,
-        markdown_string!("🗑️ All expenses cleared\\!"),
-    )
-    .await?;
     Ok(())
 }
 

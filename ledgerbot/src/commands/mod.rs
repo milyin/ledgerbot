@@ -1,5 +1,6 @@
 pub mod categories;
 pub mod command_add_category;
+pub mod command_clear;
 pub mod command_edit_filter;
 pub mod command_help;
 pub mod command_remove_category;
@@ -27,13 +28,14 @@ use crate::{
     commands::{
         categories::categories_command,
         command_add_category::CommandAddCategory,
+        command_clear::CommandClear,
         command_edit_filter::CommandEditFilter,
         command_help::CommandHelp,
         command_remove_category::CommandRemoveCategory,
         command_report::CommandReport,
         command_start::CommandStart,
         command_trait::{CommandReplyTarget, CommandTrait},
-        expenses::{clear_command, expense_command, list_command, parse_expense},
+        expenses::{expense_command, list_command, parse_expense},
         filters::{add_filter_command, remove_filter_command},
     },
     handlers::CallbackData,
@@ -102,8 +104,11 @@ pub enum Command {
         parse_with = CommandReport::parse_arguments
     )]
     Report(CommandReport),
-    #[command(description = "clear all expenses")]
-    Clear,
+    #[command(
+        description = "clear all expenses",
+        parse_with = CommandClear::parse_arguments
+    )]
+    Clear(CommandClear),
     #[command(description = "list all categories with filters in command format")]
     Categories,
     #[command(description = "clear all categories", rename = "clear_categories")]
@@ -178,7 +183,7 @@ impl From<Command> for String {
             Command::Help(help) => help.to_command_string(true),
             Command::List => Command::LIST.to_string(),
             Command::Report(report) => report.to_command_string(true),
-            Command::Clear => Command::CLEAR.to_string(),
+            Command::Clear(clear) => clear.to_command_string(true),
             Command::Categories => Command::CATEGORIES.to_string(),
             Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
             Command::AddCategory(add_category) => add_category.to_command_string(true),
@@ -480,13 +485,17 @@ pub async fn execute_command(
                 )
                 .await?;
         }
-        Command::Clear => {
-            clear_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_expense_storage(),
-            )
-            .await?;
+        Command::Clear(clear) => {
+            clear
+                .run(
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id,
+                    },
+                    storage.clone().as_expense_storage(),
+                )
+                .await?;
         }
         Command::ClearCategories => {
             clear_categories_command(
