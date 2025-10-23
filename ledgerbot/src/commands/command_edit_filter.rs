@@ -1,13 +1,11 @@
-use core::task;
 use std::sync::Arc;
 
 use teloxide::{
-    Bot,
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
-    types::{Chat, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, markdown_string};
+use yoroolbot::{markdown_format, markdown_string};
 
 use crate::{
     commands::{
@@ -117,7 +115,7 @@ impl CommandTrait for CommandEditFilter {
             target,
             &storage,
             name,
-            Some(CommandEditFilter::default().to_command_string(false)),
+            Some(CommandEditFilter::default()),
         )
         .await?
         else {
@@ -155,7 +153,7 @@ impl CommandTrait for CommandEditFilter {
         idx: &usize,
     ) -> ResponseResult<()> {
         let Some(pattern) = read_category_filter(
-            &target,
+            target,
             &storage,
             name,
             *idx,
@@ -165,7 +163,6 @@ impl CommandTrait for CommandEditFilter {
                     position: None,
                     pattern: None,
                 }
-                .to_command_string(false),
             ),
         )
         .await?
@@ -229,7 +226,6 @@ impl CommandTrait for CommandEditFilter {
                     position: None,
                     pattern: None,
                 }
-                .to_command_string(false),
             ),
         )
         .await?
@@ -237,11 +233,11 @@ impl CommandTrait for CommandEditFilter {
             return Ok(());
         };
 
-        if let Err(e) = regex::Regex::new(&pattern) {
+        if let Err(e) = regex::Regex::new(pattern) {
             let msg = target
                 .markdown_message(markdown_format!(
                     "❌ Invalid regex pattern `{}`:\n{}",
-                    &(*pattern),
+                    pattern,
                     &e.to_string()
                 ))
                 .await?;
@@ -265,7 +261,7 @@ impl CommandTrait for CommandEditFilter {
 
         // Remove the old pattern and add the new one
         storage
-            .remove_category_filter(target.chat.id, &name, &old_pattern)
+            .remove_category_filter(target.chat.id, name, &old_pattern)
             .await;
 
         storage
@@ -304,17 +300,17 @@ pub async fn read_category(
     target: &CommandReplyTarget,
     storage: &Arc<dyn CategoryStorageTrait>,
     name: &str,
-    back: Option<String>,
+    back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Option<Vec<String>>> {
     let categories = storage.get_chat_categories(target.chat.id).await;
     let Some(filters) = categories.get(name) else {
         let msg = target
             .markdown_message(markdown_format!("❌ Category `{}` does not exist", name))
             .await?;
-        if let Some(back) = back {
+        if let Some(back) = back_command {
             let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
                 "↩️ Back",
-                back,
+                back.to_command_string(false),
             )]]);
             target
                 .bot
@@ -332,19 +328,19 @@ pub async fn read_category_filter(
     storage: &Arc<dyn CategoryStorageTrait>,
     name: &str,
     idx: usize,
-    back: Option<String>,
+    back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Option<String>> {
-    let Some(filters) = read_category(target, storage, name, back.clone()).await? else {
+    let Some(filters) = read_category(target, storage, name, back_command.clone()).await? else {
         return Ok(None);
     };
     if idx >= filters.len() {
         let msg = target
             .markdown_message(markdown_format!("❌ Invalid filter position `{}`", idx))
             .await?;
-        if let Some(back) = back {
+        if let Some(back) = back_command {
             let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
                 "↩️ Back",
-                back,
+                back.to_command_string(false),
             )]]);
             target
                 .bot

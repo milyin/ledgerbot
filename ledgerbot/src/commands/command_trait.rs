@@ -131,7 +131,7 @@ fn screen_spaces(s: &str) -> String {
     s.replace('\\', "\\\\").replace(' ', "\\ ")
 }
 
-pub trait CommandTrait: Sized {
+pub trait CommandTrait: Sized + Clone + Send + Sync + 'static {
     type A: ParseCommandArg + Default + Display + Send + Sync + 'static;
     type B: ParseCommandArg + Default + Display + Send + Sync + 'static;
     type C: ParseCommandArg + Default + Display + Send + Sync + 'static;
@@ -477,6 +477,7 @@ pub trait CommandTrait: Sized {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct NoopCommand;
 
 impl CommandTrait for NoopCommand {
