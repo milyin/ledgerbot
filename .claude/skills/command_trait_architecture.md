@@ -29,29 +29,38 @@ The `CommandTrait` provides:
 
 ### 2. CommandReplyTarget
 
-A wrapper struct that provides:
+A wrapper struct that encapsulates the context for command execution:
+
+**Fields:**
 - `bot`: The Telegram Bot instance
 - `chat`: The chat where the command was invoked
 - `msg_id`: Optional message ID (used for editing or replying to specific messages)
 
-Helper methods:
+**Helper methods** (these are convenience wrappers around the `MarkdownStringMessage` trait):
 
 - `markdown_message(&self, text: MarkdownString) -> ResponseResult<Message>`
+  - **Wrapper around** `bot.markdown_message(chat.id, msg_id, text)`
   - **Smart message handler**: If `msg_id` is `Some(id)`, edits the existing message with that ID. If `msg_id` is `None`, sends a new message.
   - Returns the message after sending/editing
   - Use this when you want automatic behavior based on context
+  - **Most common choice** in command implementations
 
 - `send_markdown_message(&self, text: MarkdownString) -> JsonRequest<SendMessage>`
-  - **Always sends a new message** regardless of `msg_id`
+  - **Wrapper around** `bot.send_markdown_message(chat.id, text)`
+  - **Always sends a new message**, regardless of `msg_id`
   - Returns a request builder that can be further customized (e.g., `.reply_markup()`)
   - Must call `.await?` to execute
   - Use this when you need to customize the message or always want a new message
 
 - `edit_markdown_message_text(&self, message_id: MessageId, text: MarkdownString) -> EditMessageText`
-  - **Edits a specific message** by its ID
+  - **Wrapper around** `bot.edit_markdown_message_text(chat.id, message_id, text)`
+  - **Edits a specific message** by providing a message ID
+  - The message ID doesn't have to be the one in `msg_id`
   - Returns a request builder that can be further customized
   - Must call `.await?` to execute
-  - Use this when you need to edit a specific message (not necessarily the one in `msg_id`)
+  - Use this when you need to edit a specific message
+
+**Important Note:** These methods are convenience wrappers that automatically use `self.bot` and `self.chat.id` from the target. They delegate to the `MarkdownStringMessage` trait which is implemented for `Bot`.
 
 ### 3. EmptyArg
 
