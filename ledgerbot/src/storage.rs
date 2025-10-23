@@ -337,15 +337,17 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
 
     async fn remove_category(&self, chat_id: ChatId, category_name: &str) -> bool {
         self.ensure_loaded(chat_id).await;
-        if self.memory_storage
+        if self
+            .memory_storage
             .remove_category(chat_id, category_name)
-            .await {
+            .await
+        {
             // Save updated categories to disk
             let categories = self.memory_storage.get_chat_categories(chat_id).await;
             let _ = self.save_chat_categories(chat_id, &categories).await;
             true
         } else {
-            false   
+            false
         }
     }
 

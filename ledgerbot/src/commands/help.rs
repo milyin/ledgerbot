@@ -1,28 +1,13 @@
 use teloxide::{
     prelude::*,
     types::{KeyboardButton, Message, ReplyMarkup},
-    utils::command::BotCommands,
 };
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
-use super::Command;
-
-/// Display help message with inline keyboard buttons
-pub async fn help_command(bot: Bot, msg: Message) -> ResponseResult<()> {
-    // Send message with both inline keyboard (for buttons in message) and reply keyboard (menu button)
-    bot.markdown_message(
-        msg.chat.id,
-        None,
-        markdown_format!(
-            "To add expenses forward messages or send text with lines in format:\n\
-        `\\[\\<yyyy\\-mm\\-dd\\>\\] \\<description\\> \\<amount\\>`\n\n\
-        {}",
-            Command::descriptions().to_string()
-        ),
-    )
-    .await?;
-    Ok(())
-}
+use crate::commands::{
+    command_help::CommandHelp,
+    command_trait::{CommandReplyTarget, CommandTrait},
+};
 
 pub async fn start_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     // Send a follow-up message to set the persistent reply keyboard menu
@@ -36,7 +21,17 @@ pub async fn start_command(bot: Bot, msg: Message) -> ResponseResult<()> {
     .reply_markup(create_menu_keyboard())
     .await?;
 
-    help_command(bot, msg).await?;
+    // Use CommandHelp to display help
+    CommandHelp
+        .run(
+            &CommandReplyTarget {
+                bot,
+                chat: msg.chat,
+                msg_id: None,
+            },
+            (),
+        )
+        .await?;
 
     Ok(())
 }

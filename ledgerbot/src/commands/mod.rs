@@ -1,7 +1,7 @@
 pub mod categories;
 pub mod command_add_category;
 pub mod command_edit_filter;
-// pub mod command_add_filter;
+pub mod command_help;
 pub mod command_remove_category;
 pub mod command_trait;
 pub mod expenses;
@@ -27,11 +27,12 @@ use crate::{
         categories::categories_command,
         command_add_category::CommandAddCategory,
         command_edit_filter::CommandEditFilter,
+        command_help::CommandHelp,
         command_remove_category::CommandRemoveCategory,
         command_trait::{CommandReplyTarget, CommandTrait},
         expenses::{clear_command, expense_command, list_command, parse_expense},
         filters::{add_filter_command, remove_filter_command},
-        help::{help_command, start_command},
+        help::start_command,
         report::report_command,
     },
     handlers::CallbackData,
@@ -85,8 +86,11 @@ fn parse_category_and_position(s: String) -> Result<(Option<String>, Option<usiz
 pub enum Command {
     #[command(description = "start the bot")]
     Start,
-    #[command(description = "display this help")]
-    Help,
+    #[command(
+        description = "display this help",
+        parse_with = CommandHelp::parse_arguments
+    )]
+    Help(CommandHelp),
     #[command(description = "list expenses chronologically in input format")]
     List,
     #[command(description = "show expenses report")]
@@ -164,7 +168,7 @@ impl From<Command> for String {
     fn from(val: Command) -> Self {
         match val {
             Command::Start => Command::START.to_string(),
-            Command::Help => Command::HELP.to_string(),
+            Command::Help(help) => help.to_command_string(true),
             Command::List => Command::LIST.to_string(),
             Command::Report => Command::REPORT.to_string(),
             Command::Clear => Command::CLEAR.to_string(),
@@ -413,8 +417,16 @@ pub async fn execute_command(
         Command::Start => {
             start_command(bot.clone(), msg.clone()).await?;
         }
-        Command::Help => {
-            help_command(bot.clone(), msg.clone()).await?;
+        Command::Help(help) => {
+            help.run(
+                &CommandReplyTarget {
+                    bot: bot.clone(),
+                    chat: chat.clone(),
+                    msg_id: msg_id.clone(),
+                },
+                (),
+            )
+            .await?;
         }
         Command::Expense {
             date,

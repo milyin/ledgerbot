@@ -1,9 +1,16 @@
 use std::sync::Arc;
 
-use teloxide::{payloads::EditMessageReplyMarkupSetters, prelude::{Requester, ResponseResult}, types::{InlineKeyboardButton, InlineKeyboardMarkup}};
+use teloxide::{
+    payloads::EditMessageReplyMarkupSetters,
+    prelude::{Requester, ResponseResult},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup},
+};
 use yoroolbot::{markdown::MarkdownString, markdown_format};
 
-use crate::{commands::command_trait::{CommandReplyTarget, CommandTrait}, storage_traits::CategoryStorageTrait};
+use crate::{
+    commands::command_trait::{CommandReplyTarget, CommandTrait},
+    storage_traits::CategoryStorageTrait,
+};
 
 pub async fn update_category<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,

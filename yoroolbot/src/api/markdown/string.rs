@@ -3,7 +3,6 @@
 use std::{fmt, ops::Add};
 
 use teloxide::{
-    Bot,
     payloads::{EditMessageTextSetters, SendMessage, SendMessageSetters},
     prelude::{Requester, ResponseResult},
     types::{
@@ -11,6 +10,7 @@ use teloxide::{
         ParseMode::{self, MarkdownV2},
         Recipient,
     },
+    Bot,
 };
 
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
