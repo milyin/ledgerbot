@@ -1,7 +1,7 @@
 pub mod categories;
 pub mod command_add_category;
 pub mod command_edit_filter;
-pub mod command_add_filter;
+// pub mod command_add_filter;
 pub mod command_trait;
 pub mod expenses;
 pub mod filters;
@@ -36,10 +36,6 @@ use crate::{
     parser::extract_words,
     storage_traits::{CategoryStorageTrait, StorageTrait},
 };
-
-/// Type alias for category, position, and pattern parser result
-type CategoryPositionPatternResult =
-    Result<(Option<String>, Option<usize>, Option<String>), ParseError>;
 
 /// Custom parser for optional single string parameter
 fn parse_optional_string(s: String) -> Result<(Option<String>,), ParseError> {
@@ -86,37 +82,6 @@ fn parse_category_and_position(s: String) -> Result<(Option<String>, Option<usiz
             )),
         },
         _ => Ok((None, None)),
-    }
-}
-
-/// Custom parser for category, position, and pattern (for edit_filter)
-fn parse_category_position_and_pattern(s: String) -> CategoryPositionPatternResult {
-    // Take only the first line to prevent multi-line capture
-    let first_line = s.lines().next().unwrap_or("").trim();
-    if first_line.is_empty() {
-        return Ok((None, None, None));
-    }
-
-    let parts: Vec<&str> = first_line.splitn(3, ' ').collect();
-    match parts.as_slice() {
-        [category] => Ok((Some(category.to_string()), None, None)),
-        [category, position_str] => match position_str.parse::<usize>() {
-            Ok(position) => Ok((Some(category.to_string()), Some(position), None)),
-            Err(_) => Err(ParseError::IncorrectFormat(
-                format!("Position must be a number, got '{}'", position_str).into(),
-            )),
-        },
-        [category, position_str, pattern] => match position_str.parse::<usize>() {
-            Ok(position) => Ok((
-                Some(category.to_string()),
-                Some(position),
-                Some(pattern.to_string()),
-            )),
-            Err(_) => Err(ParseError::IncorrectFormat(
-                format!("Position must be a number, got '{}'", position_str).into(),
-            )),
-        },
-        _ => Ok((None, None, None)),
     }
 }
 

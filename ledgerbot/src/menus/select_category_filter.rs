@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use teloxide::{payloads::EditMessageReplyMarkupSetters, prelude::{Requester, ResponseResult}, types::{InlineKeyboardButton, InlineKeyboardMarkup}};
-use yoroolbot::{markdown::MarkdownString, markdown_format};
+use teloxide::{payloads::EditMessageReplyMarkupSetters, prelude::{Requester, ResponseResult}, types::InlineKeyboardMarkup};
+use yoroolbot::markdown::MarkdownString;
 
 use crate::{commands::command_trait::{CommandReplyTarget, CommandTrait}, menus::common::{create_buttons_menu, read_category_filters_list}, storage_traits::CategoryStorageTrait};
 

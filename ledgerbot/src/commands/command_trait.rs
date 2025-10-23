@@ -261,45 +261,45 @@ pub trait CommandTrait: Sized + Clone {
         None
     }
 
-    async fn run0(
+    fn run0(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
-    async fn run1(
+    fn run1(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
-    async fn run2(
+    fn run2(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
-    async fn run3(
+    fn run3(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
         _a: &Self::A,
         _b: &Self::B,
         _c: &Self::C,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
-    async fn run4(
+    fn run4(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
@@ -307,12 +307,12 @@ pub trait CommandTrait: Sized + Clone {
         _b: &Self::B,
         _c: &Self::C,
         _d: &Self::D,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
     #[allow(clippy::too_many_arguments)]
-    async fn run5(
+    fn run5(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
@@ -321,12 +321,12 @@ pub trait CommandTrait: Sized + Clone {
         _c: &Self::C,
         _d: &Self::D,
         _e: &Self::E,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
     #[allow(clippy::too_many_arguments)]
-    async fn run6(
+    fn run6(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
@@ -336,12 +336,12 @@ pub trait CommandTrait: Sized + Clone {
         _d: &Self::D,
         _e: &Self::E,
         _f: &Self::F,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
     #[allow(clippy::too_many_arguments)]
-    async fn run7(
+    fn run7(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
@@ -352,12 +352,12 @@ pub trait CommandTrait: Sized + Clone {
         _e: &Self::E,
         _f: &Self::F,
         _g: &Self::G,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
     #[allow(clippy::too_many_arguments)]
-    async fn run8(
+    fn run8(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
@@ -369,12 +369,12 @@ pub trait CommandTrait: Sized + Clone {
         _f: &Self::F,
         _g: &Self::G,
         _h: &Self::H,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
     #[allow(clippy::too_many_arguments)]
-    async fn run9(
+    fn run9(
         &self,
         _target: &CommandReplyTarget,
         _context: Self::Context,
@@ -387,11 +387,11 @@ pub trait CommandTrait: Sized + Clone {
         _g: &Self::G,
         _h: &Self::H,
         _i: &Self::I,
-    ) -> ResponseResult<()> {
+    ) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         Ok(())
-    }
+    } }
 
-    async fn run(&self, target: &CommandReplyTarget, context: Self::Context) -> ResponseResult<()> {
+    fn run(&self, target: &CommandReplyTarget, context: Self::Context) -> impl std::future::Future<Output = ResponseResult<()>> {async {
         match (
             self.param1(),
             self.param2(),
@@ -437,7 +437,7 @@ pub trait CommandTrait: Sized + Clone {
                 "Internal bot error: missing middle argument. Should not happen".into(),
             ))),
         }
-    }
+    } }
 
     #[allow(clippy::needless_range_loop)]
     fn to_command_string(&self, complete: bool) -> String {

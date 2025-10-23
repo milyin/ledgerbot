@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use teloxide::{
-    Bot,
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
-    types::{Chat, ChatId, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, markdown_string};
+use yoroolbot::{markdown_format, markdown_string};
 
 use crate::{
     commands::{

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use teloxide::{prelude::ResponseResult, utils::markdown};
-use yoroolbot::{markdown_format, markdown_string};
+use teloxide::prelude::ResponseResult;
 
 use crate::{commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg}, storage_traits::CategoryStorageTrait};
 
