@@ -5,7 +5,7 @@ use teloxide::{
     payloads::SendMessage,
     prelude::{Message, Requester, ResponseResult},
     requests::JsonRequest,
-    types::{Chat, MessageId, Recipient},
+    types::{Chat, MessageId},
     utils::command::ParseError,
 };
 use yoroolbot::markdown::{MarkdownString, MarkdownStringMessage};
@@ -474,5 +474,35 @@ pub trait CommandTrait: Sized {
             command.push(' ');
         }
         command
+    }
+}
+
+pub struct NoopCommand;
+
+impl CommandTrait for NoopCommand {
+    type A = EmptyArg;
+    type B = EmptyArg;
+    type C = EmptyArg;
+    type D = EmptyArg;
+    type E = EmptyArg;
+    type F = EmptyArg;
+    type G = EmptyArg;
+    type H = EmptyArg;
+    type I = EmptyArg;
+    type Context = ();
+    const NAME: &'static str = "_noop";
+    const PLACEHOLDERS: &[&'static str] = &[];
+    fn from_arguments(
+        _a: Option<Self::A>,
+        _b: Option<Self::B>,
+        _c: Option<Self::C>,
+        _d: Option<Self::D>,
+        _e: Option<Self::E>,
+        _f: Option<Self::F>,
+        _g: Option<Self::G>,
+        _h: Option<Self::H>,
+        _i: Option<Self::I>,
+    ) -> Self {
+        Self
     }
 }

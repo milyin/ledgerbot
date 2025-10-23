@@ -12,7 +12,7 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, markdown_strin
 use crate::{
     commands::{
         command_add_category::CommandAddCategory,
-        command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+        command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
     },
     storage_traits::CategoryStorageTrait,
 };
@@ -96,7 +96,7 @@ impl CommandTrait for CommandEditFilter {
                 }
                 .to_command_string(false)
             },
-            None,
+            None::<NoopCommand>,
             false,
         );
         target
@@ -136,7 +136,7 @@ impl CommandTrait for CommandEditFilter {
                 }
                 .to_command_string(false)
             },
-            Some(CommandEditFilter::default().to_command_string(false)),
+            Some(CommandEditFilter::default()),
             true,
         );
         target
@@ -360,7 +360,7 @@ pub async fn read_category_filter(
 pub fn create_buttons_menu(
     titles: &[String],
     values: &[String],
-    back_operation: Option<String>,
+    back_command: Option<impl CommandTrait>,
     inline: bool,
 ) -> InlineKeyboardMarkup {
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = titles
@@ -377,8 +377,8 @@ pub fn create_buttons_menu(
             }
         })
         .collect();
-    if let Some(back) = back_operation {
-        buttons.push(vec![InlineKeyboardButton::callback("↩️ Back", back)]);
+    if let Some(back) = back_command {
+        buttons.push(vec![InlineKeyboardButton::callback("↩️ Back", back.to_command_string(false))]);
     }
     InlineKeyboardMarkup::new(buttons)
 }
@@ -386,7 +386,7 @@ pub fn create_buttons_menu(
 pub fn create_category_filters_menu(
     filters: &[String],
     operation: impl Fn(usize) -> String,
-    back: Option<String>,
+    back_command: Option<impl CommandTrait>,
     inline: bool,
 ) -> InlineKeyboardMarkup {
     let texts = filters
@@ -400,13 +400,13 @@ pub fn create_category_filters_menu(
         .map(|(idx, _)| operation(idx))
         .collect::<Vec<_>>();
     // use create_menu
-    create_buttons_menu(&texts, &values, back, inline)
+    create_buttons_menu(&texts, &values, back_command, inline)
 }
 
 pub fn create_categories_menu(
     categories: &[String],
     operation: impl Fn(&str) -> String,
-    back: Option<String>,
+    back_command: Option<impl CommandTrait>,
     inline: bool,
 ) -> InlineKeyboardMarkup {
     let texts = categories
@@ -417,5 +417,5 @@ pub fn create_categories_menu(
         .iter()
         .map(|name| operation(name))
         .collect::<Vec<_>>();
-    create_buttons_menu(&texts, &values, back, inline)
+    create_buttons_menu(&texts, &values, back_command, inline)
 }
