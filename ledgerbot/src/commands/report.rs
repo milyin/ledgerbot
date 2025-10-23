@@ -1,15 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
-use teloxide::{Bot, prelude::ResponseResult, types::Message, utils::markdown::escape};
-use yoroolbot::{
-    markdown::{MarkdownString, MarkdownStringMessage},
-    markdown_format, markdown_string,
-};
+use teloxide::utils::markdown::escape;
+use yoroolbot::{markdown::MarkdownString, markdown_format, markdown_string};
 
-use crate::{
-    parser::format_timestamp,
-    storage_traits::{CategoryStorageTrait, Expense, ExpenseStorageTrait},
-};
+use crate::{parser::format_timestamp, storage_traits::Expense};
 
 /// Represents a conflict where an expense matches multiple categories
 #[derive(Debug, Clone)]
@@ -20,7 +14,7 @@ struct CategoryConflict {
 
 /// Check if any expense matches multiple categories
 /// Returns Err with formatted error message if conflicts are found
-fn check_category_conflicts(
+pub fn check_category_conflicts(
     expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
 ) -> Result<(), String> {
@@ -96,32 +90,8 @@ fn check_category_conflicts(
     Ok(())
 }
 
-/// Report all expenses grouped by categories
-pub async fn report_command(
-    bot: Bot,
-    msg: Message,
-    expense_storage: Arc<dyn ExpenseStorageTrait>,
-    category_storage: Arc<dyn CategoryStorageTrait>,
-) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-    let chat_expenses = expense_storage.get_chat_expenses(chat_id).await;
-    let chat_categories = category_storage.get_chat_categories(chat_id).await;
-
-    // Check for category conflicts before generating report
-    if let Err(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
-        bot.markdown_message(chat_id, None, markdown_format!("{}", conflict_message))
-            .await?;
-        return Ok(());
-    }
-
-    let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
-
-    bot.markdown_message(chat_id, None, expenses_list).await?;
-    Ok(())
-}
-
 /// Format expenses as a readable list with total, grouped by categories
-fn format_expenses_list(
+pub fn format_expenses_list(
     expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
 ) -> MarkdownString {

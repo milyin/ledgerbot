@@ -1,4 +1,8 @@
-use teloxide::{payloads::SendMessageSetters, prelude::ResponseResult, types::{KeyboardButton, ReplyMarkup}};
+use teloxide::{
+    payloads::SendMessageSetters,
+    prelude::ResponseResult,
+    types::{KeyboardButton, ReplyMarkup},
+};
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::commands::{

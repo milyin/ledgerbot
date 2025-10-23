@@ -3,6 +3,7 @@ pub mod command_add_category;
 pub mod command_edit_filter;
 pub mod command_help;
 pub mod command_remove_category;
+pub mod command_report;
 pub mod command_start;
 pub mod command_trait;
 pub mod expenses;
@@ -29,11 +30,11 @@ use crate::{
         command_edit_filter::CommandEditFilter,
         command_help::CommandHelp,
         command_remove_category::CommandRemoveCategory,
+        command_report::CommandReport,
         command_start::CommandStart,
         command_trait::{CommandReplyTarget, CommandTrait},
         expenses::{clear_command, expense_command, list_command, parse_expense},
         filters::{add_filter_command, remove_filter_command},
-        report::report_command,
     },
     handlers::CallbackData,
     parser::extract_words,
@@ -96,8 +97,11 @@ pub enum Command {
     Help(CommandHelp),
     #[command(description = "list expenses chronologically in input format")]
     List,
-    #[command(description = "show expenses report")]
-    Report,
+    #[command(
+        description = "show expenses report",
+        parse_with = CommandReport::parse_arguments
+    )]
+    Report(CommandReport),
     #[command(description = "clear all expenses")]
     Clear,
     #[command(description = "list all categories with filters in command format")]
@@ -173,7 +177,7 @@ impl From<Command> for String {
             Command::Start(start) => start.to_command_string(true),
             Command::Help(help) => help.to_command_string(true),
             Command::List => Command::LIST.to_string(),
-            Command::Report => Command::REPORT.to_string(),
+            Command::Report(report) => report.to_command_string(true),
             Command::Clear => Command::CLEAR.to_string(),
             Command::Categories => Command::CATEGORIES.to_string(),
             Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
@@ -423,7 +427,7 @@ pub async fn execute_command(
                     &CommandReplyTarget {
                         bot: bot.clone(),
                         chat: chat.clone(),
-                        msg_id: msg_id.clone(),
+                        msg_id,
                     },
                     (),
                 )
@@ -434,7 +438,7 @@ pub async fn execute_command(
                 &CommandReplyTarget {
                     bot: bot.clone(),
                     chat: chat.clone(),
-                    msg_id: msg_id.clone(),
+                    msg_id,
                 },
                 (),
             )
@@ -464,14 +468,17 @@ pub async fn execute_command(
             )
             .await?;
         }
-        Command::Report => {
-            report_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_expense_storage(),
-                storage.clone().as_category_storage(),
-            )
-            .await?;
+        Command::Report(report) => {
+            report
+                .run(
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id,
+                    },
+                    storage.clone(),
+                )
+                .await?;
         }
         Command::Clear => {
             clear_command(
@@ -495,7 +502,7 @@ pub async fn execute_command(
                     &CommandReplyTarget {
                         bot: bot.clone(),
                         chat: chat.clone(),
-                        msg_id: msg_id.clone(),
+                        msg_id,
                     },
                     storage.clone().as_category_storage(),
                 )
@@ -525,7 +532,7 @@ pub async fn execute_command(
                     &CommandReplyTarget {
                         bot: bot.clone(),
                         chat: chat.clone(),
-                        msg_id: msg_id.clone(),
+                        msg_id,
                     },
                     storage.clone().as_category_storage(),
                 )
