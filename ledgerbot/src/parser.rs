@@ -541,8 +541,8 @@ mod tests {
         assert!(matches!(&results[2], Ok(Command::List(_))));
         assert!(matches!(&results[3], Ok(Command::Report(_))));
         assert!(matches!(&results[4], Ok(Command::Clear(_))));
-        assert!(matches!(&results[5], Ok(Command::Categories)));
-        assert!(matches!(&results[6], Ok(Command::ClearCategories)));
+        assert!(matches!(&results[5], Ok(Command::Categories(_))));
+        assert!(matches!(&results[6], Ok(Command::ClearCategories(_))));
 
         // Commands with parameters (4 commands)
         assert!(

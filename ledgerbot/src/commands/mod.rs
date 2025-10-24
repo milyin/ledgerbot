@@ -2,6 +2,7 @@ pub mod categories;
 pub mod command_add_category;
 pub mod command_categories;
 pub mod command_clear;
+pub mod command_clear_categories;
 pub mod command_edit_filter;
 pub mod command_help;
 pub mod command_list;
@@ -24,13 +25,13 @@ use teloxide::{
         markdown::escape,
     },
 };
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_string};
 
 use crate::{
     commands::{
         command_add_category::CommandAddCategory,
         command_categories::CommandCategories,
         command_clear::CommandClear,
+        command_clear_categories::CommandClearCategories,
         command_edit_filter::CommandEditFilter,
         command_help::CommandHelp,
         command_list::CommandList,
@@ -43,7 +44,7 @@ use crate::{
     },
     handlers::CallbackData,
     parser::extract_words,
-    storage_traits::{CategoryStorageTrait, StorageTrait},
+    storage_traits::StorageTrait,
 };
 
 /// Custom parser for two optional string parameters
@@ -120,8 +121,12 @@ pub enum Command {
         parse_with = CommandCategories::parse_arguments
     )]
     Categories(CommandCategories),
-    #[command(description = "clear all categories", rename = "clear_categories")]
-    ClearCategories,
+    #[command(
+        description = "clear all categories",
+        rename = "clear_categories",
+        parse_with = CommandClearCategories::parse_arguments
+    )]
+    ClearCategories(CommandClearCategories),
     #[command(
         description = "add expense category",
         rename = "add_category",
@@ -194,7 +199,7 @@ impl From<Command> for String {
             Command::Report(report) => report.to_command_string(true),
             Command::Clear(clear) => clear.to_command_string(true),
             Command::Categories(categories) => categories.to_command_string(true),
-            Command::ClearCategories => Command::CLEAR_CATEGORIES.to_string(),
+            Command::ClearCategories(clear_categories) => clear_categories.to_command_string(true),
             Command::AddCategory(add_category) => add_category.to_command_string(true),
             Command::AddFilter { category, pattern } => {
                 let category_str = category.unwrap_or_else(|| "<category>".to_string());
@@ -243,24 +248,6 @@ impl std::fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", String::from(self.clone()))
     }
-}
-
-/// Clear all categories
-pub async fn clear_categories_command(
-    bot: Bot,
-    msg: Message,
-    storage: Arc<dyn CategoryStorageTrait>,
-) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-    storage.clear_chat_categories(chat_id).await;
-
-    bot.markdown_message(
-        chat_id,
-        None,
-        markdown_string!("🗑️ All categories cleared\\!"),
-    )
-    .await?;
-    Ok(())
 }
 
 /// Show word suggestions for adding filters to a category
@@ -509,13 +496,17 @@ pub async fn execute_command(
                 )
                 .await?;
         }
-        Command::ClearCategories => {
-            clear_categories_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_category_storage(),
-            )
-            .await?;
+        Command::ClearCategories(clear_categories) => {
+            clear_categories
+                .run(
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id,
+                    },
+                    storage.clone().as_category_storage(),
+                )
+                .await?;
         }
         Command::AddCategory(add_category) => {
             add_category
