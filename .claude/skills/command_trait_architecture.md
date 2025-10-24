@@ -335,6 +335,198 @@ match cmd {
 }
 ```
 
+## Progressive Parameter Gathering Pattern
+
+The CommandTrait architecture supports a powerful pattern for commands that need to gather multiple parameters interactively. This pattern uses the `run0`, `run1`, `run2`, etc. methods to progressively guide users through parameter selection.
+
+### How It Works
+
+When a command is invoked, the `run()` method (provided by the trait) automatically dispatches to the appropriate `runN` method based on how many parameters are present:
+
+- **run0()** - Called when NO parameters are provided
+- **run1(param1)** - Called when 1 parameter is provided
+- **run2(param1, param2)** - Called when 2 parameters are provided
+- **run3(param1, param2, param3)** - Called when 3 parameters are provided
+- And so on...
+
+Each method can:
+1. Show an interactive menu to select the next parameter
+2. Validate the current parameters
+3. Perform the final action (when all required parameters are present)
+
+### Example: CommandRemoveFilter
+
+This command removes a filter from a category. It needs two parameters: category name and filter position.
+
+```rust
+#[derive(Default, Debug, Clone, PartialEq)]
+pub struct CommandRemoveFilter {
+    pub category: Option<String>,
+    pub position: Option<usize>,
+}
+
+impl CommandTrait for CommandRemoveFilter {
+    type A = String;  // category
+    type B = usize;   // position
+    type C = EmptyArg;
+    // ... rest EmptyArg
+
+    type Context = Arc<dyn CategoryStorageTrait>;
+
+    const NAME: &'static str = "remove_filter";
+    const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>"];
+
+    fn from_arguments(a: Option<Self::A>, b: Option<Self::B>, ...) -> Self {
+        CommandRemoveFilter {
+            category: a,
+            position: b,
+        }
+    }
+
+    // REQUIRED: Implement paramN() methods for each parameter
+    fn param1(&self) -> Option<&Self::A> {
+        self.category.as_ref()
+    }
+    fn param2(&self) -> Option<&Self::B> {
+        self.position.as_ref()
+    }
+
+    // Step 1: No parameters - show category selection menu
+    async fn run0(&self, target: &CommandReplyTarget, storage: Self::Context)
+        -> ResponseResult<()>
+    {
+        select_category(
+            target,
+            &storage,
+            markdown_string!("🗑️ Select Category for removing filter"),
+            |name| CommandRemoveFilter {
+                category: Some(name.to_string()),
+                position: None,
+            },
+            None::<NoopCommand>,  // No back button
+        ).await
+    }
+
+    // Step 2: Category selected - show filter selection menu
+    async fn run1(&self, target: &CommandReplyTarget, storage: Self::Context,
+                  name: &String) -> ResponseResult<()>
+    {
+        select_category_filter(
+            target,
+            &storage,
+            name,
+            markdown_format!("🗑️ Select Filter to remove from category `{}`", name),
+            |idx| CommandRemoveFilter {
+                category: Some(name.clone()),
+                position: Some(idx),
+            },
+            Some(CommandRemoveFilter::default()),  // Back button to run0
+        ).await
+    }
+
+    // Step 3: All parameters present - perform the action
+    async fn run2(&self, target: &CommandReplyTarget, storage: Self::Context,
+                  name: &String, idx: &usize) -> ResponseResult<()>
+    {
+        // Validate and get the filter pattern
+        let Some(pattern) = read_category_filter_by_index(
+            target,
+            &storage,
+            name,
+            *idx,
+            Some(CommandRemoveFilter {
+                category: Some(name.clone()),
+                position: None,
+            }),
+        ).await? else {
+            return Ok(());
+        };
+
+        // Perform the action
+        storage.remove_category_filter(target.chat.id, name, &pattern).await;
+
+        // Send result
+        target.send_markdown_message(
+            markdown_format!("✅ Filter removed from `{}`", name)
+        ).await?;
+
+        Ok(())
+    }
+}
+```
+
+### Menu Helper Functions
+
+The `menus` module (located in `ledgerbot/src/menus/`) provides reusable functions for common interactive patterns:
+
+**select_category** - Shows a menu to select a category:
+```rust
+pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(
+    target: &CommandReplyTarget,
+    storage: &Arc<dyn CategoryStorageTrait>,
+    prompt: MarkdownString,
+    next_command: impl Fn(&str) -> NEXT,  // Creates command with selected category
+    back_command: Option<BACK>,           // Optional back button
+) -> ResponseResult<()>
+```
+
+**select_category_filter** - Shows a menu to select a filter from a category:
+```rust
+pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
+    target: &CommandReplyTarget,
+    storage: &Arc<dyn CategoryStorageTrait>,
+    category_name: &str,
+    prompt: MarkdownString,
+    next_command: impl Fn(usize) -> NEXT,  // Creates command with selected index
+    back_command: Option<BACK>,            // Optional back button
+) -> ResponseResult<()>
+```
+
+**read_category_filter_by_index** - Validates and reads a filter by index:
+```rust
+pub async fn read_category_filter_by_index(
+    target: &CommandReplyTarget,
+    storage: &Arc<dyn CategoryStorageTrait>,
+    name: &str,
+    idx: usize,
+    back_command: Option<impl CommandTrait>,
+) -> ResponseResult<Option<String>>
+```
+
+### Key Principles
+
+1. **Each runN method has a single responsibility**:
+   - `run0`: Show first level menu (e.g., category selection)
+   - `run1`: Show second level menu or validate first parameter
+   - `run2`: Perform action or show third level menu
+   - etc.
+
+2. **Use closure constructors for next commands**:
+   - Closures like `|name| CommandRemoveFilter { category: Some(name), position: None }` create the command for the next step
+   - This allows the menu system to generate callback data
+
+3. **Back navigation**:
+   - Pass `None::<NoopCommand>` for no back button
+   - Pass `Some(CommandFoo::default())` to go back to `run0`
+   - Pass `Some(CommandFoo { category: Some(name), position: None })` to go back to `run1` with category preserved
+
+4. **Validation happens at each step**:
+   - Use helper functions like `read_category_filter_by_index` to validate parameters
+   - Return early if validation fails
+   - The helper functions automatically show error messages with back buttons
+
+5. **Final action in the last runN**:
+   - Perform the actual operation (storage update, etc.)
+   - Use `send_markdown_message()` for the result message (always new message)
+
+### Usage Modes
+
+This pattern supports both:
+
+1. **Interactive mode**: User invokes `/remove_filter` with no parameters, guided through menus
+2. **Direct mode**: User invokes `/remove_filter Food 0` with all parameters, goes directly to `run2`
+3. **Partial mode**: User invokes `/remove_filter Food`, shown menu to select position (goes to `run1`)
+
 ## Examples
 
 ### Commands with No Parameters
@@ -363,24 +555,39 @@ fn param1(&self) -> Option<&Self::A> {
 }
 
 // Implement both run0 (no params) and run1 (with param)
-async fn run0(...) { /* handle interactive mode */ }
-async fn run1(..., name: &String) { /* handle direct mode */ }
+async fn run0(...) { /* handle interactive mode - show menu */ }
+async fn run1(..., name: &String) { /* handle direct mode - perform action */ }
 ```
 
-### Commands with Multiple Parameters
+### Commands with Multiple Parameters (Progressive Gathering)
 
-Example: `CommandEditFilter`
+Example: `CommandEditFilter`, `CommandRemoveFilter`
 
 ```rust
 type A = String; // category
 type B = usize;  // position
-type C = String; // new_pattern
+type C = String; // new_pattern (for edit)
 // ... rest are EmptyArg
 
 const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<new_pattern>"];
 
-// Implement param1(), param2(), param3()
+// IMPORTANT: Implement paramN() for each parameter
+fn param1(&self) -> Option<&Self::A> {
+    self.category.as_ref()
+}
+fn param2(&self) -> Option<&Self::B> {
+    self.position.as_ref()
+}
+fn param3(&self) -> Option<&Self::C> {
+    self.pattern.as_ref()
+}
+
 // Implement run0, run1, run2, run3 as needed
+// Each method guides to the next step or performs the final action
+async fn run0(...) { /* show category menu */ }
+async fn run1(..., category: &String) { /* show position menu */ }
+async fn run2(..., category: &String, position: &usize) { /* show pattern input or perform action */ }
+async fn run3(..., category: &String, position: &usize, pattern: &String) { /* perform final action */ }
 ```
 
 ## Best Practices
@@ -400,7 +607,21 @@ const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<new_patter
    - Implement `run1`, `run2`, etc. based on how many parameters your command accepts
    - The trait's `run()` method automatically dispatches to the correct method based on provided parameters
 
-4. **Choosing the Right Message Method**:
+4. **Parameter Accessor Methods (CRITICAL)**:
+   - **You MUST implement `paramN()` methods** for each parameter your command uses
+   - Without these, the trait cannot dispatch to the correct `runN` method
+   - Example: If your command has 2 parameters (A and B), you must implement both `param1()` and `param2()`
+   - Default implementations return `None`, which prevents parameter-aware dispatch
+   ```rust
+   fn param1(&self) -> Option<&Self::A> {
+       self.category.as_ref()  // Return reference to your first field
+   }
+   fn param2(&self) -> Option<&Self::B> {
+       self.position.as_ref()  // Return reference to your second field
+   }
+   ```
+
+5. **Choosing the Right Message Method**:
    - Use `markdown_message()` for **navigation and prompts** (menus, parameter selection, interactive flows)
      - Allows editing the same message during navigation
      - Creates a smoother user experience for interactive workflows
@@ -410,17 +631,17 @@ const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<new_patter
      - Required when you need to customize the message (e.g., add `.reply_markup()`)
    - Use `edit_markdown_message_text()` when you need to **edit a specific message** by its ID
 
-5. **Error Handling**:
+6. **Error Handling**:
    - Use `ResponseResult<()>` as the return type
    - Return errors with `?` operator
    - Send user-friendly error messages using `send_markdown_message()` (always new message for visibility)
 
-6. **Message Formatting**:
+7. **Message Formatting**:
    - Always use `markdown_format!` or `markdown_string!` macros for messages
    - These macros handle proper escaping for Telegram's MarkdownV2 format
    - Never manually escape strings
 
-7. **Clippy Warnings**:
+8. **Clippy Warnings**:
    - Don't use `.clone()` on `Option<MessageId>` - it implements `Copy`
    - Use the value directly in `CommandReplyTarget`
 
@@ -444,6 +665,12 @@ Convert it to:
 
 ## See Also
 
-- Example implementations: `command_help.rs`, `command_start.rs`, `command_report.rs`, `command_add_category.rs`
-- Trait definition: `command_trait.rs`
-- Command registration: `mod.rs`
+### Example Implementations:
+- **Simple commands (no parameters)**: `command_help.rs`, `command_start.rs`, `command_report.rs`, `command_clear.rs`
+- **Single parameter commands**: `command_add_category.rs`, `command_remove_category.rs`
+- **Progressive multi-parameter commands**: `command_remove_filter.rs`, `command_edit_filter.rs`
+
+### Core Files:
+- **Trait definition**: `command_trait.rs`
+- **Command registration**: `mod.rs`
+- **Menu helpers**: `menus/select_category.rs`, `menus/select_category_filter.rs`, `menus/common.rs`
