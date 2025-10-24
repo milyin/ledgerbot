@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Skills
+
+This repository includes Claude Code Skills for specialized guidance:
+
+- **command-trait**: Comprehensive guide for implementing and modifying Telegram bot commands using the CommandTrait architecture. Automatically invoked when working with command implementation.
+
 ## Project Overview
 
 Ledgerbot is a Telegram expense tracking bot written in Rust. It allows users to track expenses, categorize them using regex patterns, and generate reports. The project is organized as a Cargo workspace with two main crates:

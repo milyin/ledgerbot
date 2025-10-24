@@ -1,3 +1,8 @@
+---
+name: command-trait
+description: Use this skill when implementing new Telegram bot commands using CommandTrait, modifying existing commands, or working with command parameters, execution methods (run0, run1, etc.), CommandReplyTarget, MarkdownStringMessage, or the progressive parameter gathering pattern. Also invoke for questions about command architecture, registration, or message sending methods.
+---
+
 # CommandTrait Architecture
 
 This skill provides documentation on the CommandTrait-based command architecture used in the ledgerbot project.
