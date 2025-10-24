@@ -46,10 +46,12 @@ pub async fn show_category_filters_for_removal(
                 .map(|(index, pattern)| {
                     vec![InlineKeyboardButton::switch_inline_query_current_chat(
                         format!("{}. {}", index, pattern),
-                        Command::RemoveFilter {
-                            category: Some(category_name.clone()),
-                            position: Some(index),
-                        }
+                        Command::RemoveFilter(
+                            crate::commands::command_remove_filter::CommandRemoveFilter::new(
+                                Some(category_name.clone()),
+                                Some(index),
+                            ),
+                        )
                         .to_string(),
                     )]
                 })

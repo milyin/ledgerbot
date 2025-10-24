@@ -7,6 +7,7 @@ pub mod command_edit_filter;
 pub mod command_help;
 pub mod command_list;
 pub mod command_remove_category;
+pub mod command_remove_filter;
 pub mod command_report;
 pub mod command_start;
 pub mod command_trait;
@@ -36,11 +37,12 @@ use crate::{
         command_help::CommandHelp,
         command_list::CommandList,
         command_remove_category::CommandRemoveCategory,
+        command_remove_filter::CommandRemoveFilter,
         command_report::CommandReport,
         command_start::CommandStart,
         command_trait::{CommandReplyTarget, CommandTrait},
         expenses::{expense_command, parse_expense},
-        filters::{add_filter_command, remove_filter_command},
+        filters::add_filter_command,
     },
     handlers::CallbackData,
     parser::extract_words,
@@ -59,27 +61,6 @@ fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<Strin
     match parts.as_slice() {
         [first] => Ok((Some(first.to_string()), None)),
         [first, second] => Ok((Some(first.to_string()), Some(second.to_string()))),
-        _ => Ok((None, None)),
-    }
-}
-
-/// Custom parser for category and position (for remove_filter)
-fn parse_category_and_position(s: String) -> Result<(Option<String>, Option<usize>), ParseError> {
-    // Take only the first line to prevent multi-line capture
-    let first_line = s.lines().next().unwrap_or("").trim();
-    if first_line.is_empty() {
-        return Ok((None, None));
-    }
-
-    let parts: Vec<&str> = first_line.splitn(2, ' ').collect();
-    match parts.as_slice() {
-        [category] => Ok((Some(category.to_string()), None)),
-        [category, position_str] => match position_str.parse::<usize>() {
-            Ok(position) => Ok((Some(category.to_string()), Some(position))),
-            Err(_) => Err(ParseError::IncorrectFormat(
-                format!("Position must be a number, got '{}'", position_str).into(),
-            )),
-        },
         _ => Ok((None, None)),
     }
 }
@@ -151,12 +132,9 @@ pub enum Command {
     #[command(
         description = "remove filter from category by position",
         rename = "remove_filter",
-        parse_with = parse_category_and_position
+        parse_with = CommandRemoveFilter::parse_arguments
     )]
-    RemoveFilter {
-        category: Option<String>,
-        position: Option<usize>,
-    },
+    RemoveFilter(CommandRemoveFilter),
     #[command(
         description = "edit filter in category by position",
         rename = "edit_filter",
@@ -207,18 +185,7 @@ impl From<Command> for String {
                 format!("{} {} {}", Command::ADD_FILTER, category_str, pattern_str)
             }
             Command::RemoveCategory(remove_category) => remove_category.to_command_string(true),
-            Command::RemoveFilter { category, position } => {
-                let category_str = category.unwrap_or_else(|| "<category>".to_string());
-                let position_str = position
-                    .map(|p| p.to_string())
-                    .unwrap_or_else(|| "<position>".to_string());
-                format!(
-                    "{} {} {}",
-                    Command::REMOVE_FILTER,
-                    category_str,
-                    position_str
-                )
-            }
+            Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
             Command::Expense {
                 date,
@@ -554,15 +521,17 @@ pub async fn execute_command(
                 )
                 .await?;
         }
-        Command::RemoveFilter { category, position } => {
-            remove_filter_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_category_storage(),
-                category,
-                position,
-            )
-            .await?;
+        Command::RemoveFilter(remove_filter) => {
+            remove_filter
+                .run(
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id,
+                    },
+                    storage.clone().as_category_storage(),
+                )
+                .await?;
         }
         Command::EditFilter(edit_filter) => {
             edit_filter

@@ -560,9 +560,9 @@ mod tests {
         //     if name == &Some("Transport".to_string())));
 
         assert!(
-            matches!(&results[10], Ok(Command::RemoveFilter { category, position })
-            if category == &Some("Food".to_string())
-            && position == &Some(0))
+            matches!(&results[10], Ok(Command::RemoveFilter(remove_filter))
+            if remove_filter.category == Some("Food".to_string())
+            && remove_filter.position == Some(0))
         );
 
         // Check the expense
