@@ -4,7 +4,7 @@ use chrono::{NaiveDate, TimeZone, Utc};
 use teloxide::utils::command::BotCommands;
 
 use crate::{
-    commands::{command_add_expense::CommandAddExpense, command_trait::CommandTrait, Command},
+    commands::{command_add_expense::CommandAddExpense, Command},
     storage_traits::Expense,
 };
 
@@ -56,8 +56,8 @@ pub fn parse_expenses(
             }
         }
 
-        let command_line = if !line.starts_with('/') {
-            // Convert non-command lines to /add_expense with explicit date
+        if !line.starts_with('/') {
+            // Convert non-command lines to CommandAddExpense with explicit date
             // Check if line already starts with a date (YYYY-MM-DD format)
             let parts: Vec<&str> = line.split_whitespace().collect();
             let parsed_date = parts
@@ -81,25 +81,22 @@ pub fn parse_expenses(
                 Some(description_parts.join(" "))
             };
 
-            // Create command object and use to_command_string
+            // Create command object and push directly
             let cmd = CommandAddExpense {
                 date: Some(date),
                 description,
                 amount,
             };
-            cmd.to_command_string(false)
+            commands.push(Ok(Command::AddExpense(cmd)));
         } else {
-            line.to_string()
-        };
-
-        // Parse the line as a command
-        match Command::parse(&command_line, bot_name.unwrap_or("")) {
-            Ok(cmd) => {
-                // No longer need to fill in missing dates - CommandAddExpense always has a date
-                commands.push(Ok(cmd));
-            }
-            Err(e) => {
-                commands.push(Err(format!("❌ Failed to parse command `{}`: {}", line, e)));
+            // Parse command lines
+            match Command::parse(line, bot_name.unwrap_or("")) {
+                Ok(cmd) => {
+                    commands.push(Ok(cmd));
+                }
+                Err(e) => {
+                    commands.push(Err(format!("❌ Failed to parse command `{}`: {}", line, e)));
+                }
             }
         }
     }
