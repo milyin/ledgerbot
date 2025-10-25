@@ -7,7 +7,7 @@ use crate::{commands::Command, storage_traits::Expense};
 
 /// Parse expense lines and commands from a message text
 /// Returns a vector of Results containing either successfully parsed Commands or error messages
-/// where text lines matching expense patterns are converted to Command::Expense variants
+/// where text lines matching expense patterns are converted to Command::AddExpense variants
 ///
 /// If bot_name is provided, lines starting with the bot name will have it stripped
 /// timestamp is the Unix timestamp of the message date
@@ -54,7 +54,38 @@ pub fn parse_expenses(
         }
 
         let command_line = if !line.starts_with('/') {
-            format!("{} {}", Command::EXPENSE, line)
+            // Convert non-command lines to /add_expense with explicit date
+            // Check if line already starts with a date (YYYY-MM-DD format)
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            let has_date = parts
+                .first()
+                .and_then(|first_word| chrono::NaiveDate::parse_from_str(first_word, "%Y-%m-%d").ok())
+                .is_some();
+
+            if has_date {
+                // Line has explicit date: "YYYY-MM-DD description amount"
+                // Extract date, description, and amount
+                let date_str = parts[0];
+                let amount_str = parts.last().unwrap_or(&"");
+                let description_parts = &parts[1..parts.len() - 1];
+
+                // Escape spaces in description
+                let description = description_parts.join("\\ ");
+
+                // Format: /add_expense <date> <escaped_description> <amount>
+                format!("{} {} {} {}", Command::ADD_EXPENSE, date_str, description, amount_str)
+            } else {
+                // Line doesn't have date: "description amount"
+                // Extract description and amount
+                let amount_str = parts.last().unwrap_or(&"");
+                let description_parts = &parts[..parts.len() - 1];
+
+                // Escape spaces in description
+                let description = description_parts.join("\\ ");
+
+                // Format: /add_expense <message_date> <escaped_description> <amount>
+                format!("{} {} {} {}", Command::ADD_EXPENSE, message_date.format("%Y-%m-%d"), description, amount_str)
+            }
         } else {
             line.to_string()
         };
@@ -150,18 +181,18 @@ mod tests {
 
         // Check first expense
         assert!(
-            matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2024, 10, 5)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[0], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 5).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         // Check second expense
         assert!(
-            matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2024, 10, 6)
-            && description == &Some("Lunch".to_string())
-            && amount == &Some(12.00))
+            matches!(&results[1], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 6).unwrap())
+            && cmd.description == Some("Lunch".to_string())
+            && cmd.amount == Some(12.00))
         );
     }
 
@@ -176,18 +207,18 @@ mod tests {
 
         // Check first expense
         assert!(
-            matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2024, 10, 5)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[0], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 5).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         // Check second expense
         assert!(
-            matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2024, 10, 6)
-            && description == &Some("Tea".to_string())
-            && amount == &Some(3.00))
+            matches!(&results[1], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 6).unwrap())
+            && cmd.description == Some("Tea".to_string())
+            && cmd.amount == Some(3.00))
         );
     }
 
@@ -202,18 +233,18 @@ mod tests {
 
         // Check first expense (should use message timestamp as 2021-01-01)
         assert!(
-            matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[0], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         // Check second expense
         assert!(
-            matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Lunch".to_string())
-            && amount == &Some(12.00))
+            matches!(&results[1], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Lunch".to_string())
+            && cmd.amount == Some(12.00))
         );
     }
 
@@ -228,26 +259,26 @@ mod tests {
 
         // Check first expense with explicit date
         assert!(
-            matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2024, 10, 5)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[0], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 5).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         // Check second expense without date (should use message timestamp)
         assert!(
-            matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Lunch".to_string())
-            && amount == &Some(12.00))
+            matches!(&results[1], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Lunch".to_string())
+            && cmd.amount == Some(12.00))
         );
 
         // Check third expense with explicit date
         assert!(
-            matches!(&results[2], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2024, 10, 6)
-            && description == &Some("Dinner".to_string())
-            && amount == &Some(15.00))
+            matches!(&results[2], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 6).unwrap())
+            && cmd.description == Some("Dinner".to_string())
+            && cmd.amount == Some(15.00))
         );
     }
 
@@ -262,24 +293,24 @@ mod tests {
 
         // Check all expenses are parsed correctly with bot name removed
         assert!(
-            matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[0], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         assert!(
-            matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Lunch".to_string())
-            && amount == &Some(12.00))
+            matches!(&results[1], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Lunch".to_string())
+            && cmd.amount == Some(12.00))
         );
 
         assert!(
-            matches!(&results[2], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Bus ticket".to_string())
-            && amount == &Some(2.75))
+            matches!(&results[2], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Bus ticket".to_string())
+            && cmd.amount == Some(2.75))
         );
     }
 
@@ -297,10 +328,10 @@ mod tests {
 
         // Check first expense
         assert!(
-            matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[1], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         // Check second command
@@ -308,10 +339,10 @@ mod tests {
 
         // Check second expense
         assert!(
-            matches!(&results[3], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Lunch".to_string())
-            && amount == &Some(12.00))
+            matches!(&results[3], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Lunch".to_string())
+            && cmd.amount == Some(12.00))
         );
     }
 
@@ -326,10 +357,10 @@ mod tests {
 
         // Check first expense
         assert!(
-            matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[0], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         // Check first command
@@ -337,18 +368,18 @@ mod tests {
 
         // Check second expense
         assert!(
-            matches!(&results[2], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Lunch".to_string())
-            && amount == &Some(12.00))
+            matches!(&results[2], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Lunch".to_string())
+            && cmd.amount == Some(12.00))
         );
 
         // Check third expense
         assert!(
-            matches!(&results[3], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Bus ticket".to_string())
-            && amount == &Some(2.75))
+            matches!(&results[3], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Bus ticket".to_string())
+            && cmd.amount == Some(2.75))
         );
 
         // Check second command
@@ -365,17 +396,17 @@ mod tests {
         assert_eq!(results.len(), 2);
 
         assert!(
-            matches!(&results[0], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[0], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         assert!(
-            matches!(&results[1], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Lunch".to_string())
-            && amount == &Some(12.00))
+            matches!(&results[1], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Lunch".to_string())
+            && cmd.amount == Some(12.00))
         );
     }
 
@@ -567,10 +598,10 @@ mod tests {
 
         // Check the expense
         assert!(
-            matches!(&results[11], Ok(Command::Expense { date, description, amount })
-            if date == &NaiveDate::from_ymd_opt(2021, 1, 1)
-            && description == &Some("Coffee".to_string())
-            && amount == &Some(5.50))
+            matches!(&results[11], Ok(Command::AddExpense(cmd))
+            if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
+            && cmd.description == Some("Coffee".to_string())
+            && cmd.amount == Some(5.50))
         );
 
         // Duplicate command without parameters to verify repeatability
