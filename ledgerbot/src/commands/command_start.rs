@@ -62,12 +62,7 @@ impl CommandTrait for CommandStart {
             .await?;
 
         // Use CommandHelp to display help
-        CommandHelp
-            .run(
-                target,
-                (),
-            )
-            .await?;
+        CommandHelp.run(target, ()).await?;
 
         Ok(())
     }

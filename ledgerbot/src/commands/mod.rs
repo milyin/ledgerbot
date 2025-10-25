@@ -375,65 +375,36 @@ pub async fn execute_command(
     };
     match cmd {
         Command::Start(start) => {
-            start
-                .run(
-                    &target,
-                    (),
-                )
-                .await?;
+            start.run(&target, ()).await?;
         }
         Command::Help(help) => {
-            help.run(
-                &target,
-                (),
-            )
-            .await?;
+            help.run(&target, ()).await?;
         }
         Command::List(list) => {
-            list.run(
-                &target,
-                storage.clone().as_expense_storage(),
-            )
-            .await?;
+            list.run(&target, storage.clone().as_expense_storage())
+                .await?;
         }
         Command::Report(report) => {
-            report
-                .run(
-                    &target,
-                    storage.clone(),
-                )
-                .await?;
+            report.run(&target, storage.clone()).await?;
         }
         Command::Clear(clear) => {
             clear
-                .run(
-                    &target,
-                    storage.clone().as_expense_storage(),
-                )
+                .run(&target, storage.clone().as_expense_storage())
                 .await?;
         }
         Command::ClearCategories(clear_categories) => {
             clear_categories
-                .run(
-                    &target,
-                    storage.clone().as_category_storage(),
-                )
+                .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
         Command::AddCategory(add_category) => {
             add_category
-                .run(
-                    &target,
-                    storage.clone().as_category_storage(),
-                )
+                .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
         Command::Categories(categories) => {
             categories
-                .run(
-                    &target,
-                    storage.clone().as_category_storage(),
-                )
+                .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
         Command::AddFilter { category, pattern } => {
@@ -448,34 +419,22 @@ pub async fn execute_command(
         }
         Command::RemoveCategory(remove_category) => {
             remove_category
-                .run(
-                    &target,
-                    storage.clone().as_category_storage(),
-                )
+                .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
         Command::RemoveFilter(remove_filter) => {
             remove_filter
-                .run(
-                    &target,
-                    storage.clone().as_category_storage(),
-                )
+                .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
         Command::EditFilter(edit_filter) => {
             edit_filter
-                .run(
-                    &target,
-                    storage.clone().as_category_storage(),
-                )
+                .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
         Command::AddExpense(add_expense) => {
             add_expense
-                .run(
-                    &target,
-                    storage.clone().as_expense_storage(),
-                )
+                .run(&target, storage.clone().as_expense_storage())
                 .await?;
         }
     }
