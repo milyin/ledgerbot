@@ -650,6 +650,122 @@ async fn run3(..., category: &String, position: &usize, pattern: &String) { /* p
    - Don't use `.clone()` on `Option<MessageId>` - it implements `Copy`
    - Use the value directly in `CommandReplyTarget`
 
+## Displaying Help Messages with Examples
+
+Most commands using the **progressive parameter gathering pattern** show interactive menus in `run0`, `run1`, etc., rather than help text. However, when you need to display help messages (for commands that require direct parameter input, or in error messages), **always use `to_command_string()` to generate examples dynamically** rather than hardcoding command strings.
+
+### When to Show Help vs Menus
+
+- **Commands with progressive gathering via menus** (e.g., `CommandRemoveFilter`, `CommandEditFilter`):
+  - `run0()` shows an interactive menu to select the first parameter
+  - `run1()` shows a menu to select the second parameter
+  - Help is NOT shown in these methods
+
+- **Commands requiring direct parameter input** (e.g., `CommandAddExpense`):
+  - All parameters must be provided in the command string
+  - `run0()` shows help/usage with examples
+  - `run1()`, `run2()` show error messages with usage
+
+### Pattern for Help Messages
+
+```rust
+async fn run0(
+    &self,
+    target: &CommandReplyTarget,
+    _storage: Self::Context,
+) -> ResponseResult<()> {
+    // Generate usage string with placeholders
+    let usage = self.to_command_string(true);
+
+    // Generate example commands with actual values
+    let example1 = CommandAddExpense {
+        date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
+        description: Some("Coffee".to_string()),
+        amount: Some(5.50),
+    }
+    .to_command_string(false);
+
+    let example2 = CommandAddExpense {
+        date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
+        description: Some("My Lunch".to_string()),
+        amount: Some(12.00),
+    }
+    .to_command_string(false);
+
+    target
+        .send_markdown_message(markdown_format!(
+            "📝 Usage: `{}`\n\n\
+             Examples:\n\
+             • `{}`\n\
+             • `{}`\n\n\
+             Note: Additional help text here",
+            usage, example1, example2
+        ))
+        .await?;
+    Ok(())
+}
+```
+
+### Key Points
+
+1. **Use `to_command_string(true)` for usage**:
+   - The `true` parameter means "use placeholders for missing parameters"
+   - Generates: `/add_expense <date> <description> <amount>`
+
+2. **Use `to_command_string(false)` for examples**:
+   - The `false` parameter means "use actual values, no placeholders"
+   - Creates command instances with real data to show realistic examples
+   - The trait's `screen_spaces()` function automatically escapes spaces (e.g., "My Lunch" → "My\ Lunch")
+
+3. **Don't implement custom `to_command_string()`**:
+   - The default trait implementation handles formatting for all standard types
+   - Works automatically if parameter types implement `Display`
+   - Handles space escaping via `screen_spaces()` function
+
+4. **Benefits of this approach**:
+   - **DRY**: No duplication of command formatting logic
+   - **Maintainable**: If command format changes, examples update automatically
+   - **Consistent**: Examples always match actual command behavior
+   - **Type-safe**: Compiler checks that examples use correct parameter types
+
+### Example Implementation
+
+See `ledgerbot/src/commands/command_add_expense.rs` for a complete implementation of a direct-input command that shows help with `to_command_string()`.
+
+### Using to_command_string() in Error Messages
+
+Use `to_command_string(true)` when displaying error messages about missing or invalid parameters. This applies to both:
+- Direct-input commands showing "missing parameter" errors
+- Validation errors in menu-based commands
+
+```rust
+async fn run1(
+    &self,
+    target: &CommandReplyTarget,
+    _storage: Self::Context,
+    _date: &NaiveDate,
+) -> ResponseResult<()> {
+    let usage = self.to_command_string(true);
+    target
+        .send_markdown_message(markdown_format!(
+            "❌ Missing parameters\\. Usage: `{}`",
+            usage
+        ))
+        .await?;
+    Ok(())
+}
+```
+
+### General Rule
+
+**Whenever you need to display command syntax or usage to the user, always use `to_command_string()` instead of manually constructing command strings.** This includes:
+- Help messages showing usage examples
+- Error messages about missing/invalid parameters
+- Inline keyboard buttons that show command syntax
+- Any user-facing text that references command format
+
+This ensures all command representations stay consistent and automatically update when command formats change.
+
 ## Migration from Old Pattern
 
 If you have an old-style command function:
