@@ -15,6 +15,7 @@ pub struct CommandReplyTarget {
     pub bot: Bot,
     pub chat: Chat,
     pub msg_id: Option<MessageId>,
+    pub batch: bool,
 }
 
 impl CommandReplyTarget {

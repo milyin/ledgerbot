@@ -64,11 +64,7 @@ impl CommandTrait for CommandStart {
         // Use CommandHelp to display help
         CommandHelp
             .run(
-                &CommandReplyTarget {
-                    bot: target.bot.clone(),
-                    chat: target.chat.clone(),
-                    msg_id: None,
-                },
+                target,
                 (),
             )
             .await?;

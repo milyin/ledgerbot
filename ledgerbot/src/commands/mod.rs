@@ -365,39 +365,33 @@ pub async fn execute_command(
     msg: Message,
     storage: Arc<dyn StorageTrait>,
     cmd: Command,
-    _batch: bool,
+    batch: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let target = CommandReplyTarget {
+        bot: bot.clone(),
+        chat: chat.clone(),
+        msg_id,
+        batch,
+    };
     match cmd {
         Command::Start(start) => {
             start
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     (),
                 )
                 .await?;
         }
         Command::Help(help) => {
             help.run(
-                &CommandReplyTarget {
-                    bot: bot.clone(),
-                    chat: chat.clone(),
-                    msg_id,
-                },
+                &target,
                 (),
             )
             .await?;
         }
         Command::List(list) => {
             list.run(
-                &CommandReplyTarget {
-                    bot: bot.clone(),
-                    chat: chat.clone(),
-                    msg_id,
-                },
+                &target,
                 storage.clone().as_expense_storage(),
             )
             .await?;
@@ -405,11 +399,7 @@ pub async fn execute_command(
         Command::Report(report) => {
             report
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone(),
                 )
                 .await?;
@@ -417,11 +407,7 @@ pub async fn execute_command(
         Command::Clear(clear) => {
             clear
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone().as_expense_storage(),
                 )
                 .await?;
@@ -429,11 +415,7 @@ pub async fn execute_command(
         Command::ClearCategories(clear_categories) => {
             clear_categories
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone().as_category_storage(),
                 )
                 .await?;
@@ -441,11 +423,7 @@ pub async fn execute_command(
         Command::AddCategory(add_category) => {
             add_category
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone().as_category_storage(),
                 )
                 .await?;
@@ -453,11 +431,7 @@ pub async fn execute_command(
         Command::Categories(categories) => {
             categories
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone().as_category_storage(),
                 )
                 .await?;
@@ -475,11 +449,7 @@ pub async fn execute_command(
         Command::RemoveCategory(remove_category) => {
             remove_category
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone().as_category_storage(),
                 )
                 .await?;
@@ -487,11 +457,7 @@ pub async fn execute_command(
         Command::RemoveFilter(remove_filter) => {
             remove_filter
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone().as_category_storage(),
                 )
                 .await?;
@@ -499,11 +465,7 @@ pub async fn execute_command(
         Command::EditFilter(edit_filter) => {
             edit_filter
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone().as_category_storage(),
                 )
                 .await?;
@@ -511,11 +473,7 @@ pub async fn execute_command(
         Command::AddExpense(add_expense) => {
             add_expense
                 .run(
-                    &CommandReplyTarget {
-                        bot: bot.clone(),
-                        chat: chat.clone(),
-                        msg_id,
-                    },
+                    &target,
                     storage.clone().as_expense_storage(),
                 )
                 .await?;
