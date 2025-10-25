@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chrono::NaiveDate;
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{markdown_format, markdown_string};
+use yoroolbot::markdown_format;
 
 use crate::commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 use crate::storage_traits::ExpenseStorageTrait;
@@ -75,14 +75,40 @@ impl CommandTrait for CommandAddExpense {
         target: &CommandReplyTarget,
         _storage: Self::Context,
     ) -> ResponseResult<()> {
+        // Generate usage string dynamically
+        let usage = self.to_command_string(true);
+
+        // Generate example commands dynamically
+        let example1 = CommandAddExpense {
+            date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
+            description: Some("Coffee".to_string()),
+            amount: Some(5.50),
+        }
+        .to_command_string(false);
+
+        let example2 = CommandAddExpense {
+            date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
+            description: Some("My Lunch".to_string()),
+            amount: Some(12.00),
+        }
+        .to_command_string(false);
+
+        let example3 = CommandAddExpense {
+            date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
+            description: Some("Groceries".to_string()),
+            amount: Some(45.30),
+        }
+        .to_command_string(false);
+
         target
-            .send_markdown_message(markdown_string!(
-                "📝 Usage: /add\\_expense <date\\> <description\\> <amount\\>\n\n\
+            .send_markdown_message(markdown_format!(
+                "📝 Usage: `{}`\n\n\
                  Examples:\n\
-                 • `/add\\_expense 2024\\-01\\-15 Coffee 5\\.50`\n\
-                 • `/add\\_expense 2024\\-01\\-15 My\\\\ Lunch 12\\.00` \\(escaped space\\)\n\
-                 • `/add\\_expense 2024\\-01\\-15 Groceries 45\\.30`\n\n\
-                 Note: Use backslash to escape spaces in description: `My\\\\ Lunch`"
+                 • `{}`\n\
+                 • `{}` \\(with escaped space\\)\n\
+                 • `{}`\n\n\
+                 Note: Use backslash to escape spaces in description: `My\\\\ Lunch`",
+                usage, example1, example2, example3
             ))
             .await?;
         Ok(())
@@ -94,9 +120,11 @@ impl CommandTrait for CommandAddExpense {
         _storage: Self::Context,
         _date: &NaiveDate,
     ) -> ResponseResult<()> {
+        let usage = self.to_command_string(true);
         target
-            .send_markdown_message(markdown_string!(
-                "❌ Missing description and amount\\. Usage: /add\\_expense <date\\> <description\\> <amount\\>"
+            .send_markdown_message(markdown_format!(
+                "❌ Missing description and amount\\. Usage: `{}`",
+                usage
             ))
             .await?;
         Ok(())
@@ -109,9 +137,11 @@ impl CommandTrait for CommandAddExpense {
         _date: &NaiveDate,
         _description: &String,
     ) -> ResponseResult<()> {
+        let usage = self.to_command_string(true);
         target
-            .send_markdown_message(markdown_string!(
-                "❌ Missing amount\\. Usage: /add\\_expense <date\\> <description\\> <amount\\>"
+            .send_markdown_message(markdown_format!(
+                "❌ Missing amount\\. Usage: `{}`",
+                usage
             ))
             .await?;
         Ok(())
