@@ -7,16 +7,6 @@ use yoroolbot::markdown_format;
 use crate::commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 use crate::storage_traits::ExpenseStorageTrait;
 
-/// Escape spaces in a string for command parameters
-pub fn escape_spaces(s: &str) -> String {
-    s.replace(' ', "\\ ")
-}
-
-/// Unescape spaces in a string from command parameters
-pub fn unescape_spaces(s: &str) -> String {
-    s.replace("\\ ", " ")
-}
-
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddExpense {
     pub date: Option<NaiveDate>,
@@ -53,7 +43,7 @@ impl CommandTrait for CommandAddExpense {
     ) -> Self {
         CommandAddExpense {
             date: a,
-            description: b.map(|s| unescape_spaces(&s)),
+            description: b,
             amount: c,
         }
     }
@@ -174,36 +164,6 @@ impl CommandTrait for CommandAddExpense {
             .await?;
 
         Ok(())
-    }
-
-    fn to_command_string(&self, with_placeholders: bool) -> String {
-        let cmd = format!("/{}", Self::NAME);
-
-        let date_str = if with_placeholders && self.date.is_none() {
-            Self::PLACEHOLDERS[0].to_string()
-        } else if let Some(ref date) = self.date {
-            date.format("%Y-%m-%d").to_string()
-        } else {
-            Self::PLACEHOLDERS[0].to_string()
-        };
-
-        let description_str = if with_placeholders && self.description.is_none() {
-            Self::PLACEHOLDERS[1].to_string()
-        } else if let Some(ref desc) = self.description {
-            escape_spaces(desc)
-        } else {
-            Self::PLACEHOLDERS[1].to_string()
-        };
-
-        let amount_str = if with_placeholders && self.amount.is_none() {
-            Self::PLACEHOLDERS[2].to_string()
-        } else if let Some(amt) = self.amount {
-            amt.to_string()
-        } else {
-            Self::PLACEHOLDERS[2].to_string()
-        };
-
-        format!("{} {} {} {}", cmd, date_str, description_str, amount_str)
     }
 }
 
