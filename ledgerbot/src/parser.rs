@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
-use chrono::{TimeZone, Utc};
+use chrono::{NaiveDate, TimeZone, Utc};
 use teloxide::utils::command::BotCommands;
 
-use crate::{commands::Command, storage_traits::Expense};
+use crate::{
+    commands::{command_add_expense::CommandAddExpense, command_trait::CommandTrait, Command},
+    storage_traits::Expense,
+};
 
 /// Parse expense lines and commands from a message text
 /// Returns a vector of Results containing either successfully parsed Commands or error messages
@@ -57,48 +60,42 @@ pub fn parse_expenses(
             // Convert non-command lines to /add_expense with explicit date
             // Check if line already starts with a date (YYYY-MM-DD format)
             let parts: Vec<&str> = line.split_whitespace().collect();
-            let has_date = parts
+            let parsed_date = parts
                 .first()
-                .and_then(|first_word| chrono::NaiveDate::parse_from_str(first_word, "%Y-%m-%d").ok())
-                .is_some();
+                .and_then(|first_word| NaiveDate::parse_from_str(first_word, "%Y-%m-%d").ok());
 
-            if has_date {
+            let (date, description_start_idx) = if let Some(explicit_date) = parsed_date {
                 // Line has explicit date: "YYYY-MM-DD description amount"
-                // Extract date, description, and amount
-                let date_str = parts[0];
-                let amount_str = parts.last().unwrap_or(&"");
-                let description_parts = &parts[1..parts.len() - 1];
-
-                // Escape spaces in description
-                let description = description_parts.join("\\ ");
-
-                // Format: /add_expense <date> <escaped_description> <amount>
-                format!("{} {} {} {}", Command::ADD_EXPENSE, date_str, description, amount_str)
+                (explicit_date, 1)
             } else {
                 // Line doesn't have date: "description amount"
-                // Extract description and amount
-                let amount_str = parts.last().unwrap_or(&"");
-                let description_parts = &parts[..parts.len() - 1];
+                (message_date, 0)
+            };
 
-                // Escape spaces in description
-                let description = description_parts.join("\\ ");
+            // Extract amount and description
+            let amount = parts.last().and_then(|s| s.parse::<f64>().ok());
+            let description_parts = &parts[description_start_idx..parts.len() - 1];
+            let description = if description_parts.is_empty() {
+                None
+            } else {
+                Some(description_parts.join(" "))
+            };
 
-                // Format: /add_expense <message_date> <escaped_description> <amount>
-                format!("{} {} {} {}", Command::ADD_EXPENSE, message_date.format("%Y-%m-%d"), description, amount_str)
-            }
+            // Create command object and use to_command_string
+            let cmd = CommandAddExpense {
+                date: Some(date),
+                description,
+                amount,
+            };
+            cmd.to_command_string(false)
         } else {
             line.to_string()
         };
 
         // Parse the line as a command
         match Command::parse(&command_line, bot_name.unwrap_or("")) {
-            Ok(mut cmd) => {
-                if let Command::Expense {
-                    date: date @ None, ..
-                } = &mut cmd
-                {
-                    *date = Some(message_date);
-                }
+            Ok(cmd) => {
+                // No longer need to fill in missing dates - CommandAddExpense always has a date
                 commands.push(Ok(cmd));
             }
             Err(e) => {
