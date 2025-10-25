@@ -3,8 +3,10 @@ use std::sync::Arc;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::markdown_string;
 
-use crate::commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
-use crate::storage_traits::ExpenseStorageTrait;
+use crate::{
+    commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    storage_traits::ExpenseStorageTrait,
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClear;

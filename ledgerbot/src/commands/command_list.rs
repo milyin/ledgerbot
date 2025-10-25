@@ -3,11 +3,13 @@ use std::sync::Arc;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::markdown_format;
 
-use crate::commands::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    expenses::format_expenses_chronological,
+use crate::{
+    commands::{
+        command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+        expenses::format_expenses_chronological,
+    },
+    storage_traits::ExpenseStorageTrait,
 };
-use crate::storage_traits::ExpenseStorageTrait;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandList;

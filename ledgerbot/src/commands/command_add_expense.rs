@@ -4,8 +4,10 @@ use chrono::NaiveDate;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::markdown_format;
 
-use crate::commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
-use crate::storage_traits::ExpenseStorageTrait;
+use crate::{
+    commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    storage_traits::ExpenseStorageTrait,
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddExpense {
@@ -16,8 +18,8 @@ pub struct CommandAddExpense {
 
 impl CommandTrait for CommandAddExpense {
     type A = NaiveDate; // date (required)
-    type B = String;    // description (required, with escaped spaces)
-    type C = f64;       // amount (required)
+    type B = String; // description (required, with escaped spaces)
+    type C = f64; // amount (required)
     type D = EmptyArg;
     type E = EmptyArg;
     type F = EmptyArg;
@@ -98,7 +100,10 @@ impl CommandTrait for CommandAddExpense {
                  • `{}` \\(with escaped space\\)\n\
                  • `{}`\n\n\
                  Note: Use backslash to escape spaces in description: `My\\\\ Lunch`",
-                usage, example1, example2, example3
+                usage,
+                example1,
+                example2,
+                example3
             ))
             .await?;
         Ok(())
@@ -129,10 +134,7 @@ impl CommandTrait for CommandAddExpense {
     ) -> ResponseResult<()> {
         let usage = self.to_command_string(true);
         target
-            .send_markdown_message(markdown_format!(
-                "❌ Missing amount\\. Usage: `{}`",
-                usage
-            ))
+            .send_markdown_message(markdown_format!("❌ Missing amount\\. Usage: `{}`", usage))
             .await?;
         Ok(())
     }

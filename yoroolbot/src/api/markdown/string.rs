@@ -3,6 +3,7 @@
 use std::{fmt, ops::Add};
 
 use teloxide::{
+    Bot,
     payloads::{EditMessageTextSetters, SendMessage, SendMessageSetters},
     prelude::{Requester, ResponseResult},
     requests::JsonRequest,
@@ -11,7 +12,6 @@ use teloxide::{
         ParseMode::{self, MarkdownV2},
         Recipient,
     },
-    Bot,
 };
 
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
@@ -207,7 +207,7 @@ impl Add<&MarkdownString> for &MarkdownString {
 /// # Example
 ///
 /// ```rust
-/// use yoroolbot::markdown::{MarkdownString, MarkdownStringSendMessage};
+/// use yoroolbot::markdown::{MarkdownString, MarkdownStringMessage};
 /// use teloxide::{Bot, prelude::Requester, types::ChatId};
 ///
 /// async fn send_markdown_example(bot: Bot, chat_id: ChatId) {

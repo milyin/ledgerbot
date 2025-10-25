@@ -1,5 +1,4 @@
-use teloxide::prelude::ResponseResult;
-use teloxide::utils::command::BotCommands;
+use teloxide::{prelude::ResponseResult, utils::command::BotCommands};
 use yoroolbot::markdown_format;
 
 use super::Command;

@@ -3,8 +3,10 @@ use std::sync::Arc;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::markdown_string;
 
-use crate::commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
-use crate::storage_traits::CategoryStorageTrait;
+use crate::{
+    commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    storage_traits::CategoryStorageTrait,
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClearCategories;

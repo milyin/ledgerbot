@@ -3,12 +3,14 @@ use std::sync::Arc;
 use teloxide::prelude::{Requester, ResponseResult};
 use yoroolbot::markdown_format;
 
-use crate::commands::{
-    Command,
-    command_add_category::CommandAddCategory,
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+use crate::{
+    commands::{
+        Command,
+        command_add_category::CommandAddCategory,
+        command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    },
+    storage_traits::CategoryStorageTrait,
 };
-use crate::storage_traits::CategoryStorageTrait;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandCategories;

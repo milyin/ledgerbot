@@ -1,61 +1,12 @@
-use std::sync::Arc;
+use chrono::{DateTime, TimeZone, Utc};
+use yoroolbot::{markdown::MarkdownString, markdown_format};
 
-use chrono::{DateTime, NaiveDate, TimeZone, Utc};
-use teloxide::{prelude::*, types::Message, utils::command::ParseError};
-use yoroolbot::{markdown::MarkdownString, markdown::MarkdownStringMessage, markdown_format};
-
-use crate::storage_traits::{Expense, ExpenseStorageTrait};
+use crate::storage_traits::Expense;
 
 /// Format timestamp as YYYY-MM-DD string
 fn format_timestamp(timestamp: i64) -> String {
     let datetime: DateTime<Utc> = Utc.timestamp_opt(timestamp, 0).unwrap();
     datetime.format("%Y-%m-%d").to_string()
-}
-
-/// Custom parser for expense command (date, description, amount)
-pub type ExpenseParams = (Option<NaiveDate>, Option<String>, Option<f64>);
-pub fn parse_expense(s: String) -> Result<ExpenseParams, ParseError> {
-    // Take only the first line to prevent multi-line capture
-    let first_line = s.lines().next().unwrap_or("").trim();
-    if first_line.is_empty() {
-        return Ok((None, None, None));
-    }
-
-    let parts: Vec<&str> = first_line.split_whitespace().collect();
-    if parts.is_empty() {
-        return Ok((None, None, None));
-    }
-
-    // The last part is always the amount
-    let last_part = parts.last().unwrap();
-    let amount = last_part.parse::<f64>().ok();
-
-    if amount.is_none() {
-        // If the last part is not a number, consider the whole string as description
-        return Ok((None, Some(first_line.to_string()), None));
-    }
-
-    let mut description_parts = &parts[..parts.len() - 1];
-
-    // The first part might be a date
-    let date = if !description_parts.is_empty() {
-        if let Ok(d) = NaiveDate::parse_from_str(description_parts[0], "%Y-%m-%d") {
-            description_parts = &description_parts[1..];
-            Some(d)
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    if description_parts.is_empty() {
-        return Ok((date, None, amount));
-    }
-
-    let description = description_parts.join(" ");
-
-    Ok((date, Some(description), amount))
 }
 
 /// Format expenses as a chronological list without category grouping
@@ -84,81 +35,6 @@ pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<String, Mar
     }
 
     Ok(result)
-}
-
-/// Handle expense command with date, description, and amount
-pub async fn expense_command(
-    bot: Bot,
-    msg: Message,
-    storage: Arc<dyn ExpenseStorageTrait>,
-    date: Option<NaiveDate>,
-    description: Option<String>,
-    amount: Option<f64>,
-    silent: bool,
-) -> ResponseResult<()> {
-    let chat_id = msg.chat.id;
-
-    // Get message timestamp for default date
-    let message_timestamp = msg.forward_date().unwrap_or(msg.date).timestamp();
-
-    // Validate and parse parameters
-    match (description, amount) {
-        (Some(desc), Some(amount_val)) => {
-            // Determine timestamp
-            let timestamp = if let Some(ref date_val) = date {
-                // Try to parse the date
-                date_val.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp()
-            } else {
-                message_timestamp
-            };
-
-            // Store the expense
-            storage
-                .add_expense(chat_id, &desc, amount_val, timestamp)
-                .await;
-
-            // Send confirmation message only if not silent
-            if !silent {
-                // Format date for display
-                let date_display = if let Some(d) = date {
-                    d.to_string()
-                } else {
-                    use chrono::{DateTime, Utc};
-                    let dt: DateTime<Utc> =
-                        DateTime::from_timestamp(timestamp, 0).unwrap_or_default();
-                    dt.format("%Y-%m-%d").to_string()
-                };
-
-                bot.markdown_message(
-                    chat_id,
-                    None,
-                    markdown_format!(
-                        "✅ Expense added: {} {} {}",
-                        date_display,
-                        desc,
-                        amount_val.to_string()
-                    ),
-                )
-                .await?;
-            }
-        }
-        (Some(desc), None) => {
-            bot.markdown_message(
-                chat_id,
-                None,
-                markdown_format!(
-                    "❌ Invalid amount for `{}`\\. Please provide a valid number\\.",
-                    desc
-                ),
-            )
-            .await?;
-        }
-        _ => {
-            // Handle other cases if necessary, e.g., no description
-        }
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

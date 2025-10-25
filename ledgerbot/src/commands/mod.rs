@@ -18,7 +18,6 @@ pub mod report;
 
 use std::sync::Arc;
 
-use chrono::NaiveDate;
 use teloxide::{
     prelude::*,
     types::{Chat, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
@@ -43,7 +42,6 @@ use crate::{
         command_report::CommandReport,
         command_start::CommandStart,
         command_trait::{CommandReplyTarget, CommandTrait},
-        expenses::{expense_command, parse_expense},
         filters::add_filter_command,
     },
     handlers::CallbackData,
@@ -149,15 +147,6 @@ pub enum Command {
         parse_with = CommandAddExpense::parse_arguments
     )]
     AddExpense(CommandAddExpense),
-    #[command(
-        description = "add expense with date, description and amount",
-        parse_with = parse_expense
-    )]
-    Expense {
-        date: Option<NaiveDate>,
-        description: Option<String>,
-        amount: Option<f64>,
-    },
 }
 
 // Command constants as string representations
@@ -197,26 +186,6 @@ impl From<Command> for String {
             Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
             Command::AddExpense(add_expense) => add_expense.to_command_string(true),
-            Command::Expense {
-                date,
-                description,
-                amount,
-            } => {
-                let date_str = date
-                    .map(|d| d.format("%Y-%m-%d").to_string())
-                    .unwrap_or_else(|| "<date>".to_string());
-                let description_str = description.unwrap_or_else(|| "<description>".to_string());
-                let amount_str = amount
-                    .map(|a| a.to_string())
-                    .unwrap_or_else(|| "<amount>".to_string());
-                format!(
-                    "{} {} {} {}",
-                    Command::EXPENSE,
-                    date_str,
-                    description_str,
-                    amount_str
-                )
-            }
         }
     }
 }
@@ -396,7 +365,7 @@ pub async fn execute_command(
     msg: Message,
     storage: Arc<dyn StorageTrait>,
     cmd: Command,
-    silent: bool,
+    _batch: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match cmd {
         Command::Start(start) => {
@@ -419,22 +388,6 @@ pub async fn execute_command(
                     msg_id,
                 },
                 (),
-            )
-            .await?;
-        }
-        Command::Expense {
-            date,
-            description,
-            amount,
-        } => {
-            expense_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_expense_storage(),
-                date,
-                description,
-                amount,
-                silent,
             )
             .await?;
         }
