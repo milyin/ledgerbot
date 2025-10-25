@@ -1,5 +1,6 @@
 pub mod categories;
 pub mod command_add_category;
+pub mod command_add_expense;
 pub mod command_categories;
 pub mod command_clear;
 pub mod command_clear_categories;
@@ -30,6 +31,7 @@ use teloxide::{
 use crate::{
     commands::{
         command_add_category::CommandAddCategory,
+        command_add_expense::CommandAddExpense,
         command_categories::CommandCategories,
         command_clear::CommandClear,
         command_clear_categories::CommandClearCategories,
@@ -142,6 +144,12 @@ pub enum Command {
     )]
     EditFilter(CommandEditFilter),
     #[command(
+        description = "add expense with explicit date, description and amount",
+        rename = "add_expense",
+        parse_with = CommandAddExpense::parse_arguments
+    )]
+    AddExpense(CommandAddExpense),
+    #[command(
         description = "add expense with date, description and amount",
         parse_with = parse_expense
     )]
@@ -165,6 +173,7 @@ impl Command {
     pub const REMOVE_CATEGORY: &'static str = "/remove_category";
     pub const REMOVE_FILTER: &'static str = "/remove_filter";
     pub const EDIT_FILTER: &'static str = "/edit_filter";
+    pub const ADD_EXPENSE: &'static str = "/add_expense";
     pub const EXPENSE: &'static str = "/expense";
 }
 
@@ -187,6 +196,7 @@ impl From<Command> for String {
             Command::RemoveCategory(remove_category) => remove_category.to_command_string(true),
             Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
+            Command::AddExpense(add_expense) => add_expense.to_command_string(true),
             Command::Expense {
                 date,
                 description,
@@ -542,6 +552,18 @@ pub async fn execute_command(
                         msg_id,
                     },
                     storage.clone().as_category_storage(),
+                )
+                .await?;
+        }
+        Command::AddExpense(add_expense) => {
+            add_expense
+                .run(
+                    &CommandReplyTarget {
+                        bot: bot.clone(),
+                        chat: chat.clone(),
+                        msg_id,
+                    },
+                    storage.clone().as_expense_storage(),
                 )
                 .await?;
         }

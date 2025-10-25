@@ -415,7 +415,7 @@ mod tests {
         let results3 = parse_expenses(text3, None, timestamp);
 
         assert_eq!(results3.len(), 1);
-        assert!(matches!(&results3[0], Ok(Command::Categories)));
+        assert!(matches!(&results3[0], Ok(Command::Categories(_))));
     }
 
     #[test]
