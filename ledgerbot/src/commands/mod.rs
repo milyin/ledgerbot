@@ -150,13 +150,7 @@ pub enum Command {
 
 // Command constants as string representations
 impl Command {
-    pub const CLEAR_CATEGORIES: &'static str = "/clear_categories";
     pub const ADD_FILTER: &'static str = "/add_filter";
-    pub const REMOVE_CATEGORY: &'static str = "/remove_category";
-    pub const REMOVE_FILTER: &'static str = "/remove_filter";
-    pub const EDIT_FILTER: &'static str = "/edit_filter";
-    pub const ADD_EXPENSE: &'static str = "/add_expense";
-    pub const EXPENSE: &'static str = "/expense";
 }
 
 impl From<Command> for String {
