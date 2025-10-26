@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
+use yoroolbot::markdown::MarkdownString;
 
 // Forward declaration - full import would create circular dependency
 use crate::commands::Command;
@@ -36,7 +37,11 @@ pub trait CategoryStorageTrait: Send + Sync {
     async fn get_chat_categories(&self, chat_id: ChatId) -> HashMap<String, Vec<String>>;
 
     /// Add a category for a specific chat
-    async fn add_category(&self, chat_id: ChatId, category_name: String) -> Result<(), String>;
+    async fn add_category(
+        &self,
+        chat_id: ChatId,
+        category_name: String,
+    ) -> Result<(), MarkdownString>;
 
     /// Add a regex filter to an existing category
     async fn add_category_filter(

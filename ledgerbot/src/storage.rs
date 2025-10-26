@@ -1,11 +1,12 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use serde::{Deserialize, Serialize};
-use teloxide::{types::ChatId, utils::markdown::escape};
+use teloxide::types::ChatId;
 use tokio::{fs, sync::Mutex};
+use yoroolbot::{markdown::MarkdownString, markdown_format};
 
 use crate::{
-    commands::Command,
+    commands::{Command, command_categories::CommandCategories, command_trait::CommandTrait},
     storage_traits::{
         BatchStorageTrait, CategoryStorageTrait, Expense, ExpenseStorageTrait,
         FilterPageStorageTrait, FilterSelectionStorageTrait, StorageTrait,
@@ -114,18 +115,22 @@ impl CategoryStorageTrait for CategoryStorage {
         storage_guard.get(&chat_id).cloned().unwrap_or_default()
     }
 
-    async fn add_category(&self, chat_id: ChatId, category_name: String) -> Result<(), String> {
+    async fn add_category(
+        &self,
+        chat_id: ChatId,
+        category_name: String,
+    ) -> Result<(), MarkdownString> {
         // Acquire lock once and hold it for the entire operation to prevent race conditions
         let mut storage_guard = self.data.lock().await;
         let chat_categories = storage_guard.entry(chat_id).or_default();
 
         // Check if category already exists (while holding the lock)
         if chat_categories.contains_key(&category_name) {
-            return Err(format!(
-                "ℹ️ Category `{}` already exists. Use {} to add more patterns or {} to view all.",
+            return Err(markdown_format!(
+                "ℹ️ Category `{}` already exists\\. Use {} to add more patterns or {} to view all\\.",
                 category_name,
-                escape(Command::ADD_FILTER),
-                escape(Command::CATEGORIES)
+                Command::ADD_FILTER,
+                CommandCategories::NAME
             ));
         }
 
@@ -287,7 +292,11 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         self.memory_storage.get_chat_categories(chat_id).await
     }
 
-    async fn add_category(&self, chat_id: ChatId, category_name: String) -> Result<(), String> {
+    async fn add_category(
+        &self,
+        chat_id: ChatId,
+        category_name: String,
+    ) -> Result<(), MarkdownString> {
         self.ensure_loaded(chat_id).await;
         let result = self
             .memory_storage

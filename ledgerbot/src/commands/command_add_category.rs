@@ -91,9 +91,7 @@ impl CommandTrait for CommandAddCategory {
                     .await?;
             }
             Err(err_msg) => {
-                target
-                    .send_markdown_message(markdown_format!("ℹ️ {}", &err_msg))
-                    .await?;
+                target.send_markdown_message(err_msg).await?;
             }
         }
         Ok(())

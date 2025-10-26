@@ -4,7 +4,10 @@ use teloxide::{prelude::*, types::Chat};
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{Command, command_add_expense::CommandAddExpense, execute_command},
+    commands::{
+        Command, command_add_expense::CommandAddExpense, command_list::CommandList,
+        command_report::CommandReport, command_trait::CommandTrait, execute_command,
+    },
     config::BATCH_TIMEOUT_SECONDS,
     storage_traits::{BatchStorageTrait, StorageTrait},
 };
@@ -85,8 +88,8 @@ pub async fn execute_batch(
             Use {} or {} to see all expenses\\.",
                     expense_count,
                     total_amount,
-                    Command::LIST,
-                    Command::REPORT
+                    CommandList::NAME,
+                    CommandReport::NAME
                 ),
             )
             .await
