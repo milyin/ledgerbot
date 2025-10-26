@@ -163,17 +163,38 @@ pub fn format_expenses_by_category(
         total += category_total;
     }
 
-    // Add final total message with category breakdown
+    // Add final total message with category breakdown as a table
     if !messages.is_empty() {
-        let mut total_message = MarkdownString::new();
+        // Find the maximum category name length for alignment
+        let max_name_len = category_subtotals
+            .iter()
+            .map(|(name, _)| name.len())
+            .max()
+            .unwrap_or(0)
+            .max(5); // At least as wide as "Total"
 
-        for (category_name, subtotal) in category_subtotals {
-            let line = markdown_format!("*{}*: {}\n", &*category_name, subtotal);
-            total_message = total_message + line;
+        // Build the entire table as a single string
+        let mut table_content = String::from("```\n");
+
+        // Add each category row
+        for (category_name, subtotal) in &category_subtotals {
+            let padded_name = format!("{:<width$}", category_name, width = max_name_len);
+            let amount_str = format!("{:>10.2}", subtotal);
+            table_content.push_str(&format!("{} {}\n", padded_name, amount_str));
         }
 
-        let total_line = markdown_format!("*Total: {}*", total);
-        total_message = total_message + total_line;
+        // Add separator line
+        table_content.push_str(&format!("{}\n", "-".repeat(max_name_len + 11)));
+
+        // Add total row
+        let total_label = format!("{:<width$}", "Total", width = max_name_len);
+        let total_amount = format!("{:>10.2}", total);
+        table_content.push_str(&format!("{} {}\n", total_label, total_amount));
+
+        table_content.push_str("```");
+
+        // Create MarkdownString from the complete table
+        let total_message = MarkdownString::from_validated_string(table_content);
 
         messages.push(total_message);
     }
@@ -375,10 +396,16 @@ mod tests {
         assert!(messages[1].as_str().contains("Subtotal"));
         assert!(messages[1].as_str().contains("25"));
 
-        // Third message should be Total with category breakdown
-        assert!(messages[2].as_str().contains("*Food*: 8\\.5"));
-        assert!(messages[2].as_str().contains("*Other*: 25"));
-        assert!(messages[2].as_str().contains("*Total: 33\\.5*"));
+        // Third message should be Total with category breakdown in table format
+        let total_msg = messages[2].as_str();
+        assert!(total_msg.contains("```")); // Should be in code block
+        assert!(total_msg.contains("Food"));
+        assert!(total_msg.contains("8.50")); // Formatted with 2 decimal places
+        assert!(total_msg.contains("Other"));
+        assert!(total_msg.contains("25.00"));
+        assert!(total_msg.contains("---")); // Separator line
+        assert!(total_msg.contains("Total"));
+        assert!(total_msg.contains("33.50"));
     }
 
     #[test]
@@ -428,12 +455,24 @@ mod tests {
         // Should have 4 messages: Food, Transport, Other (none), Total
         assert_eq!(messages.len(), 3); // Food, Transport, Total (no Other since all matched)
 
-        // Last message should be the total with breakdown
+        // Last message should be the total with breakdown in table format
         let total_msg = &messages[2];
+        let total_str = total_msg.as_str();
 
-        // Should contain each category with its subtotal
-        assert!(total_msg.as_str().contains("*Food*: 40"));
-        assert!(total_msg.as_str().contains("*Transport*: 5"));
-        assert!(total_msg.as_str().contains("*Total: 45*"));
+        // Should be in a code block (monospace)
+        assert!(total_str.contains("```"));
+
+        // Should contain each category with its subtotal (formatted with 2 decimals)
+        assert!(total_str.contains("Food"));
+        assert!(total_str.contains("40.00"));
+        assert!(total_str.contains("Transport"));
+        assert!(total_str.contains("5.00"));
+
+        // Should have separator line
+        assert!(total_str.contains("---"));
+
+        // Should have total
+        assert!(total_str.contains("Total"));
+        assert!(total_str.contains("45.00"));
     }
 }
