@@ -8,6 +8,7 @@ use crate::{
     menus::{
         common::read_category_filter_by_index, select_category::select_category,
         select_category_filter::select_category_filter,
+        update_category_filter::update_category_filter,
     },
     storage_traits::CategoryStorageTrait,
 };
@@ -16,18 +17,23 @@ use crate::{
 pub struct CommandRemoveFilter {
     pub category: Option<String>,
     pub position: Option<usize>,
+    pub confirm: Option<bool>,
 }
 
 impl CommandRemoveFilter {
     pub fn new(category: Option<String>, position: Option<usize>) -> Self {
-        Self { category, position }
+        Self {
+            category,
+            position,
+            confirm: None,
+        }
     }
 }
 
 impl CommandTrait for CommandRemoveFilter {
     type A = String;
     type B = usize;
-    type C = EmptyArg;
+    type C = bool;
     type D = EmptyArg;
     type E = EmptyArg;
     type F = EmptyArg;
@@ -38,12 +44,12 @@ impl CommandTrait for CommandRemoveFilter {
     type Context = Arc<dyn CategoryStorageTrait>;
 
     const NAME: &'static str = "remove_filter";
-    const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>"];
+    const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<confirm>"];
 
     fn from_arguments(
-        a: Option<Self::A>,
-        b: Option<Self::B>,
-        _: Option<Self::C>,
+        category: Option<Self::A>,
+        position: Option<Self::B>,
+        confirm: Option<Self::C>,
         _: Option<Self::D>,
         _: Option<Self::E>,
         _: Option<Self::F>,
@@ -52,8 +58,9 @@ impl CommandTrait for CommandRemoveFilter {
         _: Option<Self::I>,
     ) -> Self {
         CommandRemoveFilter {
-            category: a,
-            position: b,
+            category,
+            position,
+            confirm,
         }
     }
 
@@ -62,6 +69,9 @@ impl CommandTrait for CommandRemoveFilter {
     }
     fn param2(&self) -> Option<&Self::B> {
         self.position.as_ref()
+    }
+    fn param3(&self) -> Option<&Self::C> {
+        self.confirm.as_ref()
     }
 
     async fn run0(
@@ -76,6 +86,7 @@ impl CommandTrait for CommandRemoveFilter {
             |name| CommandRemoveFilter {
                 category: Some(name.to_string()),
                 position: None,
+                confirm: None,
             },
             None::<NoopCommand>,
         )
@@ -96,6 +107,7 @@ impl CommandTrait for CommandRemoveFilter {
             |idx| CommandRemoveFilter {
                 category: Some(name.clone()),
                 position: Some(idx),
+                confirm: None,
             },
             Some(CommandRemoveFilter::default()),
         )
@@ -109,6 +121,52 @@ impl CommandTrait for CommandRemoveFilter {
         name: &String,
         idx: &usize,
     ) -> ResponseResult<()> {
+        update_category_filter(
+            target,
+            &storage,
+            name,
+            *idx,
+            |pattern| {
+                markdown_format!(
+                    "🗑️ Confirm Filter **\\#{}** \\(`{}`\\) Removal from category `{}`",
+                    *idx,
+                    pattern,
+                    name
+                )
+            },
+            "🗑️ Remove",
+            |_pattern| CommandRemoveFilter {
+                category: Some(name.clone()),
+                position: Some(*idx),
+                confirm: Some(true),
+            },
+            Some(CommandRemoveFilter {
+                category: Some(name.clone()),
+                position: None,
+                confirm: None,
+            }),
+        )
+        .await
+    }
+
+    async fn run3(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        name: &String,
+        idx: &usize,
+        confirm: &bool,
+    ) -> ResponseResult<()> {
+        if !*confirm {
+            target
+                .send_markdown_message(markdown_format!(
+                    "❌ Filter removal from category `{}` cancelled\\.",
+                    name
+                ))
+                .await?;
+            return Ok(());
+        }
+
         let Some(pattern) = read_category_filter_by_index(
             target,
             &storage,
@@ -117,6 +175,7 @@ impl CommandTrait for CommandRemoveFilter {
             Some(CommandRemoveFilter {
                 category: Some(name.clone()),
                 position: None,
+                confirm: None,
             }),
         )
         .await?
