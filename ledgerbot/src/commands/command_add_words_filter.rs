@@ -45,6 +45,18 @@ impl FromStr for Words {
     }
 }
 
+impl AsRef<Vec<String>> for Words {
+    fn as_ref(&self) -> &Vec<String> {
+        &self.0
+    }
+}
+
+impl AsMut<Vec<String>> for Words {
+    fn as_mut(&mut self) -> &mut Vec<String> {
+        &mut self.0
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddWordsFilter {
     pub category: Option<String>,
@@ -124,7 +136,8 @@ impl CommandTrait for CommandAddWordsFilter {
         category: &String,
     ) -> ResponseResult<()> {
         // Default to page 0 when no page specified
-        self.run2(target, storage, category, &0).await
+        self.run3(target, storage, category, &0, &Words::default())
+            .await
     }
 
     async fn run2(
@@ -133,6 +146,18 @@ impl CommandTrait for CommandAddWordsFilter {
         storage: Self::Context,
         category: &String,
         page: &usize,
+    ) -> ResponseResult<()> {
+        self.run3(target, storage, category, page, &Words::default())
+            .await
+    }
+
+    async fn run3(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        category: &String,
+        page: &usize,
+        selected_words: &Words,
     ) -> ResponseResult<()> {
         // Get expenses and categories
         let expenses = storage
@@ -174,12 +199,13 @@ impl CommandTrait for CommandAddWordsFilter {
                 )
             },
             &words,
+            selected_words.as_ref(),
             *page,
             |_word| NoopCommand,
             |page_num| CommandAddWordsFilter {
                 category: Some(category.clone()),
                 page: Some(page_num),
-                words: None,
+                words: Some(selected_words.clone()),
             },
             Some(CommandAddWordsFilter {
                 category: None,
@@ -188,40 +214,6 @@ impl CommandTrait for CommandAddWordsFilter {
             }),
         )
         .await
-    }
-
-    async fn run3(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-        category: &String,
-        _page: &usize,
-        words: &Words,
-    ) -> ResponseResult<()> {
-        // Add the words as filters to the category
-        let category_storage = storage.as_category_storage();
-
-        for word in words.as_vec() {
-            if let Err(err) = category_storage
-                .add_category_filter(target.chat.id, category.clone(), word.clone())
-                .await
-            {
-                target.send_markdown_message(err).await?;
-                return Ok(());
-            }
-        }
-
-        let word_count = words.as_vec().len();
-        target
-            .send_markdown_message(markdown_format!(
-                "✅ Added {} filter\\(s\\) to category `{}`:\n{}",
-                word_count,
-                category,
-                words.as_vec().join(", ")
-            ))
-            .await?;
-
-        Ok(())
     }
 }
 

@@ -11,10 +11,13 @@ use crate::commands::command_trait::{CommandReplyTarget, CommandTrait};
 /// Words are displayed in a grid (4 words per row)
 /// Handles pagination internally - pass full word list and page number
 /// Automatically shows inactive buttons when at page boundaries
+/// Selected words are marked with a tick (✓)
+#[allow(clippy::too_many_arguments)]
 pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     prompt: impl Fn(usize, usize, usize) -> MarkdownString,
     all_words: &[String],
+    selected_words: &[String],
     page: usize,
     next_command: impl Fn(&str) -> NEXT,
     page_command: impl Fn(usize) -> PAGE,
@@ -31,6 +34,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
 
     let menu = create_word_menu(
         all_words,
+        selected_words,
         |word| next_command(word).to_command_string(false),
         page_number,
         total_pages,
@@ -49,6 +53,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
 
 fn create_word_menu(
     all_words: &[String],
+    selected_words: &[String],
     operation: impl Fn(&str) -> String,
     page_number: usize,
     total_pages: usize,
@@ -72,7 +77,15 @@ fn create_word_menu(
 
     // Create buttons for words on current page (4 per row)
     for word in page_words {
-        row.push(InlineKeyboardButton::callback(word, operation(word)));
+        // Check if this word is selected and mark it with a tick
+        let is_selected = selected_words.contains(word);
+        let label = if is_selected {
+            format!("✓ {}", word)
+        } else {
+            word.clone()
+        };
+
+        row.push(InlineKeyboardButton::callback(label, operation(word)));
 
         if row.len() == 4 {
             buttons.push(row.clone());

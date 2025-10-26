@@ -381,9 +381,7 @@ pub async fn execute_command(
                 .await?;
         }
         Command::AddFilter(add_filter) => {
-            add_filter
-                .run(&target, storage.clone())
-                .await?;
+            add_filter.run(&target, storage.clone()).await?;
         }
         Command::RemoveCategory(remove_category) => {
             remove_category
