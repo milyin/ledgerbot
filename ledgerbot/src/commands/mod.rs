@@ -46,8 +46,8 @@ use crate::{
         filters::add_filter_command,
     },
     handlers::CallbackData,
-    parser::extract_words::extract_words,
     storage_traits::StorageTrait,
+    utils::extract_words::extract_words,
 };
 
 /// Custom parser for two optional string parameters

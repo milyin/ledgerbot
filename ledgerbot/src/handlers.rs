@@ -6,8 +6,8 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 use crate::{
     batch::{add_to_batch, execute_batch},
     commands::{Command, execute_command, filters::add_filter_menu, show_filter_word_suggestions},
-    parser_old::parse_expenses,
     storage_traits::StorageTrait,
+    utils::parse_expenses::parse_expenses,
 };
 
 /// Represents all possible callback data from inline keyboard buttons
