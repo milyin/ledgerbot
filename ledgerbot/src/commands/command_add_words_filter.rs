@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Represents a collection of words separated by '|'
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Words(Vec<String>);
 
 impl Words {
@@ -21,12 +21,6 @@ impl Words {
 
     pub fn as_vec(&self) -> &Vec<String> {
         &self.0
-    }
-}
-
-impl Default for Words {
-    fn default() -> Self {
-        Self(Vec::new())
     }
 }
 
@@ -54,6 +48,12 @@ impl AsRef<Vec<String>> for Words {
 impl AsMut<Vec<String>> for Words {
     fn as_mut(&mut self) -> &mut Vec<String> {
         &mut self.0
+    }
+}
+
+impl From<Vec<String>> for Words {
+    fn from(words: Vec<String>) -> Self {
+        Words::new(words)
     }
 }
 
@@ -201,7 +201,19 @@ impl CommandTrait for CommandAddWordsFilter {
             &words,
             selected_words.as_ref(),
             *page,
-            |_word| NoopCommand,
+            |_word| {
+                let mut selected_words = selected_words.as_ref().clone();
+                if selected_words.contains(&_word.to_string()) {
+                    selected_words.retain(|w| w != _word);
+                } else {
+                    selected_words.push(_word.to_string());
+                }
+                CommandAddWordsFilter {
+                    category: Some(category.clone()),
+                    page: Some(*page),
+                    words: Some(selected_words.into()),
+                }
+            },
             |page_num| CommandAddWordsFilter {
                 category: Some(category.clone()),
                 page: Some(page_num),

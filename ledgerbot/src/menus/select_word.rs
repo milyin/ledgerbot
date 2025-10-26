@@ -19,7 +19,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
     all_words: &[String],
     selected_words: &[String],
     page: usize,
-    next_command: impl Fn(&str) -> NEXT,
+    word_command: impl Fn(&str) -> NEXT,
     page_command: impl Fn(usize) -> PAGE,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
@@ -35,7 +35,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
     let menu = create_word_menu(
         all_words,
         selected_words,
-        |word| next_command(word).to_command_string(false),
+        |word| word_command(word).to_command_string(false),
         page_number,
         total_pages,
         |page_num| page_command(page_num).to_command_string(false),
