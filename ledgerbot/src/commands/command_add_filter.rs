@@ -73,6 +73,7 @@ impl CommandTrait for CommandAddFilter {
         CommandAddWordsFilter {
             category: Some(category.clone()),
             page: None,
+            words: None,
         }
         .run(target, storage)
         .await

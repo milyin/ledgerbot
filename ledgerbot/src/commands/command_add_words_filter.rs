@@ -1,6 +1,6 @@
-use std::sync::Arc;
+use std::{fmt::Display, str::FromStr, sync::Arc};
 
-use teloxide::prelude::ResponseResult;
+use teloxide::{prelude::ResponseResult, utils::command::ParseError};
 use yoroolbot::{markdown_format, markdown_string};
 
 use crate::{
@@ -10,16 +10,52 @@ use crate::{
     utils::extract_words::extract_words,
 };
 
+/// Represents a collection of words separated by '|'
+#[derive(Debug, Clone, PartialEq)]
+pub struct Words(Vec<String>);
+
+impl Words {
+    pub fn new(words: Vec<String>) -> Self {
+        Self(words)
+    }
+
+    pub fn as_vec(&self) -> &Vec<String> {
+        &self.0
+    }
+}
+
+impl Default for Words {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+impl Display for Words {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.join("|"))
+    }
+}
+
+impl FromStr for Words {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let words = s.split('|').map(|w| w.trim().to_string()).collect();
+        Ok(Words(words))
+    }
+}
+
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddWordsFilter {
     pub category: Option<String>,
     pub page: Option<usize>,
+    pub words: Option<Words>,
 }
 
 impl CommandTrait for CommandAddWordsFilter {
     type A = String;
     type B = usize;
-    type C = EmptyArg;
+    type C = Words;
     type D = EmptyArg;
     type E = EmptyArg;
     type F = EmptyArg;
@@ -30,12 +66,12 @@ impl CommandTrait for CommandAddWordsFilter {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "add_words_filter";
-    const PLACEHOLDERS: &[&'static str] = &["<category>", "<page>"];
+    const PLACEHOLDERS: &[&'static str] = &["<category>", "<page>", "<words>"];
 
     fn from_arguments(
         category: Option<Self::A>,
         page: Option<Self::B>,
-        _: Option<Self::C>,
+        words: Option<Self::C>,
         _: Option<Self::D>,
         _: Option<Self::E>,
         _: Option<Self::F>,
@@ -43,7 +79,11 @@ impl CommandTrait for CommandAddWordsFilter {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandAddWordsFilter { category, page }
+        CommandAddWordsFilter {
+            category,
+            page,
+            words,
+        }
     }
 
     fn param1(&self) -> Option<&Self::A> {
@@ -52,6 +92,10 @@ impl CommandTrait for CommandAddWordsFilter {
 
     fn param2(&self) -> Option<&Self::B> {
         self.page.as_ref()
+    }
+
+    fn param3(&self) -> Option<&Self::C> {
+        self.words.as_ref()
     }
 
     async fn run0(
@@ -66,6 +110,7 @@ impl CommandTrait for CommandAddWordsFilter {
             |name| CommandAddWordsFilter {
                 category: Some(name.to_string()),
                 page: Some(0),
+                words: None,
             },
             None::<NoopCommand>,
         )
@@ -134,13 +179,49 @@ impl CommandTrait for CommandAddWordsFilter {
             |page_num| CommandAddWordsFilter {
                 category: Some(category.clone()),
                 page: Some(page_num),
+                words: None,
             },
             Some(CommandAddWordsFilter {
                 category: None,
                 page: None,
+                words: None,
             }),
         )
         .await
+    }
+
+    async fn run3(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        category: &String,
+        _page: &usize,
+        words: &Words,
+    ) -> ResponseResult<()> {
+        // Add the words as filters to the category
+        let category_storage = storage.as_category_storage();
+
+        for word in words.as_vec() {
+            if let Err(err) = category_storage
+                .add_category_filter(target.chat.id, category.clone(), word.clone())
+                .await
+            {
+                target.send_markdown_message(err).await?;
+                return Ok(());
+            }
+        }
+
+        let word_count = words.as_vec().len();
+        target
+            .send_markdown_message(markdown_format!(
+                "✅ Added {} filter\\(s\\) to category `{}`:\n{}",
+                word_count,
+                category,
+                words.as_vec().join(", ")
+            ))
+            .await?;
+
+        Ok(())
     }
 }
 
