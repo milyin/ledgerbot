@@ -202,81 +202,6 @@ pub fn format_expenses_by_category(
     messages
 }
 
-/// Format expenses as a readable list with total, grouped by categories
-/// (Single message version - kept for testing and backward compatibility)
-#[allow(dead_code)]
-pub fn format_expenses_list(
-    expenses: &[Expense],
-    categories: &HashMap<String, Vec<String>>,
-) -> MarkdownString {
-    if expenses.is_empty() {
-        return markdown_string!("No expenses recorded yet\\.");
-    }
-
-    let mut result = MarkdownString::new();
-    let mut total = 0.0;
-
-    // Build regex matchers for each category (from all patterns)
-    let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
-        .iter()
-        .map(|(name, patterns)| {
-            let regexes: Vec<regex::Regex> = patterns
-                .iter()
-                .filter_map(|pattern| regex::Regex::new(pattern).ok())
-                .collect();
-            (name.clone(), regexes)
-        })
-        .collect();
-
-    // Group expenses by category
-    let mut categorized: HashMap<String, Vec<Expense>> = HashMap::new();
-    let mut uncategorized: Vec<Expense> = Vec::new();
-
-    for expense in expenses.iter() {
-        let mut matched = false;
-
-        // Try to match against each category
-        for (category_name, regexes) in &category_matchers {
-            // Check if description matches any of the patterns in this category
-            if regexes.iter().any(|re| re.is_match(&expense.description)) {
-                categorized
-                    .entry(category_name.clone())
-                    .or_default()
-                    .push(expense.clone());
-                matched = true;
-                break; // Each expense goes into first matching category
-            }
-        }
-
-        if !matched {
-            uncategorized.push(expense.clone());
-        }
-    }
-
-    // Sort category names for consistent output
-    let mut category_names: Vec<String> = categorized.keys().cloned().collect();
-    category_names.sort();
-
-    // Display categorized expenses
-    for category_name in category_names {
-        if let Some(items) = categorized.get(&category_name) {
-            let (section, category_total) = format_category_section(&category_name, items);
-            result = result + section;
-            total += category_total;
-        }
-    }
-
-    // Display uncategorized expenses
-    if !uncategorized.is_empty() {
-        let (section, category_total) = format_category_section("Other", &uncategorized);
-        result = result + section;
-        total += category_total;
-    }
-
-    let total_line = markdown_format!("*Total: {}*", total);
-    result + total_line
-}
-
 /// Helper function to format a single category as a standalone message
 fn format_category_message(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {
     let mut category_total = 0.0;
@@ -313,40 +238,6 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;
-
-    #[test]
-    fn test_format_expenses_list_returns_markdown_string() {
-        // Test that the function returns a MarkdownString
-        let expenses = vec![Expense {
-            description: "Test expense".to_string(),
-            amount: 25.50,
-            timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-        }];
-        let categories = HashMap::new();
-
-        let result = format_expenses_list(&expenses, &categories);
-
-        // The function should return a MarkdownString
-        // We can verify the type by calling methods that are specific to MarkdownString
-        assert!(!result.as_str().is_empty());
-        assert!(result.as_str().contains("Test expense"));
-        assert!(result.as_str().contains("25")); // Check for the amount
-        assert!(result.as_str().contains("*Total:")); // Check for the total line
-    }
-
-    #[test]
-    fn test_format_expenses_list_empty_returns_markdown_string() {
-        let expenses = vec![];
-        let categories = HashMap::new();
-
-        let result = format_expenses_list(&expenses, &categories);
-
-        // Should return the "No expenses recorded yet" message as MarkdownString
-        assert_eq!(result.as_str(), "No expenses recorded yet\\.");
-    }
 
     #[test]
     fn test_format_expenses_by_category_returns_multiple_messages() {
