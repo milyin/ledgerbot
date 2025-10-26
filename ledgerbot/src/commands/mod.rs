@@ -1,5 +1,6 @@
 pub mod command_add_category;
 pub mod command_add_expense;
+pub mod command_add_filter2;
 pub mod command_categories;
 pub mod command_clear_categories;
 pub mod command_clear_expenses;
@@ -30,6 +31,7 @@ use crate::{
     commands::{
         command_add_category::CommandAddCategory,
         command_add_expense::CommandAddExpense,
+        command_add_filter2::CommandAddFilter2,
         command_categories::CommandCategories,
         command_clear_categories::CommandClearCategories,
         command_clear_expenses::CommandClearExpenses,
@@ -146,6 +148,12 @@ pub enum Command {
         parse_with = CommandAddExpense::parse_arguments
     )]
     AddExpense(CommandAddExpense),
+    #[command(
+        description = "add filter to category (new implementation)",
+        rename = "add_filter2",
+        parse_with = CommandAddFilter2::parse_arguments
+    )]
+    AddFilter2(CommandAddFilter2),
 }
 
 // Command constants as string representations
@@ -173,6 +181,7 @@ impl From<Command> for String {
             Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
             Command::AddExpense(add_expense) => add_expense.to_command_string(true),
+            Command::AddFilter2(add_filter2) => add_filter2.to_command_string(true),
         }
     }
 }
@@ -422,6 +431,11 @@ pub async fn execute_command(
         Command::AddExpense(add_expense) => {
             add_expense
                 .run(&target, storage.clone().as_expense_storage())
+                .await?;
+        }
+        Command::AddFilter2(add_filter2) => {
+            add_filter2
+                .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
     }
