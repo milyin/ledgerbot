@@ -9,9 +9,9 @@ use crate::{
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct CommandClear;
+pub struct CommandClearExpenses;
 
-impl CommandTrait for CommandClear {
+impl CommandTrait for CommandClearExpenses {
     type A = EmptyArg;
     type B = EmptyArg;
     type C = EmptyArg;
@@ -24,7 +24,7 @@ impl CommandTrait for CommandClear {
 
     type Context = Arc<dyn ExpenseStorageTrait>;
 
-    const NAME: &'static str = "clear";
+    const NAME: &'static str = "clear_expenses";
     const PLACEHOLDERS: &[&'static str] = &[];
 
     fn from_arguments(
@@ -38,7 +38,7 @@ impl CommandTrait for CommandClear {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandClear
+        CommandClearExpenses
     }
 
     async fn run0(
@@ -56,8 +56,8 @@ impl CommandTrait for CommandClear {
     }
 }
 
-impl From<CommandClear> for crate::commands::Command {
-    fn from(cmd: CommandClear) -> Self {
+impl From<CommandClearExpenses> for crate::commands::Command {
+    fn from(cmd: CommandClearExpenses) -> Self {
         crate::commands::Command::Clear(cmd)
     }
 }

@@ -1,7 +1,7 @@
 pub mod command_add_category;
 pub mod command_add_expense;
 pub mod command_categories;
-pub mod command_clear;
+pub mod command_clear_expenses;
 pub mod command_clear_categories;
 pub mod command_edit_filter;
 pub mod command_help;
@@ -31,7 +31,7 @@ use crate::{
         command_add_category::CommandAddCategory,
         command_add_expense::CommandAddExpense,
         command_categories::CommandCategories,
-        command_clear::CommandClear,
+        command_clear_expenses::CommandClearExpenses,
         command_clear_categories::CommandClearCategories,
         command_edit_filter::CommandEditFilter,
         command_help::CommandHelp,
@@ -93,9 +93,9 @@ pub enum Command {
     Report(CommandReport),
     #[command(
         description = "clear all expenses",
-        parse_with = CommandClear::parse_arguments
+        parse_with = CommandClearExpenses::parse_arguments
     )]
-    Clear(CommandClear),
+    Clear(CommandClearExpenses),
     #[command(
         description = "list all categories with filters in command format",
         parse_with = CommandCategories::parse_arguments
@@ -154,7 +154,7 @@ impl Command {
     pub const START: &'static str = "/start";
     pub const LIST: &'static str = "/list";
     pub const REPORT: &'static str = "/report";
-    pub const CLEAR: &'static str = "/clear";
+    pub const CLEAR_EXPENSES: &'static str = "/clear_expennes";
     pub const CATEGORIES: &'static str = "/categories";
     pub const CLEAR_CATEGORIES: &'static str = "/clear_categories";
     pub const ADD_FILTER: &'static str = "/add_filter";
