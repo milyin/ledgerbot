@@ -5,7 +5,7 @@ use teloxide::prelude::ResponseResult;
 use crate::{
     commands::{
         command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-        report::{check_category_conflicts, format_expenses_list},
+        report::{check_category_conflicts, format_expenses_by_category},
     },
     storage_traits::StorageTrait,
 };
@@ -66,9 +66,14 @@ impl CommandTrait for CommandReport {
             return Ok(());
         }
 
-        let expenses_list = format_expenses_list(&chat_expenses, &chat_categories);
+        // Get messages for each category
+        let messages = format_expenses_by_category(&chat_expenses, &chat_categories);
 
-        target.send_markdown_message(expenses_list).await?;
+        // Send each message separately
+        for message in messages {
+            target.send_markdown_message(message).await?;
+        }
+
         Ok(())
     }
 }

@@ -90,7 +90,87 @@ pub fn check_category_conflicts(
     None
 }
 
+/// Format expenses as multiple messages, one per category, plus a final total message
+pub fn format_expenses_by_category(
+    expenses: &[Expense],
+    categories: &HashMap<String, Vec<String>>,
+) -> Vec<MarkdownString> {
+    if expenses.is_empty() {
+        return vec![markdown_string!("No expenses recorded yet\\.")];
+    }
+
+    let mut messages = Vec::new();
+
+    // Build regex matchers for each category (from all patterns)
+    let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
+        .iter()
+        .map(|(name, patterns)| {
+            let regexes: Vec<regex::Regex> = patterns
+                .iter()
+                .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                .collect();
+            (name.clone(), regexes)
+        })
+        .collect();
+
+    // Group expenses by category
+    let mut categorized: HashMap<String, Vec<Expense>> = HashMap::new();
+    let mut uncategorized: Vec<Expense> = Vec::new();
+
+    for expense in expenses.iter() {
+        let mut matched = false;
+
+        // Try to match against each category
+        for (category_name, regexes) in &category_matchers {
+            // Check if description matches any of the patterns in this category
+            if regexes.iter().any(|re| re.is_match(&expense.description)) {
+                categorized
+                    .entry(category_name.clone())
+                    .or_default()
+                    .push(expense.clone());
+                matched = true;
+                break; // Each expense goes into first matching category
+            }
+        }
+
+        if !matched {
+            uncategorized.push(expense.clone());
+        }
+    }
+
+    // Sort category names for consistent output
+    let mut category_names: Vec<String> = categorized.keys().cloned().collect();
+    category_names.sort();
+
+    let mut total = 0.0;
+
+    // Create a message for each category
+    for category_name in category_names {
+        if let Some(items) = categorized.get(&category_name) {
+            let (section, category_total) = format_category_message(&category_name, items);
+            messages.push(section);
+            total += category_total;
+        }
+    }
+
+    // Create a message for uncategorized expenses
+    if !uncategorized.is_empty() {
+        let (section, category_total) = format_category_message("Other", &uncategorized);
+        messages.push(section);
+        total += category_total;
+    }
+
+    // Add final total message
+    if !messages.is_empty() {
+        messages.push(markdown_format!("*Total: {}*", total));
+    }
+
+    messages
+}
+
 /// Format expenses as a readable list with total, grouped by categories
+/// (Single message version - kept for testing and backward compatibility)
+#[allow(dead_code)]
 pub fn format_expenses_list(
     expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
@@ -163,8 +243,8 @@ pub fn format_expenses_list(
     result + total_line
 }
 
-/// Helper function to format a single category section with its expenses
-fn format_category_section(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {
+/// Helper function to format a single category as a standalone message
+fn format_category_message(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {
     let mut category_total = 0.0;
     let mut section = markdown_format!("*{}*:\n", category_name);
 
@@ -180,10 +260,18 @@ fn format_category_section(category_name: &str, expenses: &[Expense]) -> (Markdo
         category_total += expense.amount;
     }
 
-    let subtotal_line = markdown_format!("  *Subtotal: {}*\n\n", category_total);
+    let subtotal_line = markdown_format!("  *Subtotal: {}*", category_total);
     section = section + subtotal_line;
 
     (section, category_total)
+}
+
+/// Helper function to format a single category section with its expenses (for single-message report)
+#[allow(dead_code)]
+fn format_category_section(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {
+    let (mut section, total) = format_category_message(category_name, expenses);
+    section = section + markdown_string!("\n\n");
+    (section, total)
 }
 
 #[cfg(test)]
@@ -224,5 +312,71 @@ mod tests {
 
         // Should return the "No expenses recorded yet" message as MarkdownString
         assert_eq!(result.as_str(), "No expenses recorded yet\\.");
+    }
+
+    #[test]
+    fn test_format_expenses_by_category_returns_multiple_messages() {
+        // Test that the function returns multiple messages, one per category
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        let expenses = vec![
+            Expense {
+                description: "Coffee".to_string(),
+                amount: 5.50,
+                timestamp,
+            },
+            Expense {
+                description: "Groceries".to_string(),
+                amount: 25.00,
+                timestamp,
+            },
+            Expense {
+                description: "Tea".to_string(),
+                amount: 3.00,
+                timestamp,
+            },
+        ];
+
+        let mut categories = HashMap::new();
+        categories.insert("Food".to_string(), vec!["(?i)coffee".to_string(), "(?i)tea".to_string()]);
+
+        let messages = format_expenses_by_category(&expenses, &categories);
+
+        // Should have 3 messages: Food category, Other category, and Total
+        assert_eq!(messages.len(), 3);
+
+        // First message should be Food category
+        assert!(messages[0].as_str().contains("*Food*"));
+        assert!(messages[0].as_str().contains("Coffee"));
+        assert!(messages[0].as_str().contains("Tea"));
+        assert!(messages[0].as_str().contains("Subtotal"));
+        // Numbers are escaped in MarkdownV2 format
+        assert!(messages[0].as_str().contains("8\\.5"));
+
+        // Second message should be Other category
+        assert!(messages[1].as_str().contains("*Other*"));
+        assert!(messages[1].as_str().contains("Groceries"));
+        assert!(messages[1].as_str().contains("Subtotal"));
+        assert!(messages[1].as_str().contains("25"));
+
+        // Third message should be Total
+        assert!(messages[2].as_str().contains("Total"));
+        // Numbers are escaped in MarkdownV2 format
+        assert!(messages[2].as_str().contains("33\\.5"));
+    }
+
+    #[test]
+    fn test_format_expenses_by_category_empty_returns_single_message() {
+        let expenses = vec![];
+        let categories = HashMap::new();
+
+        let messages = format_expenses_by_category(&expenses, &categories);
+
+        // Should return single message with "No expenses recorded yet"
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].as_str(), "No expenses recorded yet\\.");
     }
 }
