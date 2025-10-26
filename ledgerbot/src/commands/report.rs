@@ -143,12 +143,14 @@ pub fn format_expenses_by_category(
     category_names.sort();
 
     let mut total = 0.0;
+    let mut category_subtotals: Vec<(String, f64)> = Vec::new();
 
     // Create a message for each category
     for category_name in category_names {
         if let Some(items) = categorized.get(&category_name) {
             let (section, category_total) = format_category_message(&category_name, items);
             messages.push(section);
+            category_subtotals.push((category_name.clone(), category_total));
             total += category_total;
         }
     }
@@ -157,12 +159,23 @@ pub fn format_expenses_by_category(
     if !uncategorized.is_empty() {
         let (section, category_total) = format_category_message("Other", &uncategorized);
         messages.push(section);
+        category_subtotals.push(("Other".to_string(), category_total));
         total += category_total;
     }
 
-    // Add final total message
+    // Add final total message with category breakdown
     if !messages.is_empty() {
-        messages.push(markdown_format!("*Total: {}*", total));
+        let mut total_message = MarkdownString::new();
+
+        for (category_name, subtotal) in category_subtotals {
+            let line = markdown_format!("*{}*: {}\n", &*category_name, subtotal);
+            total_message = total_message + line;
+        }
+
+        let total_line = markdown_format!("*Total: {}*", total);
+        total_message = total_message + total_line;
+
+        messages.push(total_message);
     }
 
     messages
@@ -362,10 +375,10 @@ mod tests {
         assert!(messages[1].as_str().contains("Subtotal"));
         assert!(messages[1].as_str().contains("25"));
 
-        // Third message should be Total
-        assert!(messages[2].as_str().contains("Total"));
-        // Numbers are escaped in MarkdownV2 format
-        assert!(messages[2].as_str().contains("33\\.5"));
+        // Third message should be Total with category breakdown
+        assert!(messages[2].as_str().contains("*Food*: 8\\.5"));
+        assert!(messages[2].as_str().contains("*Other*: 25"));
+        assert!(messages[2].as_str().contains("*Total: 33\\.5*"));
     }
 
     #[test]
@@ -378,5 +391,49 @@ mod tests {
         // Should return single message with "No expenses recorded yet"
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].as_str(), "No expenses recorded yet\\.");
+    }
+
+    #[test]
+    fn test_format_expenses_by_category_total_message_format() {
+        // Test that the total message includes category breakdowns
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        let expenses = vec![
+            Expense {
+                description: "Coffee".to_string(),
+                amount: 10.0,
+                timestamp,
+            },
+            Expense {
+                description: "Bus ticket".to_string(),
+                amount: 5.0,
+                timestamp,
+            },
+            Expense {
+                description: "Groceries".to_string(),
+                amount: 30.0,
+                timestamp,
+            },
+        ];
+
+        let mut categories = HashMap::new();
+        categories.insert("Food".to_string(), vec!["(?i)coffee".to_string(), "(?i)groceries".to_string()]);
+        categories.insert("Transport".to_string(), vec!["(?i)bus".to_string(), "(?i)taxi".to_string()]);
+
+        let messages = format_expenses_by_category(&expenses, &categories);
+
+        // Should have 4 messages: Food, Transport, Other (none), Total
+        assert_eq!(messages.len(), 3); // Food, Transport, Total (no Other since all matched)
+
+        // Last message should be the total with breakdown
+        let total_msg = &messages[2];
+
+        // Should contain each category with its subtotal
+        assert!(total_msg.as_str().contains("*Food*: 40"));
+        assert!(total_msg.as_str().contains("*Transport*: 5"));
+        assert!(total_msg.as_str().contains("*Total: 45*"));
     }
 }
