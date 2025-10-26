@@ -113,23 +113,11 @@ impl CommandTrait for CommandAddFilter2 {
             return Ok(());
         }
 
-        // Pagination constants
+        // Calculate total pages for display
         const WORDS_PER_PAGE: usize = 20;
         let total_words = words.len();
         let total_pages = total_words.div_ceil(WORDS_PER_PAGE);
-        let current_page = *page;
-
-        // Ensure page is within bounds
-        let page_number = current_page.min(total_pages.saturating_sub(1));
-        let page_offset = page_number * WORDS_PER_PAGE;
-
-        // Get words for current page
-        let page_words: Vec<String> = words
-            .iter()
-            .skip(page_offset)
-            .take(WORDS_PER_PAGE)
-            .cloned()
-            .collect();
+        let page_number = (*page).min(total_pages.saturating_sub(1));
 
         // Show word selection menu with pagination
         select_word(
@@ -141,9 +129,10 @@ impl CommandTrait for CommandAddFilter2 {
                 total_pages,
                 total_words
             ),
-            &page_words,
+            &words,
+            *page,
             |_word| NoopCommand,
-            // Previous page button (or inactive if first page)
+            // Previous page button (or None if first page)
             if page_number > 0 {
                 Some(CommandAddFilter2 {
                     category: Some(category.clone()),
@@ -152,8 +141,8 @@ impl CommandTrait for CommandAddFilter2 {
             } else {
                 None
             },
-            // Next page button (or inactive if last page)
-            if page_offset + WORDS_PER_PAGE < total_words {
+            // Next page button (or None if last page)
+            if page_number + 1 < total_pages {
                 Some(CommandAddFilter2 {
                     category: Some(category.clone()),
                     page: Some(page_number + 1),

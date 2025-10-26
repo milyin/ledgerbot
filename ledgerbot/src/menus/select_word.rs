@@ -9,10 +9,12 @@ use crate::commands::command_trait::{CommandReplyTarget, CommandTrait};
 
 /// Display a menu with word suggestions for filter creation
 /// Words are displayed in a grid (4 words per row)
+/// Handles pagination internally - pass full word list and page number
 pub async fn select_word<NEXT: CommandTrait, PREV: CommandTrait, NEXTP: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     prompt: MarkdownString,
-    words: &[String],
+    all_words: &[String],
+    page: usize,
     next_command: impl Fn(&str) -> NEXT,
     prev_page_command: Option<PREV>,
     next_page_command: Option<NEXTP>,
@@ -21,7 +23,8 @@ pub async fn select_word<NEXT: CommandTrait, PREV: CommandTrait, NEXTP: CommandT
     let msg = target.markdown_message(prompt).await?;
 
     let menu = create_word_menu(
-        words,
+        all_words,
+        page,
         |word| next_command(word).to_command_string(false),
         prev_page_command,
         next_page_command,
@@ -38,17 +41,33 @@ pub async fn select_word<NEXT: CommandTrait, PREV: CommandTrait, NEXTP: CommandT
 }
 
 fn create_word_menu(
-    words: &[String],
+    all_words: &[String],
+    page: usize,
     operation: impl Fn(&str) -> String,
     prev_page_command: Option<impl CommandTrait>,
     next_page_command: Option<impl CommandTrait>,
     back_command: Option<impl CommandTrait>,
 ) -> InlineKeyboardMarkup {
+    const WORDS_PER_PAGE: usize = 20;
+
+    // Calculate pagination
+    let total_words = all_words.len();
+    let total_pages = total_words.div_ceil(WORDS_PER_PAGE);
+    let page_number = page.min(total_pages.saturating_sub(1));
+    let page_offset = page_number * WORDS_PER_PAGE;
+
+    // Get words for current page
+    let page_words: Vec<&String> = all_words
+        .iter()
+        .skip(page_offset)
+        .take(WORDS_PER_PAGE)
+        .collect();
+
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
     let mut row: Vec<InlineKeyboardButton> = Vec::new();
 
-    // Create buttons for words (4 per row)
-    for word in words {
+    // Create buttons for words on current page (4 per row)
+    for word in page_words {
         row.push(InlineKeyboardButton::callback(
             word,
             operation(word),
