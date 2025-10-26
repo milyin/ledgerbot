@@ -113,43 +113,32 @@ impl CommandTrait for CommandAddFilter2 {
             return Ok(());
         }
 
-        // Calculate total pages for display
-        const WORDS_PER_PAGE: usize = 20;
-        let total_words = words.len();
-        let total_pages = total_words.div_ceil(WORDS_PER_PAGE);
-        let page_number = (*page).min(total_pages.saturating_sub(1));
+        let category = category.clone();
+        let page = *page;
 
         // Show word selection menu with pagination
         select_word(
             target,
-            markdown_format!(
-                "💡 Select word\\(s\\) for filter in category `{}`\n\nPage {}/{} \\({} words total\\)",
-                category,
-                page_number + 1,
-                total_pages,
-                total_words
-            ),
+            |current_page, total_pages, total_words| {
+                markdown_format!(
+                    "💡 Select word\\(s\\) for filter in category `{}`\n\nPage {}/{} \\({} words total\\)",
+                    &category,
+                    current_page,
+                    total_pages,
+                    total_words
+                )
+            },
             &words,
-            *page,
+            page,
             |_word| NoopCommand,
-            // Previous page button (or None if first page)
-            if page_number > 0 {
-                Some(CommandAddFilter2 {
-                    category: Some(category.clone()),
-                    page: Some(page_number - 1),
-                })
-            } else {
-                None
-            },
-            // Next page button (or None if last page)
-            if page_number + 1 < total_pages {
-                Some(CommandAddFilter2 {
-                    category: Some(category.clone()),
-                    page: Some(page_number + 1),
-                })
-            } else {
-                None
-            },
+            Some(CommandAddFilter2 {
+                category: Some(category.clone()),
+                page: Some(page.saturating_sub(1)),
+            }),
+            Some(CommandAddFilter2 {
+                category: Some(category.clone()),
+                page: Some(page + 1),
+            }),
             Some(CommandAddFilter2 {
                 category: None,
                 page: None,
