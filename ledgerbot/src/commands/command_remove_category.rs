@@ -108,15 +108,12 @@ impl CommandTrait for CommandRemoveCategory {
                 .await?;
             return Ok(());
         }
-        if storage.remove_category(target.chat.id, name).await {
-            target
-                .send_markdown_message(markdown_format!("✅ Category `{}` removed\\.", name))
-                .await?;
-        } else {
-            target
-                .send_markdown_message(markdown_format!("❌ Category `{}` does not exist\\.", name))
-                .await?;
+        if let Err(e) = storage.remove_category(target.chat.id, name).await {
+            target.send_markdown_message(e).await?;
         }
+        target
+            .send_markdown_message(markdown_format!("✅ Category `{}` removed\\.", name))
+            .await?;
         Ok(())
     }
 }

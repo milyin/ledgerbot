@@ -1,6 +1,7 @@
 pub mod command_add_category;
 pub mod command_add_expense;
-pub mod command_add_filter2;
+pub mod command_add_filter;
+pub mod command_add_words_filter;
 pub mod command_categories;
 pub mod command_clear_categories;
 pub mod command_clear_expenses;
@@ -22,7 +23,7 @@ use teloxide::{
     prelude::*,
     types::{Chat, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
     utils::{
-        command::{BotCommands, ParseError},
+        command::BotCommands,
         markdown::escape,
     },
 };
@@ -31,7 +32,8 @@ use crate::{
     commands::{
         command_add_category::CommandAddCategory,
         command_add_expense::CommandAddExpense,
-        command_add_filter2::CommandAddFilter2,
+        command_add_filter::CommandAddFilter,
+        command_add_words_filter::CommandAddWordsFilter,
         command_categories::CommandCategories,
         command_clear_categories::CommandClearCategories,
         command_clear_expenses::CommandClearExpenses,
@@ -49,22 +51,6 @@ use crate::{
     storage_traits::StorageTrait,
     utils::extract_words::extract_words,
 };
-
-/// Custom parser for two optional string parameters
-fn parse_two_optional_strings(s: String) -> Result<(Option<String>, Option<String>), ParseError> {
-    // Take only the first line to prevent multi-line capture
-    let first_line = s.lines().next().unwrap_or("").trim();
-    if first_line.is_empty() {
-        return Ok((None, None));
-    }
-
-    let parts: Vec<&str> = first_line.splitn(2, ' ').collect();
-    match parts.as_slice() {
-        [first] => Ok((Some(first.to_string()), None)),
-        [first, second] => Ok((Some(first.to_string()), Some(second.to_string()))),
-        _ => Ok((None, None)),
-    }
-}
 
 /// Bot commands
 #[derive(BotCommands, Clone, Debug, PartialEq)]
@@ -118,12 +104,9 @@ pub enum Command {
     #[command(
         description = "add filter to category",
         rename = "add_filter",
-        parse_with = parse_two_optional_strings
+        parse_with = CommandAddFilter::parse_arguments
     )]
-    AddFilter {
-        category: Option<String>,
-        pattern: Option<String>,
-    },
+    AddFilter(CommandAddFilter),
     #[command(
         description = "remove expense category",
         rename = "remove_category",
@@ -151,9 +134,9 @@ pub enum Command {
     #[command(
         description = "add filter to category (new implementation)",
         rename = "add_filter2",
-        parse_with = CommandAddFilter2::parse_arguments
+        parse_with = CommandAddWordsFilter::parse_arguments
     )]
-    AddFilter2(CommandAddFilter2),
+    AddFilter2(CommandAddWordsFilter),
 }
 
 // Command constants as string representations
@@ -172,11 +155,7 @@ impl From<Command> for String {
             Command::Categories(categories) => categories.to_command_string(true),
             Command::ClearCategories(clear_categories) => clear_categories.to_command_string(true),
             Command::AddCategory(add_category) => add_category.to_command_string(true),
-            Command::AddFilter { category, pattern } => {
-                let category_str = category.unwrap_or_else(|| "<category>".to_string());
-                let pattern_str = pattern.unwrap_or_else(|| "<pattern>".to_string());
-                format!("{} {} {}", Command::ADD_FILTER, category_str, pattern_str)
-            }
+            Command::AddFilter(add_filter) => add_filter.to_command_string(true),
             Command::RemoveCategory(remove_category) => remove_category.to_command_string(true),
             Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
@@ -209,7 +188,7 @@ pub async fn show_filter_word_suggestions(
         .clone()
         .as_category_storage()
         .get_chat_categories(chat_id)
-        .await;
+        .await.unwrap_or_default();
 
     // Get currently selected words from storage
     let selected_words = storage
@@ -318,14 +297,13 @@ pub async fn show_filter_word_suggestions(
         // Escape each word and combine with case-insensitive OR pattern with word boundaries
         let escaped_words: Vec<String> = selected_words.iter().map(|w| regex::escape(w)).collect();
         let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
-        Command::AddFilter {
+        CommandAddFilter {
             category: Some(category_name.clone()),
             pattern: Some(pattern),
-        }
-        .to_string()
+        }.to_command_string(true)
     } else {
         // No words selected, just put category name
-        format!("{} {} ", Command::ADD_FILTER, category_name)
+        format!("{} {} ", CommandAddFilter::NAME, category_name)
     };
 
     control_row.push(InlineKeyboardButton::switch_inline_query_current_chat(
@@ -403,13 +381,13 @@ pub async fn execute_command(
                 .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
-        Command::AddFilter { category, pattern } => {
+        Command::AddFilter(add_filter) => {
             add_filter_command(
                 bot.clone(),
                 msg.clone(),
                 storage.clone().as_category_storage(),
-                category,
-                pattern,
+                add_filter.category,
+                add_filter.pattern,
             )
             .await?;
         }
@@ -434,9 +412,7 @@ pub async fn execute_command(
                 .await?;
         }
         Command::AddFilter2(add_filter2) => {
-            add_filter2
-                .run(&target, storage.clone())
-                .await?;
+            add_filter2.run(&target, storage.clone()).await?;
         }
     }
     Ok(())

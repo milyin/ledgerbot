@@ -104,7 +104,7 @@ mod tests {
     use chrono::NaiveDate;
 
     use super::*;
-    use crate::commands::command_add_category::CommandAddCategory;
+    use crate::commands::{command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter};
 
     #[test]
     fn test_parse_expenses_with_date() {
@@ -397,7 +397,7 @@ mod tests {
         );
 
         assert!(
-            matches!(&results[8], Ok(Command::AddFilter { category, pattern })
+            matches!(&results[8], Ok(Command::AddFilter(CommandAddFilter { category, pattern }))
             if category == &Some("Food".to_string())
             && pattern == &Some("(?i)lunch".to_string()))
         );

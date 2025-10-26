@@ -5,8 +5,8 @@ use yoroolbot::markdown_format;
 
 use crate::{
     commands::{
-        Command,
         command_add_category::CommandAddCategory,
+        command_add_filter::CommandAddFilter,
         command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
     },
     storage_traits::CategoryStorageTrait,
@@ -51,7 +51,10 @@ impl CommandTrait for CommandCategories {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let categories = storage.get_chat_categories(chat_id).await;
+        let categories = storage
+            .get_chat_categories(chat_id)
+            .await
+            .unwrap_or_default();
 
         if categories.is_empty() {
             target
@@ -75,11 +78,12 @@ impl CommandTrait for CommandCategories {
                 // Then assign patterns if they exist
                 for pattern in patterns {
                     result.push_str(
-                        &Command::AddFilter {
+                        CommandAddFilter {
                             category: Some(name.clone()),
                             pattern: Some(pattern.clone()),
                         }
-                        .to_string(),
+                        .to_command_string(true)
+                        .as_str(),
                     );
                     result.push('\n');
                 }

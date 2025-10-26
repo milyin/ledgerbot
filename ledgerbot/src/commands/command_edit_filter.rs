@@ -175,13 +175,22 @@ impl CommandTrait for CommandEditFilter {
         }
 
         // Remove the old pattern and add the new one
-        storage
+        if let Err(e) = storage
             .remove_category_filter(target.chat.id, name, &old_pattern)
-            .await;
+            .await
+        {
+            target
+                .send_markdown_message(markdown_format!("❌ Failed to remove filter: {}", e))
+                .await?;
+        }
 
-        storage
+        if let Err(e) = storage
             .add_category_filter(target.chat.id, name.clone(), pattern.clone())
-            .await;
+            .await
+        {
+            target.send_markdown_message(e).await?;
+            return Ok(());
+        }
 
         target
             .send_markdown_message(markdown_format!(

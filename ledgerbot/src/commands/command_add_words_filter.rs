@@ -11,12 +11,12 @@ use crate::{
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct CommandAddFilter2 {
+pub struct CommandAddWordsFilter {
     pub category: Option<String>,
     pub page: Option<usize>,
 }
 
-impl CommandTrait for CommandAddFilter2 {
+impl CommandTrait for CommandAddWordsFilter {
     type A = String;
     type B = usize;
     type C = EmptyArg;
@@ -29,7 +29,7 @@ impl CommandTrait for CommandAddFilter2 {
 
     type Context = Arc<dyn StorageTrait>;
 
-    const NAME: &'static str = "add_filter2";
+    const NAME: &'static str = "add_words_filter";
     const PLACEHOLDERS: &[&'static str] = &["<category>", "<page>"];
 
     fn from_arguments(
@@ -43,7 +43,7 @@ impl CommandTrait for CommandAddFilter2 {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandAddFilter2 { category, page }
+        CommandAddWordsFilter { category, page }
     }
 
     fn param1(&self) -> Option<&Self::A> {
@@ -63,7 +63,7 @@ impl CommandTrait for CommandAddFilter2 {
             target,
             &storage.as_category_storage(),
             markdown_string!("➕ Select Category to add filter"),
-            |name| CommandAddFilter2 {
+            |name| CommandAddWordsFilter {
                 category: Some(name.to_string()),
                 page: Some(0),
             },
@@ -99,7 +99,7 @@ impl CommandTrait for CommandAddFilter2 {
             .clone()
             .as_category_storage()
             .get_chat_categories(target.chat.id)
-            .await;
+            .await.unwrap_or_default();
 
         // Extract words from uncategorized expenses
         let words = extract_words(&expenses, &categories);
@@ -130,11 +130,11 @@ impl CommandTrait for CommandAddFilter2 {
             &words,
             *page,
             |_word| NoopCommand,
-            |page_num| CommandAddFilter2 {
+            |page_num| CommandAddWordsFilter {
                 category: Some(category.clone()),
                 page: Some(page_num),
             },
-            Some(CommandAddFilter2 {
+            Some(CommandAddWordsFilter {
                 category: None,
                 page: None,
             }),
@@ -143,8 +143,8 @@ impl CommandTrait for CommandAddFilter2 {
     }
 }
 
-impl From<CommandAddFilter2> for crate::commands::Command {
-    fn from(cmd: CommandAddFilter2) -> Self {
+impl From<CommandAddWordsFilter> for crate::commands::Command {
+    fn from(cmd: CommandAddWordsFilter) -> Self {
         crate::commands::Command::AddFilter2(cmd)
     }
 }

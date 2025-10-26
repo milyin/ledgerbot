@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use teloxide::prelude::ResponseResult;
 use yoroolbot::markdown_string;
@@ -46,8 +46,13 @@ impl CommandTrait for CommandClearCategories {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-        storage.clear_chat_categories(chat_id).await;
+        if let Err(e) = storage
+            .replace_categories(target.chat.id, HashMap::new())
+            .await
+        {
+            target.send_markdown_message(e).await?;
+            return Ok(());
+        }
 
         target
             .send_markdown_message(markdown_string!("🗑️ All categories cleared\\!"))

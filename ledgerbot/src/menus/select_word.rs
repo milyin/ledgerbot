@@ -72,10 +72,7 @@ fn create_word_menu(
 
     // Create buttons for words on current page (4 per row)
     for word in page_words {
-        row.push(InlineKeyboardButton::callback(
-            word,
-            operation(word),
-        ));
+        row.push(InlineKeyboardButton::callback(word, operation(word)));
 
         if row.len() == 4 {
             buttons.push(row.clone());
@@ -100,10 +97,7 @@ fn create_word_menu(
         ));
     } else {
         // On first page - inactive
-        nav_row.push(InlineKeyboardButton::callback(
-            "◁",
-            "noop",
-        ));
+        nav_row.push(InlineKeyboardButton::callback("◁", "noop"));
     }
 
     // Next page button
@@ -115,10 +109,7 @@ fn create_word_menu(
         ));
     } else {
         // On last page - inactive
-        nav_row.push(InlineKeyboardButton::callback(
-            "▷",
-            "noop",
-        ));
+        nav_row.push(InlineKeyboardButton::callback("▷", "noop"));
     }
 
     // Add back button if provided

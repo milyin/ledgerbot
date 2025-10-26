@@ -47,7 +47,10 @@ pub async fn read_category_filters_list(
     name: &str,
     back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Vec<String>> {
-    let categories = storage.get_chat_categories(target.chat.id).await;
+    let categories = storage
+        .get_chat_categories(target.chat.id)
+        .await
+        .unwrap_or_default();
     let Some(filters) = categories.get(name) else {
         let msg = target
             .markdown_message(markdown_format!("❌ Category `{}` does not exist", name))

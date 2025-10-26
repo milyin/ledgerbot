@@ -184,9 +184,14 @@ impl CommandTrait for CommandRemoveFilter {
         };
 
         // Remove the filter
-        storage
+        if let Err(e) = storage
             .remove_category_filter(target.chat.id, name, &pattern)
-            .await;
+            .await
+        {
+            target
+                .send_markdown_message(markdown_format!("❌ Failed to remove filter: {}", e))
+                .await?;
+        }
 
         target
             .send_markdown_message(markdown_format!(

@@ -110,9 +110,9 @@ impl CategoryStorage {
 /// Implement CategoryStorageTrait for CategoryStorage
 #[async_trait::async_trait]
 impl CategoryStorageTrait for CategoryStorage {
-    async fn get_chat_categories(&self, chat_id: ChatId) -> HashMap<String, Vec<String>> {
+    async fn get_chat_categories(&self, chat_id: ChatId) -> Result<HashMap<String, Vec<String>>, MarkdownString> {
         let storage_guard = self.data.lock().await;
-        storage_guard.get(&chat_id).cloned().unwrap_or_default()
+        Ok(storage_guard.get(&chat_id).cloned().unwrap_or_default())
     }
 
     async fn add_category(
@@ -145,15 +145,21 @@ impl CategoryStorageTrait for CategoryStorage {
         chat_id: ChatId,
         category_name: String,
         regex_pattern: String,
-    ) {
+    ) -> Result<(), MarkdownString> {
         let mut storage_guard = self.data.lock().await;
         let chat_categories = storage_guard.entry(chat_id).or_default();
-        let patterns = chat_categories
-            .entry(category_name)
-            .or_insert_with(Vec::new);
-        if !patterns.contains(&regex_pattern) {
-            patterns.push(regex_pattern);
+        let Some(patterns) = chat_categories.get_mut(&category_name) else {
+            return Err(markdown_format!("Category {} not exists", category_name));
+        };
+        if patterns.contains(&regex_pattern) {
+            return Err(markdown_format!(
+                "Filter `{}` already exists in category `{}`",
+                regex_pattern,
+                category_name
+            ));
         }
+        patterns.push(regex_pattern);
+        Ok(())
     }
 
     async fn remove_category_filter(
@@ -161,26 +167,48 @@ impl CategoryStorageTrait for CategoryStorage {
         chat_id: ChatId,
         category_name: &str,
         regex_pattern: &str,
-    ) {
+    ) -> Result<(), MarkdownString> {
         let mut storage_guard = self.data.lock().await;
-        if let Some(chat_categories) = storage_guard.get_mut(&chat_id)
-            && let Some(patterns) = chat_categories.get_mut(category_name)
-        {
-            patterns.retain(|p| p != regex_pattern);
+        let Some(chat_categories) = storage_guard.get_mut(&chat_id) else {
+            return Err(markdown_format!("Category {} not exists", category_name));
+        };
+        let Some(patterns) = chat_categories.get_mut(category_name) else {
+            return Err(markdown_format!("Category {} not exists", category_name));
+        };
+        if !patterns.contains(&regex_pattern.to_string()) {
+            return Err(markdown_format!(
+                "Filter `{}` does not exist in category `{}`",
+                regex_pattern,
+                category_name
+            ));
         }
+        patterns.retain(|p| p != regex_pattern);
+        Ok(())
     }
 
-    async fn remove_category(&self, chat_id: ChatId, category_name: &str) -> bool {
+    async fn remove_category(
+        &self,
+        chat_id: ChatId,
+        category_name: &str,
+    ) -> Result<(), MarkdownString> {
         let mut storage_guard = self.data.lock().await;
-        if let Some(chat_categories) = storage_guard.get_mut(&chat_id) {
-            return chat_categories.remove(category_name).is_some();
+        let Some(chat_categories) = storage_guard.get_mut(&chat_id) else {
+            return Err(markdown_format!("Category {} not exists", category_name));
+        };
+        if chat_categories.remove(category_name).is_none() {
+            return Err(markdown_format!("Category {} not exists", category_name));
         }
-        false
+        Ok(())
     }
 
-    async fn clear_chat_categories(&self, chat_id: ChatId) {
+    async fn replace_categories(
+        &self,
+        chat_id: ChatId,
+        categories: HashMap<String, Vec<String>>,
+    ) -> Result<(), MarkdownString> {
         let mut storage_guard = self.data.lock().await;
-        storage_guard.remove(&chat_id);
+        storage_guard.insert(chat_id, categories);
+        Ok(())
     }
 }
 
@@ -254,41 +282,28 @@ impl PersistentCategoryStorage {
     }
 
     /// Ensure categories are loaded for a chat ID (lazy loading)
-    async fn ensure_loaded(&self, chat_id: ChatId) -> HashMap<String, Vec<String>> {
+    async fn ensure_loaded(&self, chat_id: ChatId) -> Result<(), MarkdownString> {
         let loaded_guard = self.loaded_chats.lock().await;
 
-        if loaded_guard.get(&chat_id).copied().unwrap_or(false) {
-            // Already loaded, get from memory storage
-            drop(loaded_guard);
-            return self.memory_storage.get_chat_categories(chat_id).await;
+        if loaded_guard.get(&chat_id).is_some() {
+            // Already loaded
+            return Ok(());
         }
-
         // Not loaded yet, load from disk
-        drop(loaded_guard); // Release lock while doing I/O
+        drop(loaded_guard); // Release lock while doing I/O - TODO: what if someone else loads meanwhile?
         let categories = self.load_chat_categories(chat_id).await;
-
-        // Store in memory storage
-        for (category_name, patterns) in &categories {
-            for pattern in patterns {
-                self.memory_storage
-                    .add_category_filter(chat_id, category_name.clone(), pattern.clone())
-                    .await;
-            }
-        }
-
-        // Mark as loaded
-        let mut loaded_guard = self.loaded_chats.lock().await;
-        loaded_guard.insert(chat_id, true);
-
-        categories
+        self.replace_categories(chat_id, categories).await
     }
 }
 
 /// Implement CategoryStorageTrait for PersistentCategoryStorage
 #[async_trait::async_trait]
 impl CategoryStorageTrait for PersistentCategoryStorage {
-    async fn get_chat_categories(&self, chat_id: ChatId) -> HashMap<String, Vec<String>> {
-        self.ensure_loaded(chat_id).await;
+    async fn get_chat_categories(
+        &self,
+        chat_id: ChatId,
+    ) -> Result<HashMap<String, Vec<String>>, MarkdownString> {
+        self.ensure_loaded(chat_id).await?;
         self.memory_storage.get_chat_categories(chat_id).await
     }
 
@@ -297,7 +312,7 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         chat_id: ChatId,
         category_name: String,
     ) -> Result<(), MarkdownString> {
-        self.ensure_loaded(chat_id).await;
+        self.ensure_loaded(chat_id).await?;
         let result = self
             .memory_storage
             .add_category(chat_id, category_name.clone())
@@ -305,8 +320,10 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
 
         if result.is_ok() {
             // Save updated categories to disk
-            let categories = self.memory_storage.get_chat_categories(chat_id).await;
-            let _ = self.save_chat_categories(chat_id, &categories).await;
+            let categories = self.memory_storage.get_chat_categories(chat_id).await?;
+            self.save_chat_categories(chat_id, &categories)
+                .await
+                .map_err(|e| markdown_format!("{}", e.to_string()))?;
         }
 
         result
@@ -317,15 +334,18 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         chat_id: ChatId,
         category_name: String,
         regex_pattern: String,
-    ) {
-        self.ensure_loaded(chat_id).await;
+    ) -> Result<(), MarkdownString> {
+        self.ensure_loaded(chat_id).await?;
         self.memory_storage
             .add_category_filter(chat_id, category_name, regex_pattern)
-            .await;
+            .await?;
 
         // Save updated categories to disk
-        let categories = self.memory_storage.get_chat_categories(chat_id).await;
-        let _ = self.save_chat_categories(chat_id, &categories).await;
+        let categories = self.memory_storage.get_chat_categories(chat_id).await?;
+        self.save_chat_categories(chat_id, &categories)
+            .await
+            .map_err(|e| markdown_format!("{}", e.to_string()))?;
+        Ok(())
     }
 
     async fn remove_category_filter(
@@ -333,40 +353,52 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         chat_id: ChatId,
         category_name: &str,
         regex_pattern: &str,
-    ) {
-        self.ensure_loaded(chat_id).await;
+    ) -> Result<(), MarkdownString> {
+        self.ensure_loaded(chat_id).await?;
         self.memory_storage
             .remove_category_filter(chat_id, category_name, regex_pattern)
-            .await;
+            .await?;
 
         // Save updated categories to disk
-        let categories = self.memory_storage.get_chat_categories(chat_id).await;
-        let _ = self.save_chat_categories(chat_id, &categories).await;
-    }
-
-    async fn remove_category(&self, chat_id: ChatId, category_name: &str) -> bool {
-        self.ensure_loaded(chat_id).await;
-        if self
-            .memory_storage
-            .remove_category(chat_id, category_name)
+        let categories = self.memory_storage.get_chat_categories(chat_id).await?;
+        self.save_chat_categories(chat_id, &categories)
             .await
-        {
-            // Save updated categories to disk
-            let categories = self.memory_storage.get_chat_categories(chat_id).await;
-            let _ = self.save_chat_categories(chat_id, &categories).await;
-            true
-        } else {
-            false
-        }
+            .map_err(|e| markdown_format!("{}", e.to_string()))?;
+        Ok(())
     }
 
-    async fn clear_chat_categories(&self, chat_id: ChatId) {
-        self.ensure_loaded(chat_id).await;
-        self.memory_storage.clear_chat_categories(chat_id).await;
+    async fn remove_category(
+        &self,
+        chat_id: ChatId,
+        category_name: &str,
+    ) -> Result<(), MarkdownString> {
+        self.ensure_loaded(chat_id).await?;
+        self.memory_storage
+            .remove_category(chat_id, category_name)
+            .await?;
 
-        // Save empty categories to disk (creates empty file)
-        let categories = HashMap::new();
-        let _ = self.save_chat_categories(chat_id, &categories).await;
+        // Save updated categories to disk
+        let categories = self.memory_storage.get_chat_categories(chat_id).await?;
+        self.save_chat_categories(chat_id, &categories)
+            .await
+            .map_err(|e| markdown_format!("{}", e.to_string()))?;
+        Ok(())
+    }
+
+    async fn replace_categories(
+        &self,
+        chat_id: ChatId,
+        categories: HashMap<String, Vec<String>>,
+    ) -> Result<(), MarkdownString> {
+        self.ensure_loaded(chat_id).await?;
+        self.memory_storage
+            .replace_categories(chat_id, categories)
+            .await?;
+        let updated_categories = self.memory_storage.get_chat_categories(chat_id).await?;
+        self.save_chat_categories(chat_id, &updated_categories)
+            .await
+            .map_err(|e| markdown_format!("{}", e.to_string()))?;
+        Ok(())
     }
 }
 

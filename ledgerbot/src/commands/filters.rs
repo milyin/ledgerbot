@@ -10,7 +10,10 @@ use teloxide::{
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
-    commands::{Command, command_add_category::CommandAddCategory, command_trait::CommandTrait},
+    commands::{
+        command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter,
+        command_trait::CommandTrait,
+    },
     handlers::CallbackData,
     storage_traits::CategoryStorageTrait,
 };
@@ -27,7 +30,10 @@ pub async fn add_filter_command(
 
     match (category, pattern) {
         (Some(category), Some(pattern)) => {
-            let categories = storage.get_chat_categories(chat_id).await;
+            let categories = storage
+                .get_chat_categories(chat_id)
+                .await
+                .unwrap_or_default();
 
             // Check if category exists
             if !categories.contains_key(&category) {
@@ -48,9 +54,17 @@ pub async fn add_filter_command(
             // Validate regex pattern
             match regex::Regex::new(&pattern) {
                 Ok(_) => {
-                    storage
+                    if let Err(e) = storage
                         .add_category_filter(chat_id, category.clone(), pattern.clone())
-                        .await;
+                        .await
+                    {
+                        bot.markdown_message(
+                            chat_id,
+                            None,
+                            markdown_format!("❌ Failed to add filter: {}", e),
+                        )
+                        .await?;
+                    }
                     bot.send_message(
                         chat_id,
                         format!(
@@ -83,11 +97,12 @@ pub async fn add_filter_command(
                 None,
                 markdown_format!(
                     "❌ Missing pattern\\. Usage: {}",
-                    &Command::AddFilter {
+                    CommandAddFilter {
                         category: Some(category.clone()),
                         pattern: Some("pattern".to_string())
                     }
-                    .to_string()
+                    .to_command_string(true)
+                    .as_str()
                 ),
             )
             .await?;
@@ -98,13 +113,12 @@ pub async fn add_filter_command(
                 None,
                 markdown_format!(
                     "❌ Missing category\\. Usage: {}",
-                    escape(
-                        &Command::AddFilter {
-                            category: Some("category".to_string()),
-                            pattern: Some("pattern".to_string())
-                        }
-                        .to_string()
-                    )
+                    CommandAddFilter {
+                        category: Some("category".to_string()),
+                        pattern: Some("pattern".to_string())
+                    }
+                    .to_command_string(true)
+                    .as_str()
                 ),
             )
             .await?;
@@ -121,7 +135,10 @@ pub async fn add_filter_menu(
     message_id: MessageId,
     storage: Arc<dyn CategoryStorageTrait>,
 ) -> ResponseResult<()> {
-    let categories = storage.get_chat_categories(chat_id).await;
+    let categories = storage
+        .get_chat_categories(chat_id)
+        .await
+        .unwrap_or_default();
 
     if categories.is_empty() {
         bot.edit_message_text(
