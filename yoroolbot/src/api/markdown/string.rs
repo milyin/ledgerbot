@@ -3,7 +3,6 @@
 use std::{fmt, ops::Add};
 
 use teloxide::{
-    Bot,
     payloads::{EditMessageTextSetters, SendMessage, SendMessageSetters},
     prelude::{Requester, ResponseResult},
     requests::JsonRequest,
@@ -12,7 +11,10 @@ use teloxide::{
         ParseMode::{self, MarkdownV2},
         Recipient,
     },
+    Bot,
 };
+
+use crate::markdown_string;
 
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
 ///
@@ -211,10 +213,10 @@ fn truncate_if_needed(text: MarkdownString) -> MarkdownString {
         return text;
     }
 
-    // Reserve 3 characters for "..."
-    let max_content_length = TELEGRAM_MAX_MESSAGE_LENGTH - 3;
+    let truncation_marker = markdown_string!("\\.\\.\\.");
+    let max_content_length = TELEGRAM_MAX_MESSAGE_LENGTH - truncation_marker.as_str().len();
     let truncated = &content[..max_content_length];
-    MarkdownString::from_validated_string(format!("{}...", truncated))
+    MarkdownString::from_validated_string(format!("{}{}", truncated, truncation_marker.as_str()))
 }
 
 /// Trait for sending markdown messages with Bot
@@ -805,7 +807,8 @@ mod tests {
     #[test]
     fn test_truncate_if_needed_exact_limit() {
         // Test that messages exactly at the limit are not truncated
-        let exact_limit_message = MarkdownString::escape("a".repeat(super::TELEGRAM_MAX_MESSAGE_LENGTH));
+        let exact_limit_message =
+            MarkdownString::escape("a".repeat(super::TELEGRAM_MAX_MESSAGE_LENGTH));
         let result = super::truncate_if_needed(exact_limit_message.clone());
         assert_eq!(result.as_str(), exact_limit_message.as_str());
         assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
@@ -814,7 +817,8 @@ mod tests {
     #[test]
     fn test_truncate_if_needed_over_limit() {
         // Test that messages over the limit are truncated with "..."
-        let long_message = MarkdownString::escape("a".repeat(super::TELEGRAM_MAX_MESSAGE_LENGTH + 100));
+        let long_message =
+            MarkdownString::escape("a".repeat(super::TELEGRAM_MAX_MESSAGE_LENGTH + 100));
         let result = super::truncate_if_needed(long_message);
 
         // Should be exactly 4096 characters (max limit)
@@ -843,9 +847,8 @@ mod tests {
     #[test]
     fn test_truncate_if_needed_preserves_markdown() {
         // Test that markdown formatting is preserved in truncated messages
-        let long_markdown = MarkdownString::from_validated_string(
-            format!("*{}*", "bold text ".repeat(1000))
-        );
+        let long_markdown =
+            MarkdownString::from_validated_string(format!("*{}*", "bold text ".repeat(1000)));
         let result = super::truncate_if_needed(long_markdown);
 
         assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
