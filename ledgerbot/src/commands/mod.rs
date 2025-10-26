@@ -435,7 +435,7 @@ pub async fn execute_command(
         }
         Command::AddFilter2(add_filter2) => {
             add_filter2
-                .run(&target, storage.clone().as_category_storage())
+                .run(&target, storage.clone())
                 .await?;
         }
     }

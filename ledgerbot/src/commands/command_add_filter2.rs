@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::markdown_string;
+use yoroolbot::{markdown_format, markdown_string};
 
 use crate::{
     commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    menus::select_category::select_category,
-    storage_traits::CategoryStorageTrait,
+    menus::{select_category::select_category, select_word::select_word},
+    storage_traits::StorageTrait,
+    utils::extract_words::extract_words,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -25,7 +26,7 @@ impl CommandTrait for CommandAddFilter2 {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn CategoryStorageTrait>;
+    type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "add_filter2";
     const PLACEHOLDERS: &[&'static str] = &["<category>"];
@@ -55,12 +56,58 @@ impl CommandTrait for CommandAddFilter2 {
     ) -> ResponseResult<()> {
         select_category(
             target,
-            &storage,
+            &storage.as_category_storage(),
             markdown_string!("➕ Select Category to add filter"),
             |name| CommandAddFilter2 {
                 category: Some(name.to_string()),
             },
             None::<NoopCommand>,
+        )
+        .await
+    }
+
+    async fn run1(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        category: &String,
+    ) -> ResponseResult<()> {
+        // Get expenses and categories
+        let expenses = storage
+            .clone()
+            .as_expense_storage()
+            .get_chat_expenses(target.chat.id)
+            .await;
+        let categories = storage
+            .clone()
+            .as_category_storage()
+            .get_chat_categories(target.chat.id)
+            .await;
+
+        // Extract words from uncategorized expenses
+        let words = extract_words(&expenses, &categories);
+
+        if words.is_empty() {
+            target
+                .send_markdown_message(markdown_format!(
+                    "💡 No uncategorized expenses found\\. All expenses are already categorized\\."
+                ))
+                .await?;
+            return Ok(());
+        }
+
+        // Show word selection menu
+        select_word(
+            target,
+            markdown_format!(
+                "💡 Select word\\(s\\) for filter in category `{}`",
+                category
+            ),
+            &words,
+            |_word| NoopCommand,
+            Some(CommandAddFilter2 {
+                category: None,
+            }),
         )
         .await
     }
