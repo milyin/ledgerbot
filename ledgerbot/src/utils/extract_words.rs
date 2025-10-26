@@ -52,7 +52,7 @@ pub fn extract_words(
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{utils::extract_words::extract_words, storage_traits::Expense};
+    use crate::{storage_traits::Expense, utils::extract_words::extract_words};
 
     #[test]
     fn test_extract_words() {
