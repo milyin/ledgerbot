@@ -1,9 +1,7 @@
 use chrono::{NaiveDate, TimeZone, Utc};
 use teloxide::utils::command::BotCommands;
 
-use crate::{
-    commands::{Command, command_add_expense::CommandAddExpense},
-};
+use crate::commands::{Command, command_add_expense::CommandAddExpense};
 
 /// Parse expense lines and commands from a message text
 /// Returns a vector of Results containing either successfully parsed Commands or error messages

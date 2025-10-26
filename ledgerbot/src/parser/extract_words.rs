@@ -53,7 +53,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::{parser::extract_words::extract_words, storage_traits::Expense};
- 
+
     #[test]
     fn test_extract_words() {
         // Create test expenses
