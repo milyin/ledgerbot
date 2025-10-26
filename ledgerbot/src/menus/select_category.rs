@@ -23,7 +23,10 @@ pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(
     next_command: impl Fn(&str) -> NEXT,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
-    let categories = storage.get_chat_categories(target.chat.id).await.unwrap_or_default();
+    let categories = storage
+        .get_chat_categories(target.chat.id)
+        .await
+        .unwrap_or_default();
     if categories.is_empty() {
         target
             .send_markdown_message(markdown_format!(

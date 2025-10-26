@@ -104,7 +104,9 @@ mod tests {
     use chrono::NaiveDate;
 
     use super::*;
-    use crate::commands::{command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter};
+    use crate::commands::{
+        command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter,
+    };
 
     #[test]
     fn test_parse_expenses_with_date() {

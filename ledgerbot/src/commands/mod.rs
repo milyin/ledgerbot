@@ -22,10 +22,7 @@ use std::sync::Arc;
 use teloxide::{
     prelude::*,
     types::{Chat, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
-    utils::{
-        command::BotCommands,
-        markdown::escape,
-    },
+    utils::{command::BotCommands, markdown::escape},
 };
 
 use crate::{
@@ -188,7 +185,8 @@ pub async fn show_filter_word_suggestions(
         .clone()
         .as_category_storage()
         .get_chat_categories(chat_id)
-        .await.unwrap_or_default();
+        .await
+        .unwrap_or_default();
 
     // Get currently selected words from storage
     let selected_words = storage
@@ -300,7 +298,8 @@ pub async fn show_filter_word_suggestions(
         CommandAddFilter {
             category: Some(category_name.clone()),
             pattern: Some(pattern),
-        }.to_command_string(true)
+        }
+        .to_command_string(true)
     } else {
         // No words selected, just put category name
         format!("{} {} ", CommandAddFilter::NAME, category_name)

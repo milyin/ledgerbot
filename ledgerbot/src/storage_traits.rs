@@ -34,7 +34,10 @@ pub trait ExpenseStorageTrait: Send + Sync {
 #[async_trait::async_trait]
 pub trait CategoryStorageTrait: Send + Sync {
     /// Get categories for a specific chat
-    async fn get_chat_categories(&self, chat_id: ChatId) -> Result<HashMap<String, Vec<String>>, MarkdownString>;
+    async fn get_chat_categories(
+        &self,
+        chat_id: ChatId,
+    ) -> Result<HashMap<String, Vec<String>>, MarkdownString>;
 
     /// Add a category for a specific chat
     async fn add_category(
@@ -60,11 +63,18 @@ pub trait CategoryStorageTrait: Send + Sync {
     ) -> Result<(), MarkdownString>;
 
     /// Remove a category from a specific chat
-    async fn remove_category(&self, chat_id: ChatId, category_name: &str) -> Result<(), MarkdownString>;
+    async fn remove_category(
+        &self,
+        chat_id: ChatId,
+        category_name: &str,
+    ) -> Result<(), MarkdownString>;
 
     /// Clear all categories for a specific chat
-    async fn replace_categories(&self, chat_id: ChatId, categories: HashMap<String, Vec<String>>) -> Result<(), MarkdownString>;
-
+    async fn replace_categories(
+        &self,
+        chat_id: ChatId,
+        categories: HashMap<String, Vec<String>>,
+    ) -> Result<(), MarkdownString>;
 }
 
 /// Trait for filter selection storage operations (temporary filter word selections)

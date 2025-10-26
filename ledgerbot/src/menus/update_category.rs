@@ -21,7 +21,10 @@ pub async fn update_category<NEXT: CommandTrait, BACK: CommandTrait>(
     update_command: NEXT,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
-    let categories = storage.get_chat_categories(target.chat.id).await.unwrap_or_default();
+    let categories = storage
+        .get_chat_categories(target.chat.id)
+        .await
+        .unwrap_or_default();
     if !categories.contains_key(name) {
         let msg = target
             .markdown_message(markdown_format!("❌ Category `{}` does not exist", name))

@@ -110,7 +110,10 @@ impl CategoryStorage {
 /// Implement CategoryStorageTrait for CategoryStorage
 #[async_trait::async_trait]
 impl CategoryStorageTrait for CategoryStorage {
-    async fn get_chat_categories(&self, chat_id: ChatId) -> Result<HashMap<String, Vec<String>>, MarkdownString> {
+    async fn get_chat_categories(
+        &self,
+        chat_id: ChatId,
+    ) -> Result<HashMap<String, Vec<String>>, MarkdownString> {
         let storage_guard = self.data.lock().await;
         Ok(storage_guard.get(&chat_id).cloned().unwrap_or_default())
     }
@@ -284,15 +287,16 @@ impl PersistentCategoryStorage {
     /// Ensure categories are loaded for a chat ID (lazy loading)
     async fn ensure_loaded(&self, chat_id: ChatId) -> Result<(), MarkdownString> {
         let loaded_guard = self.loaded_chats.lock().await;
-
-        if loaded_guard.get(&chat_id).is_some() {
+        if loaded_guard.get(&chat_id).copied().unwrap_or(false) {
             // Already loaded
             return Ok(());
         }
         // Not loaded yet, load from disk
         drop(loaded_guard); // Release lock while doing I/O - TODO: what if someone else loads meanwhile?
         let categories = self.load_chat_categories(chat_id).await;
-        self.replace_categories(chat_id, categories).await
+        self.memory_storage
+            .replace_categories(chat_id, categories)
+            .await
     }
 }
 
@@ -390,7 +394,7 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         chat_id: ChatId,
         categories: HashMap<String, Vec<String>>,
     ) -> Result<(), MarkdownString> {
-        self.ensure_loaded(chat_id).await?;
+        // do not "ensure_loaded" here - we are replacing anyway
         self.memory_storage
             .replace_categories(chat_id, categories)
             .await?;

@@ -58,7 +58,8 @@ impl CommandTrait for CommandReport {
             .clone()
             .as_category_storage()
             .get_chat_categories(chat_id)
-            .await.unwrap_or_default();
+            .await
+            .unwrap_or_default();
 
         // Check for category conflicts before generating report
         if let Some(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {

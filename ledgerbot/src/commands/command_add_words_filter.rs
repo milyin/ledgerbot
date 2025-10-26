@@ -99,7 +99,8 @@ impl CommandTrait for CommandAddWordsFilter {
             .clone()
             .as_category_storage()
             .get_chat_categories(target.chat.id)
-            .await.unwrap_or_default();
+            .await
+            .unwrap_or_default();
 
         // Extract words from uncategorized expenses
         let words = extract_words(&expenses, &categories);
