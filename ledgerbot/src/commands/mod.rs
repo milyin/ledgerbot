@@ -46,7 +46,7 @@ use crate::{
         filters::add_filter_command,
     },
     handlers::CallbackData,
-    parser::extract_words,
+    parser::extract_words::extract_words,
     storage_traits::StorageTrait,
 };
 

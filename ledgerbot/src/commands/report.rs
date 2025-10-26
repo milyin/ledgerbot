@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use yoroolbot::{markdown::MarkdownString, markdown_format, markdown_string};
 
-use crate::{parser::format_timestamp, storage_traits::Expense};
+use crate::{parser_old::format_timestamp, storage_traits::Expense};
 
 /// Represents a conflict where an expense matches multiple categories
 #[derive(Debug, Clone)]

@@ -4,6 +4,7 @@ mod config;
 mod handlers;
 pub mod menus;
 mod parser;
+mod parser_old;
 mod storage;
 mod storage_traits;
 

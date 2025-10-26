@@ -13,6 +13,7 @@ use crate::{
     storage_traits::CategoryStorageTrait,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     storage: &Arc<dyn CategoryStorageTrait>,
