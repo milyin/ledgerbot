@@ -114,52 +114,6 @@ pub async fn add_filter_command(
     Ok(())
 }
 
-/// Show remove filter interface - first show categories
-pub async fn remove_filter_menu(
-    bot: Bot,
-    chat_id: ChatId,
-    message_id: MessageId,
-    storage: Arc<dyn CategoryStorageTrait>,
-) -> ResponseResult<()> {
-    let categories = storage.get_chat_categories(chat_id).await;
-
-    if categories.is_empty() {
-        bot.edit_message_text(chat_id, message_id, "No categories available.")
-            .await?;
-    } else {
-        let text = "🗑️ **Select category to remove filter:**\n\nClick a button to see filters for that category\\.";
-
-        // Create buttons for each category that has filters
-        let buttons: Vec<Vec<InlineKeyboardButton>> = categories
-            .iter()
-            .filter(|(_, patterns)| !patterns.is_empty())
-            .map(|(name, _)| {
-                vec![InlineKeyboardButton::callback(
-                    format!("🗑️ {}", name),
-                    CallbackData::RemoveFilterCategory(name.clone()),
-                )]
-            })
-            .collect();
-
-        if buttons.is_empty() {
-            bot.edit_message_text(chat_id, message_id, "No filters defined in any category.")
-                .await?;
-            return Ok(());
-        }
-
-        let keyboard = InlineKeyboardMarkup::new(buttons);
-
-        bot.edit_message_text(chat_id, message_id, text)
-            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-            .await?;
-        bot.edit_message_reply_markup(chat_id, message_id)
-            .reply_markup(keyboard)
-            .await?;
-    }
-
-    Ok(())
-}
-
 /// Show edit filter interface - first show categories
 pub async fn edit_filter_menu(
     bot: Bot,
