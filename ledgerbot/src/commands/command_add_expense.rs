@@ -155,15 +155,17 @@ impl CommandTrait for CommandAddExpense {
             .add_expense(target.chat.id, description, *amount, timestamp)
             .await;
 
-        // Send confirmation message
-        target
-            .send_markdown_message(markdown_format!(
-                "✅ Expense added: {} {} {}",
-                date.to_string(),
-                description,
-                amount.to_string()
-            ))
-            .await?;
+        if !target.batch {
+            // Send confirmation message
+            target
+                .send_markdown_message(markdown_format!(
+                    "✅ Expense added: {} {} {}",
+                    date.to_string(),
+                    description,
+                    amount.to_string()
+                ))
+                .await?;
+        }
 
         Ok(())
     }
