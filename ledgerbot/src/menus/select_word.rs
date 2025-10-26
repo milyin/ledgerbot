@@ -9,11 +9,13 @@ use crate::commands::command_trait::{CommandReplyTarget, CommandTrait};
 
 /// Display a menu with word suggestions for filter creation
 /// Words are displayed in a grid (4 words per row)
-pub async fn select_word<NEXT: CommandTrait, BACK: CommandTrait>(
+pub async fn select_word<NEXT: CommandTrait, PREV: CommandTrait, NEXTP: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     prompt: MarkdownString,
     words: &[String],
     next_command: impl Fn(&str) -> NEXT,
+    prev_page_command: Option<PREV>,
+    next_page_command: Option<NEXTP>,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let msg = target.markdown_message(prompt).await?;
@@ -21,6 +23,8 @@ pub async fn select_word<NEXT: CommandTrait, BACK: CommandTrait>(
     let menu = create_word_menu(
         words,
         |word| next_command(word).to_command_string(false),
+        prev_page_command,
+        next_page_command,
         back_command,
     );
 
@@ -36,6 +40,8 @@ pub async fn select_word<NEXT: CommandTrait, BACK: CommandTrait>(
 fn create_word_menu(
     words: &[String],
     operation: impl Fn(&str) -> String,
+    prev_page_command: Option<impl CommandTrait>,
+    next_page_command: Option<impl CommandTrait>,
     back_command: Option<impl CommandTrait>,
 ) -> InlineKeyboardMarkup {
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
@@ -59,13 +65,44 @@ fn create_word_menu(
         buttons.push(row);
     }
 
+    // Add navigation buttons row: Prev, Next, Back
+    let mut nav_row: Vec<InlineKeyboardButton> = Vec::new();
+
+    // Previous page button (active or inactive)
+    if let Some(prev) = prev_page_command {
+        nav_row.push(InlineKeyboardButton::callback(
+            "◀️",
+            prev.to_command_string(false),
+        ));
+    } else {
+        nav_row.push(InlineKeyboardButton::callback(
+            "◁",
+            "noop", // Inactive button
+        ));
+    }
+
+    // Next page button (active or inactive)
+    if let Some(next) = next_page_command {
+        nav_row.push(InlineKeyboardButton::callback(
+            "▶️",
+            next.to_command_string(false),
+        ));
+    } else {
+        nav_row.push(InlineKeyboardButton::callback(
+            "▷",
+            "noop", // Inactive button
+        ));
+    }
+
     // Add back button if provided
     if let Some(back) = back_command {
-        buttons.push(vec![InlineKeyboardButton::callback(
+        nav_row.push(InlineKeyboardButton::callback(
             "↩️ Back",
             back.to_command_string(false),
-        )]);
+        ));
     }
+
+    buttons.push(nav_row);
 
     InlineKeyboardMarkup::new(buttons)
 }

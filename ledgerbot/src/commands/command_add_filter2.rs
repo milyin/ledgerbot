@@ -13,11 +13,12 @@ use crate::{
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddFilter2 {
     pub category: Option<String>,
+    pub page: Option<usize>,
 }
 
 impl CommandTrait for CommandAddFilter2 {
     type A = String;
-    type B = EmptyArg;
+    type B = usize;
     type C = EmptyArg;
     type D = EmptyArg;
     type E = EmptyArg;
@@ -29,11 +30,11 @@ impl CommandTrait for CommandAddFilter2 {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "add_filter2";
-    const PLACEHOLDERS: &[&'static str] = &["<category>"];
+    const PLACEHOLDERS: &[&'static str] = &["<category>", "<page>"];
 
     fn from_arguments(
         category: Option<Self::A>,
-        _: Option<Self::B>,
+        page: Option<Self::B>,
         _: Option<Self::C>,
         _: Option<Self::D>,
         _: Option<Self::E>,
@@ -42,11 +43,15 @@ impl CommandTrait for CommandAddFilter2 {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandAddFilter2 { category }
+        CommandAddFilter2 { category, page }
     }
 
     fn param1(&self) -> Option<&Self::A> {
         self.category.as_ref()
+    }
+
+    fn param2(&self) -> Option<&Self::B> {
+        self.page.as_ref()
     }
 
     async fn run0(
@@ -60,6 +65,7 @@ impl CommandTrait for CommandAddFilter2 {
             markdown_string!("➕ Select Category to add filter"),
             |name| CommandAddFilter2 {
                 category: Some(name.to_string()),
+                page: Some(0),
             },
             None::<NoopCommand>,
         )
@@ -71,6 +77,17 @@ impl CommandTrait for CommandAddFilter2 {
         target: &CommandReplyTarget,
         storage: Self::Context,
         category: &String,
+    ) -> ResponseResult<()> {
+        // Default to page 0 when no page specified
+        self.run2(target, storage, category, &0).await
+    }
+
+    async fn run2(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        category: &String,
+        page: &usize,
     ) -> ResponseResult<()> {
         // Get expenses and categories
         let expenses = storage
@@ -96,17 +113,57 @@ impl CommandTrait for CommandAddFilter2 {
             return Ok(());
         }
 
-        // Show word selection menu
+        // Pagination constants
+        const WORDS_PER_PAGE: usize = 20;
+        let total_words = words.len();
+        let total_pages = total_words.div_ceil(WORDS_PER_PAGE);
+        let current_page = *page;
+
+        // Ensure page is within bounds
+        let page_number = current_page.min(total_pages.saturating_sub(1));
+        let page_offset = page_number * WORDS_PER_PAGE;
+
+        // Get words for current page
+        let page_words: Vec<String> = words
+            .iter()
+            .skip(page_offset)
+            .take(WORDS_PER_PAGE)
+            .cloned()
+            .collect();
+
+        // Show word selection menu with pagination
         select_word(
             target,
             markdown_format!(
-                "💡 Select word\\(s\\) for filter in category `{}`",
-                category
+                "💡 Select word\\(s\\) for filter in category `{}`\n\nPage {}/{} \\({} words total\\)",
+                category,
+                page_number + 1,
+                total_pages,
+                total_words
             ),
-            &words,
+            &page_words,
             |_word| NoopCommand,
+            // Previous page button (or inactive if first page)
+            if page_number > 0 {
+                Some(CommandAddFilter2 {
+                    category: Some(category.clone()),
+                    page: Some(page_number - 1),
+                })
+            } else {
+                None
+            },
+            // Next page button (or inactive if last page)
+            if page_offset + WORDS_PER_PAGE < total_words {
+                Some(CommandAddFilter2 {
+                    category: Some(category.clone()),
+                    page: Some(page_number + 1),
+                })
+            } else {
+                None
+            },
             Some(CommandAddFilter2 {
                 category: None,
+                page: None,
             }),
         )
         .await
