@@ -824,8 +824,8 @@ mod tests {
         // Should be exactly 4096 characters (max limit)
         assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
 
-        // Should end with "..."
-        assert!(result.as_str().ends_with("..."));
+        // Should end with "..." (escaped in MarkdownV2 format)
+        assert!(result.as_str().ends_with("\\.\\.\\."));
 
         // Should start with 'a's (escaped might be 'a' or have backslash depending on context)
         assert!(result.as_str().starts_with('a'));
@@ -840,8 +840,8 @@ mod tests {
         // Should be exactly at the limit
         assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
 
-        // Should end with "..."
-        assert!(result.as_str().ends_with("..."));
+        // Should end with "..." (escaped in MarkdownV2 format)
+        assert!(result.as_str().ends_with("\\.\\.\\."));
     }
 
     #[test]
@@ -852,6 +852,7 @@ mod tests {
         let result = super::truncate_if_needed(long_markdown);
 
         assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
-        assert!(result.as_str().ends_with("..."));
+        // Should end with "..." (escaped in MarkdownV2 format)
+        assert!(result.as_str().ends_with("\\.\\.\\."));
     }
 }
