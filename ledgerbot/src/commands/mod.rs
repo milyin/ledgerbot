@@ -130,10 +130,10 @@ pub enum Command {
     AddExpense(CommandAddExpense),
     #[command(
         description = "add filter to category (new implementation)",
-        rename = "add_filter2",
+        rename = "add_words_filter",
         parse_with = CommandAddWordsFilter::parse_arguments
     )]
-    AddFilter2(CommandAddWordsFilter),
+    AddWordsFilter(CommandAddWordsFilter),
 }
 
 // Command constants as string representations
@@ -157,7 +157,7 @@ impl From<Command> for String {
             Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
             Command::AddExpense(add_expense) => add_expense.to_command_string(true),
-            Command::AddFilter2(add_filter2) => add_filter2.to_command_string(true),
+            Command::AddWordsFilter(add_filter2) => add_filter2.to_command_string(true),
         }
     }
 }
@@ -381,14 +381,9 @@ pub async fn execute_command(
                 .await?;
         }
         Command::AddFilter(add_filter) => {
-            add_filter_command(
-                bot.clone(),
-                msg.clone(),
-                storage.clone().as_category_storage(),
-                add_filter.category,
-                add_filter.pattern,
-            )
-            .await?;
+            add_filter
+                .run(&target, storage.clone())
+                .await?;
         }
         Command::RemoveCategory(remove_category) => {
             remove_category
@@ -410,7 +405,7 @@ pub async fn execute_command(
                 .run(&target, storage.clone().as_expense_storage())
                 .await?;
         }
-        Command::AddFilter2(add_filter2) => {
+        Command::AddWordsFilter(add_filter2) => {
             add_filter2.run(&target, storage.clone()).await?;
         }
     }

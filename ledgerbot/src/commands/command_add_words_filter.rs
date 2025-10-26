@@ -146,6 +146,6 @@ impl CommandTrait for CommandAddWordsFilter {
 
 impl From<CommandAddWordsFilter> for crate::commands::Command {
     fn from(cmd: CommandAddWordsFilter) -> Self {
-        crate::commands::Command::AddFilter2(cmd)
+        crate::commands::Command::AddWordsFilter(cmd)
     }
 }

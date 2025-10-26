@@ -92,6 +92,7 @@ impl CommandTrait for CommandAddFilter {
             .await
         {
             target.send_markdown_message(msg).await?;
+            return Ok(());
         };
         target
             .send_markdown_message(markdown_format!(
