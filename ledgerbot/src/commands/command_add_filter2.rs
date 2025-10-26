@@ -114,7 +114,6 @@ impl CommandTrait for CommandAddFilter2 {
         }
 
         let category = category.clone();
-        let page = *page;
 
         // Show word selection menu with pagination
         select_word(
@@ -129,16 +128,12 @@ impl CommandTrait for CommandAddFilter2 {
                 )
             },
             &words,
-            page,
+            *page,
             |_word| NoopCommand,
-            Some(CommandAddFilter2 {
+            |page_num| CommandAddFilter2 {
                 category: Some(category.clone()),
-                page: Some(page.saturating_sub(1)),
-            }),
-            Some(CommandAddFilter2 {
-                category: Some(category.clone()),
-                page: Some(page + 1),
-            }),
+                page: Some(page_num),
+            },
             Some(CommandAddFilter2 {
                 category: None,
                 page: None,

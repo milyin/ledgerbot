@@ -11,14 +11,13 @@ use crate::commands::command_trait::{CommandReplyTarget, CommandTrait};
 /// Words are displayed in a grid (4 words per row)
 /// Handles pagination internally - pass full word list and page number
 /// Automatically shows inactive buttons when at page boundaries
-pub async fn select_word<NEXT: CommandTrait, PREV: CommandTrait, NEXTP: CommandTrait, BACK: CommandTrait>(
+pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     prompt: impl Fn(usize, usize, usize) -> MarkdownString,
     all_words: &[String],
     page: usize,
     next_command: impl Fn(&str) -> NEXT,
-    prev_page_command: Option<PREV>,
-    next_page_command: Option<NEXTP>,
+    page_command: impl Fn(usize) -> PAGE,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     const WORDS_PER_PAGE: usize = 20;
@@ -35,8 +34,7 @@ pub async fn select_word<NEXT: CommandTrait, PREV: CommandTrait, NEXTP: CommandT
         |word| next_command(word).to_command_string(false),
         page_number,
         total_pages,
-        prev_page_command,
-        next_page_command,
+        |page_num| page_command(page_num).to_command_string(false),
         back_command,
     );
 
@@ -54,8 +52,7 @@ fn create_word_menu(
     operation: impl Fn(&str) -> String,
     page_number: usize,
     total_pages: usize,
-    prev_page_command: Option<impl CommandTrait>,
-    next_page_command: Option<impl CommandTrait>,
+    page_command: impl Fn(usize) -> String,
     back_command: Option<impl CommandTrait>,
 ) -> InlineKeyboardMarkup {
     const WORDS_PER_PAGE: usize = 20;
@@ -94,42 +91,30 @@ fn create_word_menu(
     // Add navigation buttons row: Prev, Next, Back
     let mut nav_row: Vec<InlineKeyboardButton> = Vec::new();
 
-    // Previous page button - use command if on page > 0 and command provided, otherwise inactive
+    // Previous page button
     if page_number > 0 {
-        if let Some(prev) = prev_page_command {
-            nav_row.push(InlineKeyboardButton::callback(
-                "◀️",
-                prev.to_command_string(false),
-            ));
-        } else {
-            nav_row.push(InlineKeyboardButton::callback(
-                "◁",
-                "noop", // Inactive button
-            ));
-        }
+        // Active: call page_command with previous page number
+        nav_row.push(InlineKeyboardButton::callback(
+            "◀️",
+            page_command(page_number - 1),
+        ));
     } else {
-        // On first page - always inactive
+        // On first page - inactive
         nav_row.push(InlineKeyboardButton::callback(
             "◁",
             "noop",
         ));
     }
 
-    // Next page button - use command if not on last page and command provided, otherwise inactive
+    // Next page button
     if page_number + 1 < total_pages {
-        if let Some(next) = next_page_command {
-            nav_row.push(InlineKeyboardButton::callback(
-                "▶️",
-                next.to_command_string(false),
-            ));
-        } else {
-            nav_row.push(InlineKeyboardButton::callback(
-                "▷",
-                "noop", // Inactive button
-            ));
-        }
+        // Active: call page_command with next page number
+        nav_row.push(InlineKeyboardButton::callback(
+            "▶️",
+            page_command(page_number + 1),
+        ));
     } else {
-        // On last page - always inactive
+        // On last page - inactive
         nav_row.push(InlineKeyboardButton::callback(
             "▷",
             "noop",
