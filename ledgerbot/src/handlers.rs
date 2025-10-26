@@ -5,13 +5,7 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
     batch::{add_to_batch, execute_batch},
-    commands::{
-        Command,
-        categories::{show_category_filters_for_editing},
-        execute_command,
-        filters::{add_filter_menu, edit_filter_menu},
-        show_filter_word_suggestions,
-    },
+    commands::{Command, execute_command, filters::add_filter_menu, show_filter_word_suggestions},
     parser::parse_expenses,
     storage_traits::StorageTrait,
 };
@@ -27,12 +21,8 @@ pub enum CallbackData {
     PagePrev(String),
     /// Navigate to next page
     PageNext(String),
-    /// Show filters for editing in a category
-    EditFilterCategory(String),
     /// Command: Add filter menu
     CmdAddFilter,
-    /// Command: Edit filter menu
-    CmdEditFilter,
     /// No operation (inactive button)
     Noop,
 }
@@ -57,12 +47,9 @@ impl FromStr for CallbackData {
             Ok(CallbackData::PagePrev(category.to_string()))
         } else if let Some(category) = s.strip_prefix("page_next:") {
             Ok(CallbackData::PageNext(category.to_string()))
-        } else if let Some(category) = s.strip_prefix("edit_filter_cat:") {
-            Ok(CallbackData::EditFilterCategory(category.to_string()))
         } else {
             match s {
                 "cmd_add_filter" => Ok(CallbackData::CmdAddFilter),
-                "cmd_edit_filter" => Ok(CallbackData::CmdEditFilter),
                 "noop" => Ok(CallbackData::Noop),
                 _ => Err(format!("Unknown callback data: {}", s)),
             }
@@ -79,9 +66,7 @@ impl From<CallbackData> for String {
             }
             CallbackData::PagePrev(cat) => format!("page_prev:{}", cat),
             CallbackData::PageNext(cat) => format!("page_next:{}", cat),
-            CallbackData::EditFilterCategory(cat) => format!("edit_filter_cat:{}", cat),
             CallbackData::CmdAddFilter => "cmd_add_filter".to_string(),
-            CallbackData::CmdEditFilter => "cmd_edit_filter".to_string(),
             CallbackData::Noop => "noop".to_string(),
         }
     }
@@ -352,29 +337,8 @@ pub async fn handle_callback_query(
             .await?;
         }
 
-        CallbackData::EditFilterCategory(category_name) => {
-            show_category_filters_for_editing(
-                bot,
-                chat_id,
-                message.id(),
-                storage.clone().as_category_storage(),
-                category_name,
-            )
-            .await?;
-        }
-
         CallbackData::CmdAddFilter => {
             add_filter_menu(
-                bot,
-                chat_id,
-                message.id(),
-                storage.clone().as_category_storage(),
-            )
-            .await?;
-        }
-
-        CallbackData::CmdEditFilter => {
-            edit_filter_menu(
                 bot,
                 chat_id,
                 message.id(),

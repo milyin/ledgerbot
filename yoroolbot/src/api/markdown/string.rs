@@ -3,6 +3,7 @@
 use std::{fmt, ops::Add};
 
 use teloxide::{
+    Bot,
     payloads::{EditMessageTextSetters, SendMessage, SendMessageSetters},
     prelude::{Requester, ResponseResult},
     requests::JsonRequest,
@@ -11,7 +12,6 @@ use teloxide::{
         ParseMode::{self, MarkdownV2},
         Recipient,
     },
-    Bot,
 };
 
 use crate::markdown_string;

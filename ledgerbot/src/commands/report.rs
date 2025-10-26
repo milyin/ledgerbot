@@ -266,7 +266,10 @@ mod tests {
         ];
 
         let mut categories = HashMap::new();
-        categories.insert("Food".to_string(), vec!["(?i)coffee".to_string(), "(?i)tea".to_string()]);
+        categories.insert(
+            "Food".to_string(),
+            vec!["(?i)coffee".to_string(), "(?i)tea".to_string()],
+        );
 
         let messages = format_expenses_by_category(&expenses, &categories);
 
@@ -338,8 +341,14 @@ mod tests {
         ];
 
         let mut categories = HashMap::new();
-        categories.insert("Food".to_string(), vec!["(?i)coffee".to_string(), "(?i)groceries".to_string()]);
-        categories.insert("Transport".to_string(), vec!["(?i)bus".to_string(), "(?i)taxi".to_string()]);
+        categories.insert(
+            "Food".to_string(),
+            vec!["(?i)coffee".to_string(), "(?i)groceries".to_string()],
+        );
+        categories.insert(
+            "Transport".to_string(),
+            vec!["(?i)bus".to_string(), "(?i)taxi".to_string()],
+        );
 
         let messages = format_expenses_by_category(&expenses, &categories);
 
