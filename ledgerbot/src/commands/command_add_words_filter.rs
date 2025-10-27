@@ -192,9 +192,19 @@ impl CommandTrait for CommandAddWordsFilter {
         select_word(
             target,
             |current_page, total_pages, total_words| {
+                // Build regex pattern from selected words like in old implementation
+                let pattern_display = if selected_words.as_ref().is_empty() {
+                    "\\(none selected\\)".to_string()
+                } else {
+                    let escaped_words: Vec<String> = selected_words.as_ref().iter().map(|w| regex::escape(w)).collect();
+                    let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
+                    format!("`{}`", pattern)
+                };
+
                 markdown_format!(
-                    "💡 Select word\\(s\\) for filter in category `{}`\n\nPage {}/{} \\({} words total\\)",
+                    "💡 Select word\\(s\\) for filter in category `{}`\n\n*Pattern:* {}\n\nPage {}/{} \\({} words total\\)",
                     &category,
+                    pattern_display,
                     current_page,
                     total_pages,
                     total_words
