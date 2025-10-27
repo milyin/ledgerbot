@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{markdown_format, markdown_string};
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
+    markdown_format, markdown_string,
+};
 
 use crate::{
-    commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
     menus::{
         common::read_category_filter_by_index, select_category::select_category,
         select_category_filter::select_category_filter,

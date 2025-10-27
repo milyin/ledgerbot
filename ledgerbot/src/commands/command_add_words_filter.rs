@@ -1,10 +1,12 @@
 use std::{fmt::Display, str::FromStr, sync::Arc};
 
 use teloxide::{prelude::ResponseResult, utils::command::ParseError};
-use yoroolbot::{markdown_format, markdown_string};
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
+    markdown_format, markdown_string,
+};
 
 use crate::{
-    commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
     menus::{select_category::select_category, select_word::select_word},
     storage_traits::StorageTrait,
     utils::extract_words::extract_words,

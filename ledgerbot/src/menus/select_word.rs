@@ -3,9 +3,10 @@ use teloxide::{
     prelude::{Requester, ResponseResult},
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::markdown::MarkdownString;
-
-use crate::commands::command_trait::{CommandReplyTarget, CommandTrait};
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait},
+    markdown::MarkdownString,
+};
 
 /// Display a menu with word suggestions for filter creation
 /// Words are displayed in a grid (4 words per row)

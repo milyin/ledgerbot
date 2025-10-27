@@ -5,15 +5,12 @@ use teloxide::{
     prelude::{Requester, ResponseResult},
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::{markdown_format, markdown_string};
-
-use crate::{
-    commands::{
-        Command,
-        command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    },
-    storage_traits::CategoryStorageTrait,
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_format, markdown_string,
 };
+
+use crate::{commands::Command, storage_traits::CategoryStorageTrait};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddCategory {

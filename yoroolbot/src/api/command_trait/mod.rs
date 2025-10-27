@@ -8,7 +8,8 @@ use teloxide::{
     types::{Chat, MessageId},
     utils::command::ParseError,
 };
-use yoroolbot::markdown::{MarkdownString, MarkdownStringMessage};
+
+use crate::markdown::{MarkdownString, MarkdownStringMessage};
 
 #[derive(Debug, Clone)]
 pub struct CommandReplyTarget {

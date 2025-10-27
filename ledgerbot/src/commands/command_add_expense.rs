@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use chrono::NaiveDate;
 use teloxide::prelude::ResponseResult;
-use yoroolbot::markdown_format;
-
-use crate::{
-    commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    storage_traits::ExpenseStorageTrait,
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_format,
 };
+
+use crate::storage_traits::ExpenseStorageTrait;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddExpense {

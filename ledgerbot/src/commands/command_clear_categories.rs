@@ -1,12 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::markdown_string;
-
-use crate::{
-    commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    storage_traits::CategoryStorageTrait,
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_string,
 };
+
+use crate::storage_traits::CategoryStorageTrait;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClearCategories;

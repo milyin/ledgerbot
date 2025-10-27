@@ -1,12 +1,10 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
-    commands::{
-        command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-        report::{check_category_conflicts, format_expenses_by_category},
-    },
+    commands::report::{check_category_conflicts, format_expenses_by_category},
     storage_traits::StorageTrait,
 };
 

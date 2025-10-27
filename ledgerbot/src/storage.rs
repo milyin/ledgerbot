@@ -3,10 +3,10 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use tokio::{fs, sync::Mutex};
-use yoroolbot::{markdown::MarkdownString, markdown_format};
+use yoroolbot::{command_trait::CommandTrait, markdown::MarkdownString, markdown_format};
 
 use crate::{
-    commands::{Command, command_categories::CommandCategories, command_trait::CommandTrait},
+    commands::{Command, command_categories::CommandCategories},
     storage_traits::{
         BatchStorageTrait, CallbackDataStorageTrait, CategoryStorageTrait, Expense,
         ExpenseStorageTrait, FilterPageStorageTrait, FilterSelectionStorageTrait, StorageTrait,

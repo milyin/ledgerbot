@@ -1,8 +1,10 @@
 use teloxide::{prelude::ResponseResult, utils::command::BotCommands};
-use yoroolbot::markdown_format;
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_format,
+};
 
 use super::Command;
-use crate::commands::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandHelp;

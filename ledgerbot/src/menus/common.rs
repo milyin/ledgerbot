@@ -5,12 +5,12 @@ use teloxide::{
     prelude::{Requester, ResponseResult},
     types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::markdown_format;
-
-use crate::{
-    commands::command_trait::{CommandReplyTarget, CommandTrait},
-    storage_traits::{CallbackDataStorageTrait, CategoryStorageTrait},
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait},
+    markdown_format,
 };
+
+use crate::storage_traits::{CallbackDataStorageTrait, CategoryStorageTrait};
 
 pub fn create_buttons_menu(
     titles: &[String],

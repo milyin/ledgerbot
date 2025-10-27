@@ -3,12 +3,13 @@ use teloxide::{
     prelude::ResponseResult,
     types::{KeyboardButton, ReplyMarkup},
 };
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
-
-use crate::commands::{
-    command_help::CommandHelp,
+use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown::MarkdownStringMessage,
+    markdown_format,
 };
+
+use crate::commands::command_help::CommandHelp;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandStart;

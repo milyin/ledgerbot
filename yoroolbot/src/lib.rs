@@ -11,3 +11,11 @@ pub mod markdown {
         validate::validate_markdownv2_format,
     };
 }
+
+// Public command_trait module with re-exports
+pub mod command_trait {
+    // Re-export types and traits from internal API
+    pub use crate::api::command_trait::{
+        CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand, ParseCommandArg,
+    };
+}

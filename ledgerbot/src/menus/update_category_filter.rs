@@ -5,13 +5,12 @@ use teloxide::{
     prelude::{Requester, ResponseResult},
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::markdown::MarkdownString;
-
-use crate::{
-    commands::command_trait::{CommandReplyTarget, CommandTrait},
-    menus::common::read_category_filter_by_index,
-    storage_traits::CategoryStorageTrait,
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait},
+    markdown::MarkdownString,
 };
+
+use crate::{menus::common::read_category_filter_by_index, storage_traits::CategoryStorageTrait};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn update_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(

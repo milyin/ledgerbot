@@ -5,10 +5,12 @@ use teloxide::{
     prelude::{Requester, ResponseResult},
     types::InlineKeyboardMarkup,
 };
-use yoroolbot::markdown::MarkdownString;
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait},
+    markdown::MarkdownString,
+};
 
 use crate::{
-    commands::command_trait::{CommandReplyTarget, CommandTrait},
     menus::common::{create_buttons_menu, read_category_filters_list},
     storage_traits::CategoryStorageTrait,
 };

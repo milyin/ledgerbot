@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::markdown_format;
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_format,
+};
 
 use crate::{
-    commands::{
-        command_add_words_filter::CommandAddWordsFilter,
-        command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    },
-    storage_traits::StorageTrait,
+    commands::command_add_words_filter::CommandAddWordsFilter, storage_traits::StorageTrait,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]

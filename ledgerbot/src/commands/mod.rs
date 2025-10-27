@@ -12,7 +12,6 @@ pub mod command_remove_category;
 pub mod command_remove_filter;
 pub mod command_report;
 pub mod command_start;
-pub mod command_trait;
 pub mod expenses;
 pub mod filters;
 pub mod report;
@@ -24,25 +23,17 @@ use teloxide::{
     types::{Chat, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
     utils::{command::BotCommands, markdown::escape},
 };
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::{
     commands::{
-        command_add_category::CommandAddCategory,
-        command_add_expense::CommandAddExpense,
-        command_add_filter::CommandAddFilter,
-        command_add_words_filter::CommandAddWordsFilter,
-        command_categories::CommandCategories,
-        command_clear_categories::CommandClearCategories,
-        command_clear_expenses::CommandClearExpenses,
-        command_edit_filter::CommandEditFilter,
-        command_help::CommandHelp,
-        command_list::CommandList,
-        command_remove_category::CommandRemoveCategory,
-        command_remove_filter::CommandRemoveFilter,
-        command_report::CommandReport,
-        command_start::CommandStart,
-        command_trait::{CommandReplyTarget, CommandTrait},
-        filters::add_filter_command,
+        command_add_category::CommandAddCategory, command_add_expense::CommandAddExpense,
+        command_add_filter::CommandAddFilter, command_add_words_filter::CommandAddWordsFilter,
+        command_categories::CommandCategories, command_clear_categories::CommandClearCategories,
+        command_clear_expenses::CommandClearExpenses, command_edit_filter::CommandEditFilter,
+        command_help::CommandHelp, command_list::CommandList,
+        command_remove_category::CommandRemoveCategory, command_remove_filter::CommandRemoveFilter,
+        command_report::CommandReport, command_start::CommandStart, filters::add_filter_command,
     },
     handlers::CallbackData,
     menus::common::pack_callback_data,

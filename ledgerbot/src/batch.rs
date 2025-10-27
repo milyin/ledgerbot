@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use teloxide::{prelude::*, types::Chat};
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
+use yoroolbot::{command_trait::CommandTrait, markdown::MarkdownStringMessage, markdown_format};
 
 use crate::{
     commands::{
         Command, command_add_expense::CommandAddExpense, command_list::CommandList,
-        command_report::CommandReport, command_trait::CommandTrait, execute_command,
+        command_report::CommandReport, execute_command,
     },
     config::BATCH_TIMEOUT_SECONDS,
     storage_traits::{BatchStorageTrait, StorageTrait},
