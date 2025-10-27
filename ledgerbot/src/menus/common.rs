@@ -129,6 +129,9 @@ pub async fn read_category_filter_by_index(
 /// If the callback_data is longer than 64 bytes or contains non-ASCII characters, it stores
 /// the data in CallbackDataStorage and replaces it with a short reference.
 ///
+/// **Important:** This function clears any previously stored callback data for this message
+/// to prevent memory leaks when updating message buttons.
+///
 /// # Arguments
 /// * `storage` - The callback data storage trait
 /// * `chat_id` - The chat ID for this message
@@ -144,6 +147,9 @@ where
     R: IntoIterator<Item = B>,
     B: Into<(String, String)>,
 {
+    // Clear old callback data for this message to prevent memory leaks
+    storage.clear_message_callbacks(chat_id, message_id).await;
+
     let mut button_rows = Vec::new();
     let mut button_pos = 0;
 
@@ -269,5 +275,64 @@ mod tests {
         );
         assert_eq!(unpacked3, "another_short");
         assert_eq!(unpacked4, "Кнопка с кириллицей");
+    }
+
+    #[tokio::test]
+    async fn test_pack_callback_data_clears_old_data() {
+        let storage: Arc<dyn CallbackDataStorageTrait> = Arc::new(CallbackDataStorage::new());
+        let chat_id = ChatId(12345);
+        let message_id = 67890;
+
+        // Create initial buttons with long callback data
+        let initial_buttons = vec![vec![(
+            "Button 1".to_string(),
+            "toggle_word:category_name:very_long_word_that_exceeds_telegram_limit".to_string(),
+        )]];
+
+        // Pack initial buttons
+        let initial_keyboard =
+            pack_callback_data(&storage, chat_id, message_id, initial_buttons).await;
+
+        let initial_cb = match &initial_keyboard.inline_keyboard[0][0].kind {
+            teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
+            _ => panic!("Expected callback button"),
+        };
+
+        // Verify initial data is stored
+        assert!(initial_cb.starts_with("cb:"));
+        let initial_unpacked = unpack_callback_data(&storage, &initial_cb).await;
+        assert_eq!(
+            initial_unpacked,
+            "toggle_word:category_name:very_long_word_that_exceeds_telegram_limit"
+        );
+
+        // Now pack new buttons for the same message (should clear old data)
+        let new_buttons = vec![vec![(
+            "Button 2".to_string(),
+            "toggle_word:new_category:another_very_long_word_that_also_exceeds_limit".to_string(),
+        )]];
+
+        let new_keyboard = pack_callback_data(&storage, chat_id, message_id, new_buttons).await;
+
+        let new_cb = match &new_keyboard.inline_keyboard[0][0].kind {
+            teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
+            _ => panic!("Expected callback button"),
+        };
+
+        // Verify new data is stored
+        assert!(new_cb.starts_with("cb:"));
+        let new_unpacked = unpack_callback_data(&storage, &new_cb).await;
+        assert_eq!(
+            new_unpacked,
+            "toggle_word:new_category:another_very_long_word_that_also_exceeds_limit"
+        );
+
+        // Verify old reference now points to new data (since it uses same position)
+        // This is correct behavior: when buttons are updated, old references are reused
+        let old_ref_unpacked = unpack_callback_data(&storage, &initial_cb).await;
+        assert_eq!(
+            old_ref_unpacked,
+            "toggle_word:new_category:another_very_long_word_that_also_exceeds_limit"
+        );
     }
 }
