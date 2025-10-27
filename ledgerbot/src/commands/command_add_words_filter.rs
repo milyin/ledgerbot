@@ -231,6 +231,24 @@ impl CommandTrait for CommandAddWordsFilter {
                 page: Some(page_num),
                 words: Some(selected_words.clone()),
             },
+            || {
+                // Generate the /add_filter command for the Apply button
+                use crate::commands::command_add_filter::CommandAddFilter;
+
+                if selected_words.as_ref().is_empty() {
+                    // No words selected, just put category name with space for user to type pattern
+                    format!("/{} {} ", CommandAddFilter::NAME, category)
+                } else {
+                    // Build regex pattern from selected words
+                    let escaped_words: Vec<String> = selected_words.as_ref().iter().map(|w| regex::escape(w)).collect();
+                    let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
+                    CommandAddFilter {
+                        category: Some(category.clone()),
+                        pattern: Some(pattern),
+                    }
+                    .to_command_string(true)
+                }
+            },
             Some(CommandAddWordsFilter {
                 category: None,
                 page: None,

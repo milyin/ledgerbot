@@ -1,7 +1,12 @@
-use teloxide::prelude::ResponseResult;
+use teloxide::{
+    payloads::EditMessageReplyMarkupSetters,
+    prelude::{Requester, ResponseResult},
+    types::InlineKeyboardButton,
+};
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
     markdown::MarkdownString,
+    storage::pack_callback_data,
 };
 
 /// Display a menu with word suggestions for filter creation
@@ -18,6 +23,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
     page: usize,
     word_command: impl Fn(&str) -> NEXT,
     page_command: impl Fn(usize) -> PAGE,
+    apply_command: impl Fn() -> String,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     const WORDS_PER_PAGE: usize = 20;
@@ -25,31 +31,65 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
     let total_pages = total_words.div_ceil(WORDS_PER_PAGE);
     let page_number = page.min(total_pages.saturating_sub(1));
 
-    let menu = create_word_menu(
+    // Send the message first
+    let msg = target
+        .markdown_message(prompt(page_number + 1, total_pages, total_words))
+        .await?;
+
+    // Create the menu with word buttons and navigation
+    let button_data = create_word_menu_data(
         all_words,
         selected_words,
         |word| word_command(word).to_command_string(false),
         page_number,
         total_pages,
         |page_num| page_command(page_num).to_command_string(false),
-        back_command,
+        back_command.as_ref(),
     );
 
+    // Pack the callback data for word and navigation buttons
+    let mut keyboard = pack_callback_data(
+        &target.callback_data_storage,
+        target.chat.id,
+        msg.id.0,
+        button_data,
+    )
+    .await;
+
+    // Add Apply and Back button row (Apply uses switch_inline_query_current_chat, not packed)
+    let apply_cmd = apply_command();
+    let mut apply_row = vec![
+        InlineKeyboardButton::switch_inline_query_current_chat("✅ Apply", apply_cmd),
+    ];
+
+    // Add Back button to apply row if provided
+    if let Some(back) = back_command {
+        apply_row.push(InlineKeyboardButton::callback(
+            "↩️ Back",
+            back.to_command_string(false),
+        ));
+    }
+
+    keyboard.inline_keyboard.push(apply_row);
+
+    // Attach the keyboard to the message
     target
-        .markdown_message_with_menu(prompt(page_number + 1, total_pages, total_words), menu)
+        .bot
+        .edit_message_reply_markup(target.chat.id, msg.id)
+        .reply_markup(keyboard)
         .await?;
 
     Ok(())
 }
 
-fn create_word_menu(
+fn create_word_menu_data(
     all_words: &[String],
     selected_words: &[String],
     operation: impl Fn(&str) -> String,
     page_number: usize,
     total_pages: usize,
     page_command: impl Fn(usize) -> String,
-    back_command: Option<impl CommandTrait>,
+    back_command: Option<&impl CommandTrait>,
 ) -> Vec<Vec<(String, String)>> {
     const WORDS_PER_PAGE: usize = 20;
 
@@ -89,7 +129,7 @@ fn create_word_menu(
         buttons.push(row);
     }
 
-    // Add navigation buttons row: Prev, Next, Back
+    // Add navigation buttons row: Prev, Next (Back will be added separately with Apply)
     let mut nav_row: Vec<(String, String)> = Vec::new();
 
     // Previous page button
@@ -108,11 +148,6 @@ fn create_word_menu(
     } else {
         // On last page - inactive
         nav_row.push(("▷".to_string(), "noop".to_string()));
-    }
-
-    // Add back button if provided
-    if let Some(back) = back_command {
-        nav_row.push(("↩️ Back".to_string(), back.to_command_string(false)));
     }
 
     buttons.push(nav_row);
