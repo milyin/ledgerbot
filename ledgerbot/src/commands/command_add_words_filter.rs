@@ -188,6 +188,12 @@ impl CommandTrait for CommandAddWordsFilter {
 
         let category = category.clone();
 
+        // Helper function to build regex pattern from selected words
+        let build_pattern = |words: &[String]| -> String {
+            let escaped_words: Vec<String> = words.iter().map(|w| regex::escape(w)).collect();
+            format!(r"(?i)\b({})\b", escaped_words.join("|"))
+        };
+
         // Show word selection menu with pagination
         select_word(
             target,
@@ -196,8 +202,7 @@ impl CommandTrait for CommandAddWordsFilter {
                 let pattern_display = if selected_words.as_ref().is_empty() {
                     "\\(none selected\\)".to_string()
                 } else {
-                    let escaped_words: Vec<String> = selected_words.as_ref().iter().map(|w| regex::escape(w)).collect();
-                    let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
+                    let pattern = build_pattern(selected_words.as_ref());
                     format!("`{}`", pattern)
                 };
 
@@ -240,8 +245,7 @@ impl CommandTrait for CommandAddWordsFilter {
                     format!("/{} {} ", CommandAddFilter::NAME, category)
                 } else {
                     // Build regex pattern from selected words
-                    let escaped_words: Vec<String> = selected_words.as_ref().iter().map(|w| regex::escape(w)).collect();
-                    let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
+                    let pattern = build_pattern(selected_words.as_ref());
                     CommandAddFilter {
                         category: Some(category.clone()),
                         pattern: Some(pattern),
