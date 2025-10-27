@@ -3,6 +3,27 @@ use std::{collections::HashMap, sync::Arc};
 use teloxide::types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup};
 use tokio::sync::Mutex;
 
+/// Represents different types of inline keyboard buttons
+#[derive(Clone)]
+pub enum ButtonData {
+    /// Callback button with label and callback data
+    Callback(String, String),
+    /// Switch inline query button with label and query text
+    SwitchInlineQuery(String, String),
+}
+
+impl From<(String, String)> for ButtonData {
+    fn from((label, data): (String, String)) -> Self {
+        ButtonData::Callback(label, data)
+    }
+}
+
+impl From<(&str, &str)> for ButtonData {
+    fn from((label, data): (&str, &str)) -> Self {
+        ButtonData::Callback(label.to_string(), data.to_string())
+    }
+}
+
 /// Trait for callback data storage operations (maps short references to full callback data)
 /// This is used to work around Telegram's 64-byte limit on callback data
 #[async_trait::async_trait]
@@ -88,9 +109,10 @@ impl CallbackDataStorageTrait for CallbackDataStorage {
 /// Pack callback data into an InlineKeyboardMarkup, storing long data in storage
 /// and replacing it with short references.
 ///
-/// This function takes rows of button data where each row contains tuples of (label, callback_data).
-/// If the callback_data is longer than 64 bytes or contains non-ASCII characters, it stores
-/// the data in CallbackDataStorage and replaces it with a short reference.
+/// This function takes rows of button data where each row contains ButtonData enum values.
+/// For callback buttons, if the callback_data is longer than 64 bytes or contains non-ASCII
+/// characters, it stores the data in CallbackDataStorage and replaces it with a short reference.
+/// For switch inline query buttons, the query text is used directly without storage.
 ///
 /// **Important:** This function clears any previously stored callback data for this message
 /// to prevent memory leaks when updating message buttons.
@@ -99,7 +121,7 @@ impl CallbackDataStorageTrait for CallbackDataStorage {
 /// * `storage` - The callback data storage trait
 /// * `chat_id` - The chat ID for this message
 /// * `message_id` - The message ID where buttons will be attached
-/// * `rows` - Iterator of button rows, each row is an iterator of (label, callback_data) tuples
+/// * `rows` - Iterator of button rows, each row is an iterator of ButtonData values
 pub async fn pack_callback_data<R, B>(
     storage: &Arc<dyn CallbackDataStorageTrait>,
     chat_id: ChatId,
@@ -108,7 +130,7 @@ pub async fn pack_callback_data<R, B>(
 ) -> InlineKeyboardMarkup
 where
     R: IntoIterator<Item = B>,
-    B: Into<(String, String)>,
+    B: Into<ButtonData>,
 {
     // Clear old callback data for this message to prevent memory leaks
     storage.clear_message_callbacks(chat_id, message_id).await;
@@ -119,22 +141,32 @@ where
     for row in rows {
         let mut button_row = Vec::new();
         for item in row {
-            let (label, callback_data): (String, String) = item.into();
+            let button_data: ButtonData = item.into();
 
-            // Check if callback_data exceeds 64 bytes or contains non-ASCII
-            let needs_storage = callback_data.len() > 64 || !callback_data.is_ascii();
+            match button_data {
+                ButtonData::Callback(label, callback_data) => {
+                    // Check if callback_data exceeds 64 bytes or contains non-ASCII
+                    let needs_storage = callback_data.len() > 64 || !callback_data.is_ascii();
 
-            let final_callback_data = if needs_storage {
-                // Store in storage and get reference
-                storage
-                    .store_callback_data(chat_id, message_id, button_pos, callback_data)
-                    .await
-            } else {
-                callback_data
-            };
+                    let final_callback_data = if needs_storage {
+                        // Store in storage and get reference
+                        storage
+                            .store_callback_data(chat_id, message_id, button_pos, callback_data)
+                            .await
+                    } else {
+                        callback_data
+                    };
 
-            button_row.push(InlineKeyboardButton::callback(label, final_callback_data));
-            button_pos += 1;
+                    button_row.push(InlineKeyboardButton::callback(label, final_callback_data));
+                    button_pos += 1;
+                }
+                ButtonData::SwitchInlineQuery(label, query) => {
+                    button_row.push(InlineKeyboardButton::switch_inline_query_current_chat(
+                        label, query,
+                    ));
+                    // Don't increment button_pos for inline query buttons as they don't use storage
+                }
+            }
         }
         button_rows.push(button_row);
     }

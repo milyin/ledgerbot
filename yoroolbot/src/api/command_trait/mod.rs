@@ -11,7 +11,7 @@ use teloxide::{
 
 use crate::{
     markdown::{MarkdownString, MarkdownStringMessage},
-    storage::{pack_callback_data, CallbackDataStorageTrait},
+    storage::{pack_callback_data, ButtonData, CallbackDataStorageTrait},
 };
 
 #[derive(Clone)]
@@ -43,7 +43,7 @@ impl CommandReplyTarget {
     ) -> ResponseResult<Message>
     where
         R: IntoIterator<Item = B>,
-        B: Into<(String, String)>,
+        B: Into<ButtonData>,
     {
         let msg = self
             .bot
@@ -75,7 +75,7 @@ impl CommandReplyTarget {
     ) -> ResponseResult<Message>
     where
         R: IntoIterator<Item = B>,
-        B: Into<(String, String)>,
+        B: Into<ButtonData>,
     {
         let msg = self
             .bot
@@ -105,7 +105,7 @@ impl CommandReplyTarget {
     ) -> ResponseResult<()>
     where
         R: IntoIterator<Item = B>,
-        B: Into<(String, String)>,
+        B: Into<ButtonData>,
     {
         // Pack callback data and attach keyboard to the message
         let keyboard = pack_callback_data(

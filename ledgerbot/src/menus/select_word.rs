@@ -1,12 +1,11 @@
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
-    types::InlineKeyboardButton,
 };
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
     markdown::MarkdownString,
-    storage::pack_callback_data,
+    storage::{pack_callback_data, ButtonData},
 };
 
 /// Display a menu with word suggestions for filter creation
@@ -36,7 +35,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
         .markdown_message(prompt(page_number + 1, total_pages, total_words))
         .await?;
 
-    // Create the menu with word buttons and navigation
+    // Create the menu with word buttons, navigation, and apply button
     let button_data = create_word_menu_data(
         all_words,
         selected_words,
@@ -44,26 +43,18 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
         page_number,
         total_pages,
         |page_num| page_command(page_num).to_command_string(false),
+        apply_command,
         back_command.as_ref(),
     );
 
-    // Pack the callback data for word and navigation buttons
-    let mut keyboard = pack_callback_data(
+    // Pack all buttons (callback and inline query) into the keyboard
+    let keyboard = pack_callback_data(
         &target.callback_data_storage,
         target.chat.id,
         msg.id.0,
         button_data,
     )
     .await;
-
-    // Add Apply button to the last row (navigation row with Prev, Next, Back)
-    let apply_cmd = apply_command();
-    if let Some(last_row) = keyboard.inline_keyboard.last_mut() {
-        last_row.push(InlineKeyboardButton::switch_inline_query_current_chat(
-            "✅ Apply",
-            apply_cmd,
-        ));
-    }
 
     // Attach the keyboard to the message
     target
@@ -82,8 +73,9 @@ fn create_word_menu_data(
     page_number: usize,
     total_pages: usize,
     page_command: impl Fn(usize) -> String,
+    apply_command: impl Fn() -> String,
     back_command: Option<&impl CommandTrait>,
-) -> Vec<Vec<(String, String)>> {
+) -> Vec<Vec<ButtonData>> {
     const WORDS_PER_PAGE: usize = 20;
 
     // Calculate page offset
@@ -96,8 +88,8 @@ fn create_word_menu_data(
         .take(WORDS_PER_PAGE)
         .collect();
 
-    let mut buttons: Vec<Vec<(String, String)>> = Vec::new();
-    let mut row: Vec<(String, String)> = Vec::new();
+    let mut buttons: Vec<Vec<ButtonData>> = Vec::new();
+    let mut row: Vec<ButtonData> = Vec::new();
 
     // Create buttons for words on current page (4 per row)
     for word in page_words {
@@ -109,7 +101,7 @@ fn create_word_menu_data(
             word.clone()
         };
 
-        row.push((label, operation(word)));
+        row.push(ButtonData::Callback(label, operation(word)));
 
         if row.len() == 4 {
             buttons.push(row.clone());
@@ -122,31 +114,46 @@ fn create_word_menu_data(
         buttons.push(row);
     }
 
-    // Add navigation buttons row: Prev, Next, Back
-    let mut nav_row: Vec<(String, String)> = Vec::new();
+    // Add navigation buttons row: Prev, Next, Back, Apply
+    let mut nav_row: Vec<ButtonData> = Vec::new();
 
     // Previous page button
     if page_number > 0 {
         // Active: call page_command with previous page number
-        nav_row.push(("◀️".to_string(), page_command(page_number - 1)));
+        nav_row.push(ButtonData::Callback(
+            "◀️".to_string(),
+            page_command(page_number - 1),
+        ));
     } else {
         // On first page - inactive
-        nav_row.push(("◁".to_string(), "noop".to_string()));
+        nav_row.push(ButtonData::Callback("◁".to_string(), "noop".to_string()));
     }
 
     // Next page button
     if page_number + 1 < total_pages {
         // Active: call page_command with next page number
-        nav_row.push(("▶️".to_string(), page_command(page_number + 1)));
+        nav_row.push(ButtonData::Callback(
+            "▶️".to_string(),
+            page_command(page_number + 1),
+        ));
     } else {
         // On last page - inactive
-        nav_row.push(("▷".to_string(), "noop".to_string()));
+        nav_row.push(ButtonData::Callback("▷".to_string(), "noop".to_string()));
     }
 
     // Add back button if provided
     if let Some(back) = back_command {
-        nav_row.push(("↩️ Back".to_string(), back.to_command_string(false)));
+        nav_row.push(ButtonData::Callback(
+            "↩️ Back".to_string(),
+            back.to_command_string(false),
+        ));
     }
+
+    // Add apply button (switch inline query type)
+    nav_row.push(ButtonData::SwitchInlineQuery(
+        "✅ Apply".to_string(),
+        apply_command(),
+    ));
 
     buttons.push(nav_row);
 
