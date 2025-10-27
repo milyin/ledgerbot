@@ -8,7 +8,7 @@ use teloxide::{
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
     markdown_format,
-    storage::{pack_callback_data, unpack_callback_data, CallbackDataStorageTrait},
+    storage::{CallbackDataStorageTrait, pack_callback_data, unpack_callback_data},
 };
 
 use crate::storage_traits::CategoryStorageTrait;
@@ -125,8 +125,9 @@ pub async fn read_category_filter_by_index(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use yoroolbot::storage::CallbackDataStorage;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_pack_unpack_callback_data() {

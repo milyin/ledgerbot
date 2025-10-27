@@ -132,5 +132,7 @@ pub trait StorageTrait: Send + Sync {
     fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait>;
 
     /// Convert to CallbackDataStorageTrait trait object
-    fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn yoroolbot::storage::CallbackDataStorageTrait>;
+    fn as_callback_data_storage(
+        self: Arc<Self>,
+    ) -> Arc<dyn yoroolbot::storage::CallbackDataStorageTrait>;
 }

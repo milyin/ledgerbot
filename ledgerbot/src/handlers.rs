@@ -1,9 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use teloxide::{prelude::*, types::CallbackQuery, utils::command::BotCommands};
-use yoroolbot::{
-    markdown::MarkdownStringMessage, markdown_format, storage::unpack_callback_data,
-};
+use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, storage::unpack_callback_data};
 
 use crate::{
     batch::{add_to_batch, execute_batch},
