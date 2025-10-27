@@ -8,8 +8,8 @@ use yoroolbot::{markdown::MarkdownString, markdown_format};
 use crate::{
     commands::{Command, command_categories::CommandCategories, command_trait::CommandTrait},
     storage_traits::{
-        BatchStorageTrait, CategoryStorageTrait, Expense, ExpenseStorageTrait,
-        FilterPageStorageTrait, FilterSelectionStorageTrait, StorageTrait,
+        BatchStorageTrait, CallbackDataStorageTrait, CategoryStorageTrait, Expense,
+        ExpenseStorageTrait, FilterPageStorageTrait, FilterSelectionStorageTrait, StorageTrait,
     },
 };
 
@@ -527,6 +527,61 @@ impl BatchStorageTrait for BatchStorage {
     }
 }
 
+/// Callback data storage - maps (chat_id, message_id, button_pos) to full callback data
+/// This is used to work around Telegram's 64-byte limit on callback data
+#[derive(Clone)]
+pub struct CallbackDataStorage {
+    data: Arc<Mutex<HashMap<(ChatId, i32, usize), String>>>,
+}
+
+impl CallbackDataStorage {
+    pub fn new() -> Self {
+        Self {
+            data: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
+/// Implement CallbackDataStorageTrait for CallbackDataStorage
+#[async_trait::async_trait]
+impl CallbackDataStorageTrait for CallbackDataStorage {
+    async fn store_callback_data(
+        &self,
+        chat_id: ChatId,
+        message_id: i32,
+        button_pos: usize,
+        data: String,
+    ) -> String {
+        let mut storage_guard = self.data.lock().await;
+        let key = (chat_id, message_id, button_pos);
+        storage_guard.insert(key, data);
+        // Return a compact reference string: "cb:{chat_id}:{message_id}:{button_pos}"
+        format!("cb:{}:{}:{}", chat_id, message_id, button_pos)
+    }
+
+    async fn get_callback_data(&self, reference: &str) -> Option<String> {
+        // Parse reference string: "cb:{chat_id}:{message_id}:{button_pos}"
+        let parts: Vec<&str> = reference.split(':').collect();
+        if parts.len() != 4 || parts[0] != "cb" {
+            return None;
+        }
+
+        let chat_id = parts[1].parse::<i64>().ok()?;
+        let message_id = parts[2].parse::<i32>().ok()?;
+        let button_pos = parts[3].parse::<usize>().ok()?;
+
+        let storage_guard = self.data.lock().await;
+        storage_guard
+            .get(&(ChatId(chat_id), message_id, button_pos))
+            .cloned()
+    }
+
+    async fn clear_message_callbacks(&self, chat_id: ChatId, message_id: i32) {
+        let mut storage_guard = self.data.lock().await;
+        storage_guard.retain(|(cid, mid, _), _| *cid != chat_id || *mid != message_id);
+    }
+}
+
 /// Main storage structure that holds all bot data
 /// This is the primary storage container for the application
 #[derive(Clone)]
@@ -536,6 +591,7 @@ pub struct Storage {
     filter_selection: Arc<dyn FilterSelectionStorageTrait>,
     filter_page: Arc<dyn FilterPageStorageTrait>,
     batch: Arc<dyn BatchStorageTrait>,
+    callback_data: Arc<dyn CallbackDataStorageTrait>,
 }
 
 impl Storage {
@@ -547,6 +603,7 @@ impl Storage {
             filter_selection: Arc::new(FilterSelectionStorage::new()),
             filter_page: Arc::new(FilterPageStorage::new()),
             batch: Arc::new(BatchStorage::new()),
+            callback_data: Arc::new(CallbackDataStorage::new()),
         }
     }
 
@@ -585,6 +642,10 @@ impl StorageTrait for Storage {
     fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait> {
         self.batch.clone()
     }
+
+    fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait> {
+        self.callback_data.clone()
+    }
 }
 
 #[cfg(test)]
@@ -592,6 +653,72 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
+
+    #[tokio::test]
+    async fn test_callback_data_storage() {
+        let storage = CallbackDataStorage::new();
+        let chat_id = ChatId(12345);
+        let message_id = 67890;
+        let button_pos = 0;
+        let callback_data = "toggle_word:food:restaurant".to_string();
+
+        // Store callback data
+        let reference = storage
+            .store_callback_data(chat_id, message_id, button_pos, callback_data.clone())
+            .await;
+
+        // Verify reference format
+        assert!(reference.starts_with("cb:"));
+        assert!(reference.contains("12345"));
+        assert!(reference.contains("67890"));
+        assert!(reference.contains("0"));
+
+        // Retrieve callback data
+        let retrieved = storage.get_callback_data(&reference).await;
+        assert_eq!(retrieved, Some(callback_data));
+
+        // Test invalid reference
+        let invalid = storage.get_callback_data("invalid:reference").await;
+        assert_eq!(invalid, None);
+
+        // Test clear message callbacks
+        storage.clear_message_callbacks(chat_id, message_id).await;
+        let after_clear = storage.get_callback_data(&reference).await;
+        assert_eq!(after_clear, None);
+    }
+
+    #[tokio::test]
+    async fn test_callback_data_storage_multiple_buttons() {
+        let storage = CallbackDataStorage::new();
+        let chat_id = ChatId(12345);
+        let message_id = 67890;
+
+        // Store multiple callback data entries
+        let data1 = "toggle_word:food:restaurant".to_string();
+        let data2 = "toggle_word:food:grocery".to_string();
+        let data3 = "page_next:food".to_string();
+
+        let ref1 = storage
+            .store_callback_data(chat_id, message_id, 0, data1.clone())
+            .await;
+        let ref2 = storage
+            .store_callback_data(chat_id, message_id, 1, data2.clone())
+            .await;
+        let ref3 = storage
+            .store_callback_data(chat_id, message_id, 2, data3.clone())
+            .await;
+
+        // Verify all can be retrieved
+        assert_eq!(storage.get_callback_data(&ref1).await, Some(data1));
+        assert_eq!(storage.get_callback_data(&ref2).await, Some(data2));
+        assert_eq!(storage.get_callback_data(&ref3).await, Some(data3));
+
+        // Clear and verify all are removed
+        storage.clear_message_callbacks(chat_id, message_id).await;
+        assert_eq!(storage.get_callback_data(&ref1).await, None);
+        assert_eq!(storage.get_callback_data(&ref2).await, None);
+        assert_eq!(storage.get_callback_data(&ref3).await, None);
+    }
 
     #[test]
     fn test_category_data_yaml_serialization() {

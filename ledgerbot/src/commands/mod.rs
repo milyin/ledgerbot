@@ -45,6 +45,7 @@ use crate::{
         filters::add_filter_command,
     },
     handlers::CallbackData,
+    menus::common::pack_callback_data,
     storage_traits::StorageTrait,
     utils::extract_words::extract_words,
 };
@@ -231,10 +232,11 @@ pub async fn show_filter_word_suggestions(
         escaped_category, selected_display, current_page, total_pages, total_words
     );
 
-    let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
+    // Build button data as rows of (label, callback_data) tuples
+    let mut button_rows: Vec<Vec<(String, String)>> = Vec::new();
 
     // Add buttons for each suggested word on current page (4 per row)
-    let mut row: Vec<InlineKeyboardButton> = Vec::new();
+    let mut row: Vec<(String, String)> = Vec::new();
     for word in page_words {
         // Check if this word is selected
         let is_selected = selected_words.contains(word);
@@ -245,52 +247,58 @@ pub async fn show_filter_word_suggestions(
         };
 
         // Use CallbackData enum for type-safe callback data
-        row.push(InlineKeyboardButton::callback(
-            label,
-            CallbackData::ToggleWord {
-                category: category_name.clone(),
-                word: word.clone(),
-            },
-        ));
+        let callback_data: String = CallbackData::ToggleWord {
+            category: category_name.clone(),
+            word: word.clone(),
+        }
+        .into();
+
+        row.push((label, callback_data));
 
         // Add row when we have 4 buttons
         if row.len() == 4 {
-            buttons.push(row.clone());
+            button_rows.push(row.clone());
             row.clear();
         }
     }
 
     // Add remaining buttons if any
     if !row.is_empty() {
-        buttons.push(row);
+        button_rows.push(row);
     }
 
     // Add all control buttons in a single row: Left, Right, Apply, Back
-    let mut control_row: Vec<InlineKeyboardButton> = Vec::new();
+    let mut control_row: Vec<(String, String)> = Vec::new();
 
     // Previous page button (always shown, inactive if on first page)
     if page_offset > 0 {
-        control_row.push(InlineKeyboardButton::callback(
-            "◀️",
-            CallbackData::PagePrev(category_name.clone()),
+        control_row.push((
+            "◀️".to_string(),
+            CallbackData::PagePrev(category_name.clone()).into(),
         ));
     } else {
         // Inactive button with dummy callback data
-        control_row.push(InlineKeyboardButton::callback("◁", CallbackData::Noop));
+        control_row.push(("◁".to_string(), CallbackData::Noop.into()));
     }
 
     // Next page button (always shown, inactive if on last page)
     if page_offset + WORDS_PER_PAGE < total_words {
-        control_row.push(InlineKeyboardButton::callback(
-            "▶️",
-            CallbackData::PageNext(category_name.clone()),
+        control_row.push((
+            "▶️".to_string(),
+            CallbackData::PageNext(category_name.clone()).into(),
         ));
     } else {
         // Inactive button with dummy callback data
-        control_row.push(InlineKeyboardButton::callback("️▷", CallbackData::Noop));
+        control_row.push(("️▷".to_string(), CallbackData::Noop.into()));
     }
 
-    // Apply button - puts /add_filter command with generated regexp in input box
+    button_rows.push(control_row);
+
+    // Use pack_callback_data to create the keyboard with storage support
+    let callback_storage = storage.clone().as_callback_data_storage();
+    let keyboard = pack_callback_data(&callback_storage, chat_id, message_id.0, button_rows).await;
+
+    // Add Apply and Back buttons after packing (these don't use callback data storage)
     let apply_command = if !selected_words.is_empty() {
         // Escape each word and combine with case-insensitive OR pattern with word boundaries
         let escaped_words: Vec<String> = selected_words.iter().map(|w| regex::escape(w)).collect();
@@ -305,20 +313,14 @@ pub async fn show_filter_word_suggestions(
         format!("{} {} ", CommandAddFilter::NAME, category_name)
     };
 
-    control_row.push(InlineKeyboardButton::switch_inline_query_current_chat(
-        "✅ Apply",
-        apply_command,
-    ));
+    // Create final keyboard with Apply and Back buttons
+    let mut final_buttons = keyboard.inline_keyboard;
+    final_buttons.push(vec![
+        InlineKeyboardButton::switch_inline_query_current_chat("✅ Apply", apply_command),
+        InlineKeyboardButton::callback("↩️ Back", CallbackData::CmdAddFilter),
+    ]);
 
-    // Back button
-    control_row.push(InlineKeyboardButton::callback(
-        "↩️ Back",
-        CallbackData::CmdAddFilter,
-    ));
-
-    buttons.push(control_row);
-
-    let keyboard = InlineKeyboardMarkup::new(buttons);
+    let keyboard = InlineKeyboardMarkup::new(final_buttons);
 
     bot.edit_message_text(chat_id, message_id, text)
         .parse_mode(teloxide::types::ParseMode::MarkdownV2)

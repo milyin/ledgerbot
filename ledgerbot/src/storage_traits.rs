@@ -113,6 +113,27 @@ pub trait BatchStorageTrait: Send + Sync {
     async fn consume_batch(&self, chat_id: ChatId) -> Option<Vec<Result<Command, String>>>;
 }
 
+/// Trait for callback data storage operations (maps short references to full callback data)
+/// This is used to work around Telegram's 64-byte limit on callback data
+#[async_trait::async_trait]
+pub trait CallbackDataStorageTrait: Send + Sync {
+    /// Store callback data and return a short reference string
+    /// The reference is based on (message_id, button_position)
+    async fn store_callback_data(
+        &self,
+        chat_id: ChatId,
+        message_id: i32,
+        button_pos: usize,
+        data: String,
+    ) -> String;
+
+    /// Retrieve original callback data from a reference string
+    async fn get_callback_data(&self, reference: &str) -> Option<String>;
+
+    /// Clear all callback data for a specific message
+    async fn clear_message_callbacks(&self, chat_id: ChatId, message_id: i32);
+}
+
 /// Combined storage trait that provides all storage operations
 /// This trait allows converting to specific trait objects for functions that only need subset of functionality
 pub trait StorageTrait: Send + Sync {
@@ -130,4 +151,7 @@ pub trait StorageTrait: Send + Sync {
 
     /// Convert to BatchStorageTrait trait object
     fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait>;
+
+    /// Convert to CallbackDataStorageTrait trait object
+    fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait>;
 }

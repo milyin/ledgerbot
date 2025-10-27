@@ -6,6 +6,7 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format};
 use crate::{
     batch::{add_to_batch, execute_batch},
     commands::{Command, execute_command, filters::add_filter_menu, show_filter_word_suggestions},
+    menus::common::unpack_callback_data,
     storage_traits::StorageTrait,
     utils::parse_expenses::parse_expenses,
 };
@@ -195,8 +196,14 @@ pub async fn handle_callback_query(
 
     log::info!("Received callback data: {}", data_str);
 
+    // Unpack callback data from storage if needed
+    let callback_storage = storage.clone().as_callback_data_storage();
+    let unpacked_data = unpack_callback_data(&callback_storage, data_str).await;
+
+    log::info!("Unpacked callback data: {}", unpacked_data);
+
     // Try to parse the callback data as command
-    if let Ok(cmd) = Command::parse(data_str, &bot_username) {
+    if let Ok(cmd) = Command::parse(&unpacked_data, &bot_username) {
         log::info!("Parsed command from callback: {:?}", cmd);
         // Execute the command using the shared execute_command function
         if let Err(e) = execute_command(
@@ -224,10 +231,10 @@ pub async fn handle_callback_query(
         return Ok(());
     }
 
-    let callback_data = match CallbackData::from_str(data_str) {
+    let callback_data = match CallbackData::from_str(&unpacked_data) {
         Ok(data) => data,
         Err(err) => {
-            log::warn!("Invalid callback data '{}': {}", data_str, err);
+            log::warn!("Invalid callback data '{}': {}", unpacked_data, err);
             return Ok(());
         }
     };
