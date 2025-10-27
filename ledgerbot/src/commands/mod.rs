@@ -340,6 +340,7 @@ pub async fn execute_command(
         chat: chat.clone(),
         msg_id,
         batch,
+        callback_data_storage: storage.clone().as_callback_data_storage(),
     };
     match cmd {
         Command::Start(start) => {

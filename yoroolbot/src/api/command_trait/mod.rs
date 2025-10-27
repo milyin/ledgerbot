@@ -1,29 +1,69 @@
-use std::{any::TypeId, error::Error, fmt::Display, str::FromStr};
+use std::{any::TypeId, error::Error, fmt::Display, str::FromStr, sync::Arc};
 
 use teloxide::{
     Bot,
-    payloads::SendMessage,
+    payloads::{EditMessageReplyMarkupSetters, SendMessage},
     prelude::{Message, Requester, ResponseResult},
     requests::JsonRequest,
     types::{Chat, MessageId},
     utils::command::ParseError,
 };
 
-use crate::markdown::{MarkdownString, MarkdownStringMessage};
+use crate::{
+    markdown::{MarkdownString, MarkdownStringMessage},
+    storage::{pack_callback_data, CallbackDataStorageTrait},
+};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CommandReplyTarget {
     pub bot: Bot,
     pub chat: Chat,
     pub msg_id: Option<MessageId>,
     pub batch: bool,
+    pub callback_data_storage: Arc<dyn CallbackDataStorageTrait>,
 }
 
 impl CommandReplyTarget {
-    pub async fn markdown_message(&self, text: MarkdownString) -> ResponseResult<Message> {
+    /// Send a markdown message without a menu
+    pub async fn markdown_message(
+        &self,
+        text: MarkdownString,
+    ) -> ResponseResult<Message> {
         self.bot
             .markdown_message(self.chat.id, self.msg_id, text)
             .await
+    }
+
+    /// Send a markdown message with an inline keyboard menu
+    /// The menu is automatically packed using pack_callback_data to handle long callback data
+    pub async fn markdown_message_with_menu<R, B>(
+        &self,
+        text: MarkdownString,
+        menu: impl IntoIterator<Item = R>,
+    ) -> ResponseResult<Message>
+    where
+        R: IntoIterator<Item = B>,
+        B: Into<(String, String)>,
+    {
+        let msg = self
+            .bot
+            .markdown_message(self.chat.id, self.msg_id, text)
+            .await?;
+
+        // Pack callback data and attach keyboard to the message
+        let keyboard = pack_callback_data(
+            &self.callback_data_storage,
+            self.chat.id,
+            msg.id.0,
+            menu,
+        )
+        .await;
+        self.bot
+            .edit_message_reply_markup(self.chat.id, msg.id)
+            .reply_markup(keyboard)
+            .await?;
+
+        Ok(msg)
     }
 
     pub fn send_markdown_message(&self, text: MarkdownString) -> JsonRequest<SendMessage> {
