@@ -8,9 +8,10 @@ use teloxide::{
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
     markdown_format,
+    storage::CallbackDataStorageTrait,
 };
 
-use crate::storage_traits::{CallbackDataStorageTrait, CategoryStorageTrait};
+use crate::storage_traits::CategoryStorageTrait;
 
 pub fn create_buttons_menu(
     titles: &[String],
@@ -205,7 +206,7 @@ pub async fn unpack_callback_data(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::CallbackDataStorage;
+    use yoroolbot::storage::CallbackDataStorage;
 
     #[tokio::test]
     async fn test_pack_unpack_callback_data() {

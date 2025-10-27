@@ -19,3 +19,11 @@ pub mod command_trait {
         CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand, ParseCommandArg,
     };
 }
+
+// Public storage module with re-exports
+pub mod storage {
+    // Re-export types and traits from internal API
+    pub use crate::api::storage::callback_data_storage::{
+        CallbackDataStorage, CallbackDataStorageTrait,
+    };
+}

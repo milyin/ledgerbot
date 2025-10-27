@@ -9,3 +9,5 @@ path = "src/lib.rs"
 
 [dependencies]
 teloxide = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
