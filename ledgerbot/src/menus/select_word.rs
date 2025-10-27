@@ -56,21 +56,14 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
     )
     .await;
 
-    // Add Apply and Back button row (Apply uses switch_inline_query_current_chat, not packed)
+    // Add Apply button to the last row (navigation row with Prev, Next, Back)
     let apply_cmd = apply_command();
-    let mut apply_row = vec![
-        InlineKeyboardButton::switch_inline_query_current_chat("✅ Apply", apply_cmd),
-    ];
-
-    // Add Back button to apply row if provided
-    if let Some(back) = back_command {
-        apply_row.push(InlineKeyboardButton::callback(
-            "↩️ Back",
-            back.to_command_string(false),
+    if let Some(last_row) = keyboard.inline_keyboard.last_mut() {
+        last_row.push(InlineKeyboardButton::switch_inline_query_current_chat(
+            "✅ Apply",
+            apply_cmd,
         ));
     }
-
-    keyboard.inline_keyboard.push(apply_row);
 
     // Attach the keyboard to the message
     target
@@ -129,7 +122,7 @@ fn create_word_menu_data(
         buttons.push(row);
     }
 
-    // Add navigation buttons row: Prev, Next (Back will be added separately with Apply)
+    // Add navigation buttons row: Prev, Next, Back
     let mut nav_row: Vec<(String, String)> = Vec::new();
 
     // Previous page button
@@ -148,6 +141,11 @@ fn create_word_menu_data(
     } else {
         // On last page - inactive
         nav_row.push(("▷".to_string(), "noop".to_string()));
+    }
+
+    // Add back button if provided
+    if let Some(back) = back_command {
+        nav_row.push(("↩️ Back".to_string(), back.to_command_string(false)));
     }
 
     buttons.push(nav_row);
