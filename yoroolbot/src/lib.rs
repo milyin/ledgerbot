@@ -24,6 +24,6 @@ pub mod command_trait {
 pub mod storage {
     // Re-export types and traits from internal API
     pub use crate::api::storage::callback_data_storage::{
-        CallbackDataStorage, CallbackDataStorageTrait,
+        pack_callback_data, unpack_callback_data, CallbackDataStorage, CallbackDataStorageTrait,
     };
 }

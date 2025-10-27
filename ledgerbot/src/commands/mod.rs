@@ -23,7 +23,10 @@ use teloxide::{
     types::{Chat, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
     utils::{command::BotCommands, markdown::escape},
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait},
+    storage::pack_callback_data,
+};
 
 use crate::{
     commands::{
@@ -36,7 +39,6 @@ use crate::{
         command_report::CommandReport, command_start::CommandStart, filters::add_filter_command,
     },
     handlers::CallbackData,
-    menus::common::pack_callback_data,
     storage_traits::StorageTrait,
     utils::extract_words::extract_words,
 };
