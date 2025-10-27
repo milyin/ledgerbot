@@ -1,8 +1,4 @@
-use teloxide::{
-    payloads::EditMessageReplyMarkupSetters,
-    prelude::{Requester, ResponseResult},
-    types::{InlineKeyboardButton, InlineKeyboardMarkup},
-};
+use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
     markdown::MarkdownString,
@@ -29,10 +25,6 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
     let total_pages = total_words.div_ceil(WORDS_PER_PAGE);
     let page_number = page.min(total_pages.saturating_sub(1));
 
-    let msg = target
-        .markdown_message(prompt(page_number + 1, total_pages, total_words))
-        .await?;
-
     let menu = create_word_menu(
         all_words,
         selected_words,
@@ -44,9 +36,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
     );
 
     target
-        .bot
-        .edit_message_reply_markup(target.chat.id, msg.id)
-        .reply_markup(menu)
+        .markdown_message_with_menu(prompt(page_number + 1, total_pages, total_words), menu)
         .await?;
 
     Ok(())
@@ -60,7 +50,7 @@ fn create_word_menu(
     total_pages: usize,
     page_command: impl Fn(usize) -> String,
     back_command: Option<impl CommandTrait>,
-) -> InlineKeyboardMarkup {
+) -> Vec<Vec<(String, String)>> {
     const WORDS_PER_PAGE: usize = 20;
 
     // Calculate page offset
@@ -73,8 +63,8 @@ fn create_word_menu(
         .take(WORDS_PER_PAGE)
         .collect();
 
-    let mut buttons: Vec<Vec<InlineKeyboardButton>> = Vec::new();
-    let mut row: Vec<InlineKeyboardButton> = Vec::new();
+    let mut buttons: Vec<Vec<(String, String)>> = Vec::new();
+    let mut row: Vec<(String, String)> = Vec::new();
 
     // Create buttons for words on current page (4 per row)
     for word in page_words {
@@ -86,7 +76,7 @@ fn create_word_menu(
             word.clone()
         };
 
-        row.push(InlineKeyboardButton::callback(label, operation(word)));
+        row.push((label, operation(word)));
 
         if row.len() == 4 {
             buttons.push(row.clone());
@@ -100,41 +90,32 @@ fn create_word_menu(
     }
 
     // Add navigation buttons row: Prev, Next, Back
-    let mut nav_row: Vec<InlineKeyboardButton> = Vec::new();
+    let mut nav_row: Vec<(String, String)> = Vec::new();
 
     // Previous page button
     if page_number > 0 {
         // Active: call page_command with previous page number
-        nav_row.push(InlineKeyboardButton::callback(
-            "◀️",
-            page_command(page_number - 1),
-        ));
+        nav_row.push(("◀️".to_string(), page_command(page_number - 1)));
     } else {
         // On first page - inactive
-        nav_row.push(InlineKeyboardButton::callback("◁", "noop"));
+        nav_row.push(("◁".to_string(), "noop".to_string()));
     }
 
     // Next page button
     if page_number + 1 < total_pages {
         // Active: call page_command with next page number
-        nav_row.push(InlineKeyboardButton::callback(
-            "▶️",
-            page_command(page_number + 1),
-        ));
+        nav_row.push(("▶️".to_string(), page_command(page_number + 1)));
     } else {
         // On last page - inactive
-        nav_row.push(InlineKeyboardButton::callback("▷", "noop"));
+        nav_row.push(("▷".to_string(), "noop".to_string()));
     }
 
     // Add back button if provided
     if let Some(back) = back_command {
-        nav_row.push(InlineKeyboardButton::callback(
-            "↩️ Back",
-            back.to_command_string(false),
-        ));
+        nav_row.push(("↩️ Back".to_string(), back.to_command_string(false)));
     }
 
     buttons.push(nav_row);
 
-    InlineKeyboardMarkup::new(buttons)
+    buttons
 }
