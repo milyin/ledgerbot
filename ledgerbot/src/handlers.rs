@@ -112,16 +112,8 @@ pub async fn handle_text_message(
             if is_first_message {
                 let bot_clone = bot.clone();
                 let storage_clone = storage.clone();
-                let msg_clone = msg.clone();
                 tokio::spawn(async move {
-                    execute_batch(
-                        bot_clone,
-                        batch_storage,
-                        msg_clone.chat.clone(),
-                        storage_clone,
-                        msg_clone,
-                    )
-                    .await;
+                    execute_batch(bot_clone, batch_storage, msg.chat.clone(), storage_clone).await;
                 });
             }
         } else {
@@ -134,7 +126,6 @@ pub async fn handle_text_message(
                             bot.clone(),
                             msg.chat.clone(),
                             None,
-                            msg.clone(),
                             storage.clone(),
                             cmd,
                             false,
@@ -209,7 +200,6 @@ pub async fn handle_callback_query(
             bot.clone(),
             msg.chat.clone(),
             Some(msg.id),
-            msg.clone(),
             storage.clone(),
             cmd.clone(),
             false,

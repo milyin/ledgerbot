@@ -11,7 +11,7 @@ use teloxide::{
 
 use crate::{
     markdown::{MarkdownString, MarkdownStringMessage},
-    storage::{pack_callback_data, ButtonData, CallbackDataStorageTrait},
+    storage::{ButtonData, CallbackDataStorageTrait, pack_callback_data},
 };
 
 #[derive(Clone)]
@@ -25,10 +25,7 @@ pub struct CommandReplyTarget {
 
 impl CommandReplyTarget {
     /// Send a markdown message without a menu
-    pub async fn markdown_message(
-        &self,
-        text: MarkdownString,
-    ) -> ResponseResult<Message> {
+    pub async fn markdown_message(&self, text: MarkdownString) -> ResponseResult<Message> {
         self.bot
             .markdown_message(self.chat.id, self.msg_id, text)
             .await
@@ -77,10 +74,7 @@ impl CommandReplyTarget {
         R: IntoIterator<Item = B>,
         B: Into<ButtonData>,
     {
-        let msg = self
-            .bot
-            .send_markdown_message(self.chat.id, text)
-            .await?;
+        let msg = self.bot.send_markdown_message(self.chat.id, text).await?;
 
         Self::attach_menu_to_message(
             &self.bot,
@@ -108,13 +102,7 @@ impl CommandReplyTarget {
         B: Into<ButtonData>,
     {
         // Pack callback data and attach keyboard to the message
-        let keyboard = pack_callback_data(
-            callback_data_storage,
-            chat_id,
-            message_id.0,
-            menu,
-        )
-        .await;
+        let keyboard = pack_callback_data(callback_data_storage, chat_id, message_id.0, menu).await;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;

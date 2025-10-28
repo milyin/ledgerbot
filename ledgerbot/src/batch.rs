@@ -27,7 +27,6 @@ pub async fn execute_batch(
     batch_storage: Arc<dyn BatchStorageTrait>,
     chat: Chat,
     storage: Arc<dyn StorageTrait>,
-    msg: Message,
 ) {
     // Wait for the timeout period
     tokio::time::sleep(tokio::time::Duration::from_secs(BATCH_TIMEOUT_SECONDS)).await;
@@ -54,7 +53,6 @@ pub async fn execute_batch(
                         bot.clone(),
                         chat.clone(),
                         None,
-                        msg.clone(),
                         storage.clone(),
                         cmd,
                         true,

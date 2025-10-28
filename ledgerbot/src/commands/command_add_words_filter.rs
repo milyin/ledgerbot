@@ -7,7 +7,10 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::command_add_filter::CommandAddFilter, menus::{select_category::select_category, select_word::select_word}, storage_traits::StorageTrait, utils::extract_words::extract_words
+    commands::command_add_filter::CommandAddFilter,
+    menus::{select_category::select_category, select_word::select_word},
+    storage_traits::StorageTrait,
+    utils::extract_words::extract_words,
 };
 
 /// Represents a collection of words separated by '|'

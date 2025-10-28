@@ -5,7 +5,7 @@ use teloxide::{
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
     markdown::MarkdownString,
-    storage::{pack_callback_data, ButtonData},
+    storage::{ButtonData, pack_callback_data},
 };
 
 /// Display a menu with word suggestions for filter creation
@@ -14,7 +14,12 @@ use yoroolbot::{
 /// Automatically shows inactive buttons when at page boundaries
 /// Selected words are marked with a tick (✓)
 #[allow(clippy::too_many_arguments)]
-pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTrait, APPLY: CommandTrait>(
+pub async fn select_word<
+    NEXT: CommandTrait,
+    PAGE: CommandTrait,
+    BACK: CommandTrait,
+    APPLY: CommandTrait,
+>(
     target: &CommandReplyTarget,
     prompt: impl Fn(usize, usize, usize) -> MarkdownString,
     all_words: &[String],
