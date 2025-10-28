@@ -14,19 +14,17 @@ pub mod command_remove_filter;
 pub mod command_report;
 pub mod command_start;
 pub mod expenses;
-pub mod filters;
 pub mod report;
 
 use std::sync::Arc;
 
 use teloxide::{
     prelude::*,
-    types::{Chat, InlineKeyboardButton, InlineKeyboardMarkup, MessageId},
-    utils::{command::BotCommands, markdown::escape},
+    types::{Chat, MessageId},
+    utils::command::BotCommands,
 };
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
-    storage::pack_callback_data,
 };
 
 use crate::{
@@ -40,9 +38,7 @@ use crate::{
         command_remove_filter::CommandRemoveFilter, command_report::CommandReport,
         command_start::CommandStart,
     },
-    handlers::CallbackData,
     storage_traits::StorageTrait,
-    utils::extract_words::extract_words,
 };
 
 /// Bot commands
@@ -171,169 +167,6 @@ impl std::fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", String::from(self.clone()))
     }
-}
-
-/// Show word suggestions for adding filters to a category
-pub async fn show_filter_word_suggestions(
-    bot: Bot,
-    chat_id: ChatId,
-    message_id: MessageId,
-    storage: Arc<dyn StorageTrait>,
-    category_name: String,
-) -> ResponseResult<()> {
-    let expenses = storage
-        .clone()
-        .as_expense_storage()
-        .get_chat_expenses(chat_id)
-        .await;
-    let categories = storage
-        .clone()
-        .as_category_storage()
-        .get_chat_categories(chat_id)
-        .await
-        .unwrap_or_default();
-
-    // Get currently selected words from storage
-    let selected_words = storage
-        .clone()
-        .as_filter_selection_storage()
-        .get_filter_selection(chat_id, &category_name)
-        .await;
-
-    // Get current page offset
-    let page_offset = storage
-        .clone()
-        .as_filter_page_storage()
-        .get_filter_page_offset(chat_id, &category_name)
-        .await;
-
-    // Extract words from uncategorized expenses
-    let words = extract_words(&expenses, &categories);
-
-    // Pagination constants
-    const WORDS_PER_PAGE: usize = 20;
-    let total_words = words.len();
-    let total_pages = total_words.div_ceil(WORDS_PER_PAGE);
-    let current_page = page_offset / WORDS_PER_PAGE + 1;
-
-    // Get words for current page
-    let page_words: Vec<&String> = words
-        .iter()
-        .skip(page_offset)
-        .take(WORDS_PER_PAGE)
-        .collect();
-
-    // Build selected words display
-    let selected_display = if selected_words.is_empty() {
-        escape("(none selected)")
-    } else {
-        escape(&selected_words.join(" | "))
-    };
-
-    let escaped_category = escape(&category_name);
-    let text = format!(
-        "💡 *Select word\\(s\\) for filter '{}'*\n\n*Selected:* {}\n\nPage {}/{} \\({} words total\\)\n\nClick words to add/remove them\\. When done, click 'Apply Filter'\\.",
-        escaped_category, selected_display, current_page, total_pages, total_words
-    );
-
-    // Build button data as rows of (label, callback_data) tuples
-    let mut button_rows: Vec<Vec<(String, String)>> = Vec::new();
-
-    // Add buttons for each suggested word on current page (4 per row)
-    let mut row: Vec<(String, String)> = Vec::new();
-    for word in page_words {
-        // Check if this word is selected
-        let is_selected = selected_words.contains(word);
-        let label = if is_selected {
-            format!("✓ {}", word)
-        } else {
-            word.clone()
-        };
-
-        // Use CallbackData enum for type-safe callback data
-        let callback_data: String = CallbackData::ToggleWord {
-            category: category_name.clone(),
-            word: word.clone(),
-        }
-        .into();
-
-        row.push((label, callback_data));
-
-        // Add row when we have 4 buttons
-        if row.len() == 4 {
-            button_rows.push(row.clone());
-            row.clear();
-        }
-    }
-
-    // Add remaining buttons if any
-    if !row.is_empty() {
-        button_rows.push(row);
-    }
-
-    // Add all control buttons in a single row: Left, Right, Apply, Back
-    let mut control_row: Vec<(String, String)> = Vec::new();
-
-    // Previous page button (always shown, inactive if on first page)
-    if page_offset > 0 {
-        control_row.push((
-            "◀️".to_string(),
-            CallbackData::PagePrev(category_name.clone()).into(),
-        ));
-    } else {
-        // Inactive button with dummy callback data
-        control_row.push(("◁".to_string(), CallbackData::Noop.into()));
-    }
-
-    // Next page button (always shown, inactive if on last page)
-    if page_offset + WORDS_PER_PAGE < total_words {
-        control_row.push((
-            "▶️".to_string(),
-            CallbackData::PageNext(category_name.clone()).into(),
-        ));
-    } else {
-        // Inactive button with dummy callback data
-        control_row.push(("️▷".to_string(), CallbackData::Noop.into()));
-    }
-
-    button_rows.push(control_row);
-
-    // Use pack_callback_data to create the keyboard with storage support
-    let callback_storage = storage.clone().as_callback_data_storage();
-    let keyboard = pack_callback_data(&callback_storage, chat_id, message_id.0, button_rows).await;
-
-    // Add Apply and Back buttons after packing (these don't use callback data storage)
-    let apply_command = if !selected_words.is_empty() {
-        // Escape each word and combine with case-insensitive OR pattern with word boundaries
-        let escaped_words: Vec<String> = selected_words.iter().map(|w| regex::escape(w)).collect();
-        let pattern = format!(r"(?i)\b({})\b", escaped_words.join("|"));
-        CommandAddFilter {
-            category: Some(category_name.clone()),
-            pattern: Some(pattern),
-        }
-        .to_command_string(true)
-    } else {
-        // No words selected, just put category name
-        format!("{} {} ", CommandAddFilter::NAME, category_name)
-    };
-
-    // Create final keyboard with Apply and Back buttons
-    let mut final_buttons = keyboard.inline_keyboard;
-    final_buttons.push(vec![
-        InlineKeyboardButton::switch_inline_query_current_chat("✅ Apply", apply_command),
-        InlineKeyboardButton::callback("↩️ Back", CallbackData::CmdAddFilter),
-    ]);
-
-    let keyboard = InlineKeyboardMarkup::new(final_buttons);
-
-    bot.edit_message_text(chat_id, message_id, text)
-        .parse_mode(teloxide::types::ParseMode::MarkdownV2)
-        .await?;
-    bot.edit_message_reply_markup(chat_id, message_id)
-        .reply_markup(keyboard)
-        .await?;
-
-    Ok(())
 }
 
 /// Execute a single command (helper function for batch processing and text message handling)

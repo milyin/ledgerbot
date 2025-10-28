@@ -1,76 +1,14 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use teloxide::{prelude::*, types::CallbackQuery, utils::command::BotCommands};
 use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, storage::unpack_callback_data};
 
 use crate::{
     batch::{add_to_batch, execute_batch},
-    commands::{Command, execute_command, filters::add_filter_menu, show_filter_word_suggestions},
+    commands::{Command, execute_command},
     storage_traits::StorageTrait,
     utils::parse_expenses::parse_expenses,
 };
-
-/// Represents all possible callback data from inline keyboard buttons
-#[derive(Debug, Clone, PartialEq)]
-pub enum CallbackData {
-    /// Show filter word suggestions for a category
-    AddFilterCategory(String),
-    /// Toggle a word in filter selection
-    ToggleWord { category: String, word: String },
-    /// Navigate to previous page
-    PagePrev(String),
-    /// Navigate to next page
-    PageNext(String),
-    /// Command: Add filter menu
-    CmdAddFilter,
-    /// No operation (inactive button)
-    Noop,
-}
-
-impl FromStr for CallbackData {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(category) = s.strip_prefix("add_filter_cat:") {
-            Ok(CallbackData::AddFilterCategory(category.to_string()))
-        } else if let Some(rest) = s.strip_prefix("toggle_word:") {
-            let parts: Vec<&str> = rest.splitn(2, ':').collect();
-            if parts.len() == 2 {
-                Ok(CallbackData::ToggleWord {
-                    category: parts[0].to_string(),
-                    word: parts[1].to_string(),
-                })
-            } else {
-                Err(format!("Invalid toggle_word format: {}", s))
-            }
-        } else if let Some(category) = s.strip_prefix("page_prev:") {
-            Ok(CallbackData::PagePrev(category.to_string()))
-        } else if let Some(category) = s.strip_prefix("page_next:") {
-            Ok(CallbackData::PageNext(category.to_string()))
-        } else {
-            match s {
-                "cmd_add_filter" => Ok(CallbackData::CmdAddFilter),
-                "noop" => Ok(CallbackData::Noop),
-                _ => Err(format!("Unknown callback data: {}", s)),
-            }
-        }
-    }
-}
-
-impl From<CallbackData> for String {
-    fn from(data: CallbackData) -> String {
-        match data {
-            CallbackData::AddFilterCategory(cat) => format!("add_filter_cat:{}", cat),
-            CallbackData::ToggleWord { category, word } => {
-                format!("toggle_word:{}:{}", category, word)
-            }
-            CallbackData::PagePrev(cat) => format!("page_prev:{}", cat),
-            CallbackData::PageNext(cat) => format!("page_next:{}", cat),
-            CallbackData::CmdAddFilter => "cmd_add_filter".to_string(),
-            CallbackData::Noop => "noop".to_string(),
-        }
-    }
-}
 
 /// Handle text messages containing potential expense data
 pub async fn handle_text_message(
@@ -218,134 +156,6 @@ pub async fn handle_callback_query(
             .await?;
         }
         return Ok(());
-    }
-
-    let callback_data = match CallbackData::from_str(&unpacked_data) {
-        Ok(data) => data,
-        Err(err) => {
-            log::warn!("Invalid callback data '{}': {}", unpacked_data, err);
-            return Ok(());
-        }
-    };
-
-    // Handle the callback using pattern matching
-    match callback_data {
-        CallbackData::AddFilterCategory(category_name) => {
-            // Clear any previous selection and page offset
-            storage
-                .clone()
-                .as_filter_selection_storage()
-                .clear_filter_selection(chat_id, &category_name)
-                .await;
-            storage
-                .clone()
-                .as_filter_page_storage()
-                .clear_filter_page_offset(chat_id, &category_name)
-                .await;
-            show_filter_word_suggestions(
-                bot,
-                chat_id,
-                message.id(),
-                storage.clone(),
-                category_name,
-            )
-            .await?;
-        }
-
-        CallbackData::ToggleWord { category, word } => {
-            // Get current selection
-            let mut selected_words = storage
-                .clone()
-                .as_filter_selection_storage()
-                .get_filter_selection(chat_id, &category)
-                .await;
-
-            // Toggle the word
-            if let Some(pos) = selected_words.iter().position(|w| w == &word) {
-                selected_words.remove(pos);
-            } else {
-                selected_words.push(word);
-            }
-
-            // Save updated selection
-            storage
-                .clone()
-                .as_filter_selection_storage()
-                .set_filter_selection(chat_id, category.clone(), selected_words)
-                .await;
-
-            // Update the message with new selection
-            show_filter_word_suggestions(bot, chat_id, message.id(), storage.clone(), category)
-                .await?;
-        }
-
-        CallbackData::PagePrev(category_name) => {
-            // Get current page offset and decrease by 20
-            let current_offset = storage
-                .clone()
-                .as_filter_page_storage()
-                .get_filter_page_offset(chat_id, &category_name)
-                .await;
-            let new_offset = current_offset.saturating_sub(20);
-
-            // Update page offset
-            storage
-                .clone()
-                .as_filter_page_storage()
-                .set_filter_page_offset(chat_id, category_name.clone(), new_offset)
-                .await;
-
-            // Refresh the display
-            show_filter_word_suggestions(
-                bot,
-                chat_id,
-                message.id(),
-                storage.clone(),
-                category_name,
-            )
-            .await?;
-        }
-
-        CallbackData::PageNext(category_name) => {
-            // Get current page offset and increase by 20
-            let current_offset = storage
-                .clone()
-                .as_filter_page_storage()
-                .get_filter_page_offset(chat_id, &category_name)
-                .await;
-            let new_offset = current_offset + 20;
-
-            // Update page offset
-            storage
-                .clone()
-                .as_filter_page_storage()
-                .set_filter_page_offset(chat_id, category_name.clone(), new_offset)
-                .await;
-
-            // Refresh the display
-            show_filter_word_suggestions(
-                bot,
-                chat_id,
-                message.id(),
-                storage.clone(),
-                category_name,
-            )
-            .await?;
-        }
-
-        CallbackData::CmdAddFilter => {
-            add_filter_menu(
-                bot,
-                chat_id,
-                message.id(),
-                storage.clone().as_category_storage(),
-            )
-            .await?;
-        }
-
-        CallbackData::Noop => {
-            // Inactive button - do nothing
-        }
     }
 
     Ok(())
