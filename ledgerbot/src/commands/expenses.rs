@@ -11,7 +11,7 @@ fn format_timestamp(timestamp: i64) -> String {
 
 /// Format expenses as a chronological list without category grouping
 /// Returns Ok(String) with plain text list of expenses, or Err(MarkdownString) with error message
-pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<Vec<MarkdownString>, MarkdownString> {
+pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<MarkdownString, MarkdownString> {
     if expenses.is_empty() {
         return Err(markdown_format!(
             "📝 No expenses recorded yet\\. Send a message like `2024\\-10\\-09 Coffee 5\\.50` to add one\\."
@@ -34,7 +34,7 @@ pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<Vec<Markdow
         );
     }
 
-    result.split_by_max_length()
+    Ok(result)
 }
 
 #[cfg(test)]

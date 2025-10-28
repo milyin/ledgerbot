@@ -12,7 +12,7 @@ use teloxide::{
     },
 };
 
-use crate::{markdown_format, markdown_string};
+use crate::markdown_string;
 
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
 ///
@@ -23,71 +23,8 @@ use crate::{markdown_format, markdown_string};
 /// 4. `From`/`Into` trait - automatically escapes the input for safety
 ///
 /// Direct construction is not allowed to ensure all content is either validated or escaped.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MarkdownString(String);
-
-/// Iterator over message chunks grouped by maximum length
-pub struct MarkdownChunksIterator {
-    lines: Vec<MarkdownString>,
-    max_length: usize,
-    current_index: usize,
-    current_chunk: MarkdownString,
-    finished: bool,
-}
-
-impl Iterator for MarkdownChunksIterator {
-    type Item = Result<MarkdownString, MarkdownString>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        use crate::markdown_format;
-
-        if self.finished {
-            return None;
-        }
-
-        while self.current_index < self.lines.len() {
-            let line = self.lines[self.current_index].clone();
-            self.current_index += 1;
-
-            // Check if a single line exceeds max length
-            if line.as_str().len() > self.max_length {
-                self.finished = true;
-                return Some(Err(markdown_format!(
-                    "A single line exceeds Telegram's maximum message length of {} characters\\.",
-                    self.max_length
-                )));
-            }
-
-            // Check if adding this line would exceed max length
-            let would_exceed = if self.current_chunk.as_str().is_empty() {
-                line.as_str().len() > self.max_length
-            } else {
-                self.current_chunk.as_str().len() + 1 + line.as_str().len() > self.max_length
-            };
-
-            if would_exceed {
-                // Return the current chunk and start a new one with this line
-                let chunk = std::mem::replace(&mut self.current_chunk, line);
-                return Some(Ok(chunk));
-            } else {
-                // Add line to current chunk
-                if !self.current_chunk.as_str().is_empty() {
-                    self.current_chunk = self.current_chunk.clone() + &crate::markdown_string!("\n");
-                }
-                self.current_chunk = self.current_chunk.clone() + &line;
-            }
-        }
-
-        // Return the last chunk if it's not empty
-        if !self.current_chunk.as_str().is_empty() {
-            self.finished = true;
-            let chunk = std::mem::take(&mut self.current_chunk);
-            return Some(Ok(chunk));
-        }
-
-        None
-    }
-}
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct MarkdownString(String, bool);
 
 impl MarkdownString {
     /// Creates a MarkdownString by escaping all markdown special characters in the input.
@@ -103,7 +40,9 @@ impl MarkdownString {
     pub fn escape<T: Into<String>>(input: T) -> Self {
         let input_string = input.into();
         let escaped = teloxide::utils::markdown::escape(&input_string);
-        MarkdownString(escaped)
+        let mut result = MarkdownString::default();
+        result.push(&MarkdownString::from_validated_string(escaped));
+        result
     }
 
     /// Creates an empty MarkdownString.
@@ -117,21 +56,21 @@ impl MarkdownString {
     /// assert_eq!(markdown.as_str(), "");
     /// ```
     pub fn new() -> Self {
-        MarkdownString(String::new())
+        MarkdownString::default()
     }
 
     /// Private constructor for use by the markdown_string! macro after compile-time validation.
     /// This should only be called by trusted code that has already validated the input.
     #[doc(hidden)]
     pub fn from_validated_string(s: impl Into<String>) -> Self {
-        MarkdownString(s.into())
+        MarkdownString(s.into(), false)
     }
 
     /// Test-only constructor for creating templates in tests.
     /// This bypasses safety checks and should only be used in tests.
     #[cfg(test)]
     pub(crate) fn test_template(s: &str) -> Self {
-        MarkdownString(s.to_string())
+        MarkdownString(s.to_string(), false)
     }
 
     /// Returns the inner string value
@@ -144,44 +83,33 @@ impl MarkdownString {
         self.0
     }
 
-    /// Split the MarkdownString into lines
-    pub fn lines(&self) -> impl Iterator<Item = MarkdownString> + '_ {
-        self.0.lines().map(MarkdownString::from_validated_string)
+    /// Check if the MarkdownString has been truncated due to length limits
+    pub fn is_truncated(&self) -> bool {
+        self.1
     }
 
-    /// Iterator over message chunks, each not larger than telegram max message length
-    /// Yields Ok(chunk) for valid chunks, Err(line) if a single line exceeds max length
-    pub fn chunks(&self, max_length: usize) -> MarkdownChunksIterator {
-        MarkdownChunksIterator {
-            lines: self.lines().collect(),
-            max_length,
-            current_index: 0,
-            current_chunk: MarkdownString::new(),
-            finished: false,
+    /// Adds other MarkdownString to self, returning a new combined MarkdownString
+    /// Internally doesn't allow to overflow Telegram's message length limit
+    /// See: TELEGRAM_MAX_MESSAGE_LENGTH constant
+    /// If the result exceeds the limit minus truncation indicator length,
+    /// it adds the truncation indicator "..." at the end and sets the flag
+    /// to prevent further additions.
+    pub fn push(&mut self, other: &MarkdownString) {
+        if self.1 {
+            // Already truncated, do nothing
+            return;
         }
-    }
-
-    /// Truncate to group of strings by "\n", each not larger than telegram max message length
-    /// Returns error if any single line exceeds max length
-    pub fn split_by_max_length(&self) -> Result<Vec<MarkdownString>, MarkdownString> {
-        let mut result = Vec::new();
-
-        for chunk in self.chunks(TELEGRAM_MAX_MESSAGE_LENGTH) {
-            match chunk {
-                Ok(chunk) => result.push(chunk),
-                Err(err) => return Err(err),
+        let truncation_marker = markdown_string!("\\.\\.\\.");
+        let combined_length = self.0.len() + other.0.len() + truncation_marker.as_str().len();
+        if combined_length > TELEGRAM_MAX_MESSAGE_LENGTH {
+            if self.0.len() + truncation_marker.as_str().len() <= TELEGRAM_MAX_MESSAGE_LENGTH {
+                // Can fit truncation marker
+                self.0.push_str(truncation_marker.as_str());
             }
+            self.1 = true; // Mark as truncated
+        } else {
+            self.0.push_str(other.as_str());
         }
-
-        Ok(result)
-    }
-
-}
-
-impl Default for MarkdownString {
-    /// Creates an empty MarkdownString using `MarkdownString::new()`.
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -263,8 +191,9 @@ impl Add for MarkdownString {
     type Output = MarkdownString;
 
     fn add(self, other: MarkdownString) -> MarkdownString {
-        let combined = format!("{}{}", self.0, other.0);
-        MarkdownString::from_validated_string(combined)
+        let mut result = self;
+        result.push(&other);
+        result
     }
 }
 
@@ -272,8 +201,9 @@ impl Add<&MarkdownString> for MarkdownString {
     type Output = MarkdownString;
 
     fn add(self, other: &MarkdownString) -> MarkdownString {
-        let combined = format!("{}{}", self.0, other.0);
-        MarkdownString::from_validated_string(combined)
+        let mut result = self;
+        result.push(other);
+        result
     }
 }
 
@@ -281,8 +211,9 @@ impl Add<MarkdownString> for &MarkdownString {
     type Output = MarkdownString;
 
     fn add(self, other: MarkdownString) -> MarkdownString {
-        let combined = format!("{}{}", self.0, other.0);
-        MarkdownString::from_validated_string(combined)
+        let mut result = self.clone();
+        result.push(&other);
+        result
     }
 }
 
@@ -290,44 +221,15 @@ impl Add<&MarkdownString> for &MarkdownString {
     type Output = MarkdownString;
 
     fn add(self, other: &MarkdownString) -> MarkdownString {
-        let combined = format!("{}{}", self.0, other.0);
-        MarkdownString::from_validated_string(combined)
+        let mut result = self.clone();
+        result.push(other);
+        result
     }
 }
 
 /// Maximum message length allowed by Telegram Bot API
 /// See: https://core.telegram.org/bots/api#sendmessage
 const TELEGRAM_MAX_MESSAGE_LENGTH: usize = 4096;
-
-/// Truncates a message if it exceeds Telegram's maximum message length.
-/// If truncation is needed, appends "..." to the end if there's space.
-fn truncate_if_needed(text: MarkdownString) -> MarkdownString {
-    if text.as_str().len() <= TELEGRAM_MAX_MESSAGE_LENGTH {
-        return text;
-    }
-
-    let truncation_marker = markdown_string!("\\.\\.\\.");
-    let truncation_marker_len = truncation_marker.as_str().len();
-    let max_content_len = TELEGRAM_MAX_MESSAGE_LENGTH - truncation_marker_len;
-
-    // Get the first chunk
-    let truncated = match text.chunks(max_content_len).next() {
-        Some(Ok(chunk)) => chunk,
-        Some(Err(_)) | None => {
-            // Single line too long or no content - truncate the text directly
-            let text_str = text.as_str();
-            let truncated_str = &text_str[..max_content_len.min(text_str.len())];
-            MarkdownString::from_validated_string(truncated_str.to_string())
-        }
-    };
-
-    // Try to add truncation marker if there's space
-    if truncated.as_str().len() + truncation_marker_len <= TELEGRAM_MAX_MESSAGE_LENGTH {
-        truncated + truncation_marker
-    } else {
-        truncated
-    }
-}
 
 /// Trait for sending markdown messages with Bot
 ///
@@ -396,8 +298,7 @@ impl MarkdownStringMessage for Bot {
     where
         C: Into<Recipient>,
     {
-        let truncated_text = truncate_if_needed(text);
-        self.send_message(chat_id, truncated_text)
+        self.send_message(chat_id, text)
             .parse_mode(ParseMode::MarkdownV2)
     }
 
@@ -410,8 +311,7 @@ impl MarkdownStringMessage for Bot {
     where
         C: Into<Recipient>,
     {
-        let truncated_text = truncate_if_needed(text);
-        self.edit_message_text(chat_id, message_id, truncated_text)
+        self.edit_message_text(chat_id, message_id, text)
             .parse_mode(MarkdownV2)
     }
     async fn markdown_message<C>(
@@ -423,13 +323,12 @@ impl MarkdownStringMessage for Bot {
     where
         C: Into<Recipient>,
     {
-        let truncated_text = truncate_if_needed(text);
         if let Some(message_id) = message_id {
-            self.edit_message_text(chat_id, message_id, truncated_text)
+            self.edit_message_text(chat_id, message_id, text)
                 .parse_mode(ParseMode::MarkdownV2)
                 .await
         } else {
-            self.send_message(chat_id, truncated_text)
+            self.send_message(chat_id, text)
                 .parse_mode(ParseMode::MarkdownV2)
                 .await
         }

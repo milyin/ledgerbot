@@ -53,9 +53,7 @@ impl CommandTrait for CommandList {
         match format_expenses_chronological(&chat_expenses) {
             Ok(expenses_list) => {
                 // Plain text list of expenses - send as is
-                for expenses_chunk in expenses_list {
-                    target.send_markdown_message(expenses_chunk).await?;
-                }
+                target.send_markdown_message(expenses_list).await?;
             }
             Err(error_message) => {
                 // Error message (e.g., no expenses) - send as MarkdownString
