@@ -202,12 +202,9 @@ impl CommandTrait for CommandAddWordsFilter {
         // Show word selection menu with pagination
         let prompt = |current_page: usize, total_pages: usize, total_words: usize| {
             markdown_format!(
-                "💡 Select word\\(s\\) for filter in category `{}`\n\n*Pattern:* {}\n\nPage {}/{} \\({} words total\\)",
+                "💡 Select word\\(s\\) for filter in category `{}`\n\n`{}`\n\nPage {}/{} \\({} words total\\)",
                 &category,
-                // use some nice unicode icons for empty pattern
-                selected_words
-                    .build_pattern()
-                    .unwrap_or_else(|| "🚫".to_string()),
+                if selected_words.as_ref().is_empty() { "∅".to_string() } else { selected_words.to_string() },
                 current_page,
                 total_pages,
                 total_words
