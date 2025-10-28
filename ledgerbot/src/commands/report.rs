@@ -356,20 +356,32 @@ pub fn format_category_summary(
     let summary_message = markdown_format!("📊 *Expense Summary*\n\n{}\n\n", @code table_content);
     let summary_message = summary_message + markdown_string!("Select a category to view details:");
 
-    // Create inline keyboard button data using SwitchInlineQuery
-    // This makes buttons execute /report <category> command
-    let buttons: Vec<Vec<ButtonData>> = category_subtotals
-        .iter()
-        .map(|(category_name, _)| {
-            let command = crate::commands::command_report::CommandReport {
-                category: Some(category_name.clone()),
-            };
-            vec![ButtonData::SwitchInlineQuery(
-                category_name.clone(),
-                command.to_command_string(false),
-            )]
-        })
-        .collect();
+    // Create inline keyboard button data using Callback
+    // Callback buttons execute commands directly when clicked
+    // Arrange buttons in 4 columns
+    let mut buttons: Vec<Vec<ButtonData>> = Vec::new();
+    let mut current_row: Vec<ButtonData> = Vec::new();
+
+    for (category_name, _) in &category_subtotals {
+        let command = crate::commands::command_report::CommandReport {
+            category: Some(category_name.clone()),
+        };
+        current_row.push(ButtonData::Callback(
+            category_name.clone(),
+            command.to_command_string(false),
+        ));
+
+        // Start a new row after 4 buttons
+        if current_row.len() == 4 {
+            buttons.push(current_row.clone());
+            current_row.clear();
+        }
+    }
+
+    // Add remaining buttons if any
+    if !current_row.is_empty() {
+        buttons.push(current_row);
+    }
 
     (summary_message, buttons)
 }

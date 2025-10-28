@@ -67,7 +67,7 @@ impl CommandTrait for CommandReport {
 
         // Check for category conflicts before generating report
         if let Some(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
-            target.send_markdown_message(conflict_message).await?;
+            target.markdown_message(conflict_message).await?;
             return Ok(());
         }
 
@@ -76,10 +76,10 @@ impl CommandTrait for CommandReport {
 
         if buttons.is_empty() {
             // No categories, just send the message
-            target.send_markdown_message(message).await?;
+            target.markdown_message(message).await?;
         } else {
             // Send message with category selection menu
-            target.send_markdown_message_with_menu(message, buttons).await?;
+            target.markdown_message_with_menu(message, buttons).await?;
         }
 
         Ok(())
@@ -106,7 +106,7 @@ impl CommandTrait for CommandReport {
 
         // Check for category conflicts before generating report
         if let Some(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
-            target.send_markdown_message(conflict_message).await?;
+            target.markdown_message(conflict_message).await?;
             return Ok(());
         }
 
@@ -120,14 +120,19 @@ impl CommandTrait for CommandReport {
             let msg_str = message.as_str();
             // Check if this message starts with the category name
             if msg_str.starts_with(&format!("*{}*:", category)) {
-                target.send_markdown_message(message).await?;
+                // Add a "Back" button to return to summary view
+                let back_button = vec![vec![yoroolbot::storage::ButtonData::Callback(
+                    "↩️ Back to Summary".to_string(),
+                    CommandReport { category: None }.to_command_string(false),
+                )]];
+                target.markdown_message_with_menu(message, back_button).await?;
                 found = true;
                 break;
             }
         }
 
         if !found {
-            target.send_markdown_message(
+            target.markdown_message(
                 yoroolbot::markdown_format!("Category '{}' not found or has no expenses\\.", category)
             ).await?;
         }
