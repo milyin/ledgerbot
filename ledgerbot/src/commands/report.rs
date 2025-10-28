@@ -250,6 +250,87 @@ fn date_str_len() -> usize {
     10
 }
 
+/// Format a single category report with line-by-line addition and overflow detection
+/// Each line is wrapped in braces and stops adding when overflow would occur
+pub fn format_single_category_report(
+    category_name: &str,
+    expenses: &[Expense],
+) -> MarkdownString {
+    const MAX_LENGTH: usize = 4096;
+
+    if expenses.is_empty() {
+        return markdown_format!("*{}*: No expenses in this category\\.", category_name);
+    }
+
+    // Start with the header
+    let mut message = markdown_format!("*{}*:\n", category_name);
+
+    let mut category_total = 0.0;
+    let mut truncated = false;
+
+    // Find the maximum description length for alignment
+    let max_desc_len = expenses
+        .iter()
+        .map(|e| e.description.len())
+        .max()
+        .unwrap_or(0)
+        .max(9); // At least as wide as "Subtotal:"
+
+    // Add each expense line wrapped in braces
+    for expense in expenses {
+        let date_str = format_timestamp(expense.timestamp);
+        let padded_desc = format!("{:<width$}", expense.description, width = max_desc_len);
+        let amount_str = format!("{:>10.2}", expense.amount);
+        let line = format!("{}  {} {}", date_str.as_str(), padded_desc, amount_str);
+
+        // Wrap line in braces using @code modifier
+        let line_message = markdown_format!("{}\n", @code line);
+
+        // Check if adding this line would overflow
+        let test_message = message.clone() + line_message.clone();
+        if test_message.as_str().len() >= MAX_LENGTH {
+            truncated = true;
+            break;
+        }
+
+        message = test_message;
+        category_total += expense.amount;
+    }
+
+    // Add separator and subtotal if not truncated
+    if !truncated {
+        let separator = "-".repeat(date_str_len() + 2 + max_desc_len + 11);
+        let separator_message = markdown_format!("{}\n", @code separator);
+
+        let test_message = message.clone() + separator_message.clone();
+        if test_message.as_str().len() < MAX_LENGTH {
+            message = test_message;
+
+            // Add subtotal
+            let subtotal_label = format!("{:<width$}", "Subtotal:", width = date_str_len() + 2 + max_desc_len);
+            let subtotal_amount = format!("{:>10.2}", category_total);
+            let subtotal_line = format!("{} {}", subtotal_label, subtotal_amount);
+            let subtotal_message = markdown_format!("{}\n", @code subtotal_line);
+
+            let test_message = message.clone() + subtotal_message.clone();
+            if test_message.as_str().len() < MAX_LENGTH {
+                message = test_message;
+            }
+        }
+    }
+
+    // Add truncation notice if needed
+    if truncated {
+        let truncation_notice = markdown_string!("\n_\\.\\.\\. truncated_");
+        let test_message = message.clone() + truncation_notice.clone();
+        if test_message.as_str().len() < MAX_LENGTH {
+            message = test_message;
+        }
+    }
+
+    message
+}
+
 /// Helper function to format a single category section with its expenses (for single-message report)
 #[allow(dead_code)]
 fn format_category_section(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {

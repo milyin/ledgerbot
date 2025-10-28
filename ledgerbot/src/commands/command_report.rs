@@ -4,7 +4,7 @@ use teloxide::prelude::ResponseResult;
 use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
-    commands::report::{check_category_conflicts, format_expenses_by_category, format_category_summary},
+    commands::report::{check_category_conflicts, format_category_summary, format_single_category_report},
     storage_traits::StorageTrait,
 };
 
@@ -110,32 +110,59 @@ impl CommandTrait for CommandReport {
             return Ok(());
         }
 
-        // Show detailed report for the specified category
-        let messages = format_expenses_by_category(&chat_expenses, &chat_categories);
+        // Filter expenses for the requested category
+        let category_expenses: Vec<_> = if category == "Other" {
+            // "Other" category: uncategorized expenses
+            let category_matchers: Vec<(String, Vec<regex::Regex>)> = chat_categories
+                .iter()
+                .map(|(name, patterns)| {
+                    let regexes: Vec<regex::Regex> = patterns
+                        .iter()
+                        .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                        .collect();
+                    (name.clone(), regexes)
+                })
+                .collect();
 
-        // Find the message for the requested category
-        // The format_expenses_by_category returns messages in order: categories (sorted), Other, Total
-        let mut found = false;
-        for message in messages {
-            let msg_str = message.as_str();
-            // Check if this message starts with the category name
-            if msg_str.starts_with(&format!("*{}*:", category)) {
-                // Add a "Back" button to return to summary view
-                let back_button = vec![vec![yoroolbot::storage::ButtonData::Callback(
-                    "↩️ Back to Summary".to_string(),
-                    CommandReport { category: None }.to_command_string(false),
-                )]];
-                target.markdown_message_with_menu(message, back_button).await?;
-                found = true;
-                break;
+            chat_expenses
+                .iter()
+                .filter(|expense| {
+                    // Check if expense doesn't match any category
+                    !category_matchers.iter().any(|(_, regexes)| {
+                        regexes.iter().any(|re| re.is_match(&expense.description))
+                    })
+                })
+                .cloned()
+                .collect()
+        } else {
+            // Specific category: expenses matching this category's filters
+            let patterns = chat_categories.get(category);
+            if let Some(patterns) = patterns {
+                let regexes: Vec<regex::Regex> = patterns
+                    .iter()
+                    .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                    .collect();
+
+                chat_expenses
+                    .iter()
+                    .filter(|expense| regexes.iter().any(|re| re.is_match(&expense.description)))
+                    .cloned()
+                    .collect()
+            } else {
+                Vec::new()
             }
-        }
+        };
 
-        if !found {
-            target.markdown_message(
-                yoroolbot::markdown_format!("Category '{}' not found or has no expenses\\.", category)
-            ).await?;
-        }
+        // Format the report using line-by-line approach with overflow detection
+        let message = format_single_category_report(category, &category_expenses);
+
+        // Add a "Back" button to return to summary view
+        let back_button = vec![vec![yoroolbot::storage::ButtonData::Callback(
+            "↩️ Back to Summary".to_string(),
+            CommandReport { category: None }.to_command_string(false),
+        )]];
+
+        target.markdown_message_with_menu(message, back_button).await?;
 
         Ok(())
     }
