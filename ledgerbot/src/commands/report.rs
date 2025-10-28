@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use yoroolbot::{markdown::MarkdownString, markdown_format, markdown_string};
+use yoroolbot::{
+    command_trait::CommandTrait,
+    markdown::MarkdownString,
+    markdown_format, markdown_string,
+    storage::ButtonData,
+};
 
 use crate::{storage_traits::Expense, utils::format_timestamp};
 
@@ -251,6 +256,122 @@ fn format_category_section(category_name: &str, expenses: &[Expense]) -> (Markdo
     let (mut section, total) = format_category_message(category_name, expenses);
     section = section + markdown_string!("\n\n");
     (section, total)
+}
+
+/// Format category summary with interactive menu for category selection
+pub fn format_category_summary(
+    expenses: &[Expense],
+    categories: &HashMap<String, Vec<String>>,
+) -> (MarkdownString, Vec<Vec<ButtonData>>) {
+    if expenses.is_empty() {
+        return (markdown_string!("No expenses recorded yet\\."), vec![]);
+    }
+
+    // Build regex matchers for each category
+    let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
+        .iter()
+        .map(|(name, patterns)| {
+            let regexes: Vec<regex::Regex> = patterns
+                .iter()
+                .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                .collect();
+            (name.clone(), regexes)
+        })
+        .collect();
+
+    // Group expenses by category
+    let mut categorized: HashMap<String, Vec<Expense>> = HashMap::new();
+    let mut uncategorized: Vec<Expense> = Vec::new();
+
+    for expense in expenses.iter() {
+        let mut matched = false;
+
+        // Try to match against each category
+        for (category_name, regexes) in &category_matchers {
+            // Check if description matches any of the patterns in this category
+            if regexes.iter().any(|re| re.is_match(&expense.description)) {
+                categorized
+                    .entry(category_name.clone())
+                    .or_default()
+                    .push(expense.clone());
+                matched = true;
+                break; // Each expense goes into first matching category
+            }
+        }
+
+        if !matched {
+            uncategorized.push(expense.clone());
+        }
+    }
+
+    // Sort category names for consistent output
+    let mut category_names: Vec<String> = categorized.keys().cloned().collect();
+    category_names.sort();
+
+    // Calculate totals
+    let mut category_subtotals: Vec<(String, f64)> = Vec::new();
+    let mut total = 0.0;
+
+    for category_name in &category_names {
+        if let Some(items) = categorized.get(category_name) {
+            let category_total: f64 = items.iter().map(|e| e.amount).sum();
+            category_subtotals.push((category_name.clone(), category_total));
+            total += category_total;
+        }
+    }
+
+    if !uncategorized.is_empty() {
+        let category_total: f64 = uncategorized.iter().map(|e| e.amount).sum();
+        category_subtotals.push(("Other".to_string(), category_total));
+        total += category_total;
+    }
+
+    // Build summary table
+    let max_name_len = category_subtotals
+        .iter()
+        .map(|(name, _)| name.len())
+        .max()
+        .unwrap_or(0)
+        .max(5); // At least as wide as "Total"
+
+    let mut table_lines = Vec::new();
+
+    // Add each category row
+    for (category_name, subtotal) in &category_subtotals {
+        let padded_name = format!("{:<width$}", category_name, width = max_name_len);
+        let amount_str = format!("{:>10.2}", subtotal);
+        table_lines.push(format!("{} {}", padded_name, amount_str));
+    }
+
+    // Add separator line
+    table_lines.push("-".repeat(max_name_len + 11));
+
+    // Add total row
+    let total_label = format!("{:<width$}", "Total", width = max_name_len);
+    let total_amount = format!("{:>10.2}", total);
+    table_lines.push(format!("{} {}", total_label, total_amount));
+
+    // Join all lines and use @code modifier to wrap in code block
+    let table_content = table_lines.join("\n");
+    let summary_message = markdown_format!("📊 *Expense Summary*\n\n{}\n\n", @code table_content);
+    let summary_message = summary_message + markdown_string!("Select a category to view details:");
+
+    // Create inline keyboard button data using SwitchInlineQuery
+    // This makes buttons execute /report <category> command
+    let buttons: Vec<Vec<ButtonData>> = category_subtotals
+        .iter()
+        .map(|(category_name, _)| {
+            let command = crate::commands::command_report::CommandReport {
+                category: Some(category_name.clone()),
+            };
+            vec![ButtonData::SwitchInlineQuery(
+                category_name.clone(),
+                command.to_command_string(false),
+            )]
+        })
+        .collect();
+
+    (summary_message, buttons)
 }
 
 #[cfg(test)]

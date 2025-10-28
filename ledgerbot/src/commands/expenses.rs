@@ -69,11 +69,10 @@ mod tests {
         let result = format_expenses_chronological(&expenses);
 
         // Check that expenses are listed in chronological order
-        // Function returns Ok with Vec<MarkdownString>
+        // Function returns Ok with MarkdownString
         assert!(result.is_ok());
-        let messages = result.unwrap();
-        assert_eq!(messages.len(), 1);
-        let content = messages[0].as_str();
+        let message = result.unwrap();
+        let content = message.as_str();
         assert!(content.contains("Coffee"));
         assert!(content.contains("Lunch"));
         assert!(content.contains("Dinner"));
