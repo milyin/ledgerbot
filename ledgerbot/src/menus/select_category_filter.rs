@@ -20,7 +20,7 @@ pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     storage: &Arc<dyn CategoryStorageTrait>,
     category_name: &str,
     prompt: MarkdownString,
-    next_command: impl Fn(usize) -> NEXT,
+    next_command: impl Fn(usize, &str) -> Option<NEXT>,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let filters =
@@ -31,7 +31,7 @@ pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     let msg = target.markdown_message(prompt).await?;
     let menu = create_category_filters_menu(
         &filters,
-        |idx| next_command(idx).to_command_string(false),
+        |idx, pattern| next_command(idx, pattern).map(|cmd| cmd.to_command_string(false)),
         back_command,
         false,
     );
@@ -45,20 +45,22 @@ pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
 
 pub fn create_category_filters_menu(
     filters: &[String],
-    operation: impl Fn(usize) -> String,
+    operation: impl Fn(usize, &str) -> Option<String>,
     back_command: Option<impl CommandTrait>,
     inline: bool,
 ) -> InlineKeyboardMarkup {
-    let texts = filters
+    // Filter out items where operation returns None
+    let items: Vec<(String, String)> = filters
         .iter()
         .enumerate()
-        .map(|(idx, pattern)| format!("{}. {}", idx, pattern))
-        .collect::<Vec<_>>();
-    let values = filters
-        .iter()
-        .enumerate()
-        .map(|(idx, _)| operation(idx))
-        .collect::<Vec<_>>();
+        .filter_map(|(idx, pattern)| {
+            operation(idx, pattern).map(|value| (format!("{}. {}", idx, pattern), value))
+        })
+        .collect();
+
+    let texts: Vec<String> = items.iter().map(|(text, _)| text.clone()).collect();
+    let values: Vec<String> = items.iter().map(|(_, value)| value.clone()).collect();
+
     // use create_menu
     create_buttons_menu(&texts, &values, back_command, inline)
 }

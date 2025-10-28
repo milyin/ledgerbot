@@ -106,11 +106,11 @@ impl CommandTrait for CommandRemoveFilter {
             &storage,
             name,
             markdown_format!("🗑️ Select Filter to remove from category `{}`", name),
-            |idx| CommandRemoveFilter {
+            |idx, _pattern| Some(CommandRemoveFilter {
                 category: Some(name.clone()),
                 position: Some(idx),
                 confirm: None,
-            },
+            }),
             Some(CommandRemoveFilter::default()),
         )
         .await

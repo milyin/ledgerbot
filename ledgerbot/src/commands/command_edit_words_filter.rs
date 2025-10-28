@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use teloxide::{
-    payloads::EditMessageReplyMarkupSetters,
-    prelude::{Requester, ResponseResult},
-};
+use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
     markdown_format, markdown_string,
@@ -12,8 +9,9 @@ use yoroolbot::{
 use crate::{
     commands::command_add_filter::CommandAddFilter,
     menus::{
-        common::{read_category_filter_by_index, read_category_filters_list},
+        common::read_category_filter_by_index,
         select_category::select_category,
+        select_category_filter::select_category_filter,
         select_word::{select_word, Words},
     },
     storage_traits::StorageTrait,
@@ -105,91 +103,23 @@ impl CommandTrait for CommandEditWordsFilter {
         storage: Self::Context,
         category: &String,
     ) -> ResponseResult<()> {
-        // Get all filters for this category
-        let filters = read_category_filters_list(
+        select_category_filter(
             target,
-            &storage.clone().as_category_storage(),
+            &storage.as_category_storage(),
             category,
+            markdown_format!("✏️ Select word\\-based filter to edit in category `{}`", category),
+            |idx, pattern| {
+                // Only show word-based filters (those that can be parsed by Words::read_pattern)
+                Words::read_pattern(pattern).map(|_| CommandEditWordsFilter {
+                    category: Some(category.clone()),
+                    position: Some(idx),
+                    page: Some(0),
+                    words: None,
+                })
+            },
             Some(CommandEditWordsFilter::default()),
         )
-        .await?;
-
-        // Filter to only show word-based filters (those that can be parsed by Words::read_pattern)
-        let word_filters: Vec<(usize, String)> = filters
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, pattern)| {
-                Words::read_pattern(pattern).map(|_| (idx, pattern.clone()))
-            })
-            .collect();
-
-        if word_filters.is_empty() {
-            target
-                .send_markdown_message(markdown_format!(
-                    "💡 No word\\-based filters found in category `{}`\\. Use /add\\_words\\_filter to create one\\.",
-                    category
-                ))
-                .await?;
-            return Ok(());
-        }
-
-        // Show selection menu for word-based filters
-        let msg = target
-            .markdown_message(markdown_format!(
-                "✏️ Select word\\-based filter to edit in category `{}`",
-                category
-            ))
-            .await?;
-
-        // Create inline keyboard with word filters
-        let button_data: Vec<Vec<yoroolbot::storage::ButtonData>> = word_filters
-            .chunks(2)
-            .map(|chunk| {
-                chunk
-                    .iter()
-                    .map(|(idx, pattern)| {
-                        let display_pattern = if pattern.len() > 30 {
-                            format!("{}...", &pattern[..30])
-                        } else {
-                            pattern.clone()
-                        };
-                        yoroolbot::storage::ButtonData::Callback(
-                            format!("{}. {}", idx, display_pattern),
-                            CommandEditWordsFilter {
-                                category: Some(category.clone()),
-                                position: Some(*idx),
-                                page: Some(0),
-                                words: None,
-                            }
-                            .to_command_string(false),
-                        )
-                    })
-                    .collect()
-            })
-            .collect();
-
-        // Add back button
-        let mut menu = button_data;
-        menu.push(vec![yoroolbot::storage::ButtonData::Callback(
-            "↩️ Back".to_string(),
-            CommandEditWordsFilter::default().to_command_string(false),
-        )]);
-
-        let keyboard = yoroolbot::storage::pack_callback_data(
-            &target.callback_data_storage,
-            target.chat.id,
-            msg.id.0,
-            menu,
-        )
-        .await;
-
-        target
-            .bot
-            .edit_message_reply_markup(target.chat.id, msg.id)
-            .reply_markup(keyboard)
-            .await?;
-
-        Ok(())
+        .await
     }
 
     async fn run2(
