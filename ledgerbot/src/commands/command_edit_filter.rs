@@ -96,11 +96,13 @@ impl CommandTrait for CommandEditFilter {
             &storage,
             name,
             markdown_format!("✏️ Select Filter to edit in category `{}`", name),
-            |idx, _pattern| Some(CommandEditFilter {
-                category: Some(name.clone()),
-                position: Some(idx),
-                pattern: None,
-            }),
+            |idx, _pattern| {
+                Some(CommandEditFilter {
+                    category: Some(name.clone()),
+                    position: Some(idx),
+                    pattern: None,
+                })
+            },
             Some(CommandEditFilter::default()),
         )
         .await

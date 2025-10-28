@@ -10,7 +10,7 @@ use crate::{
     commands::command_add_filter::CommandAddFilter,
     menus::{
         select_category::select_category,
-        select_word::{select_word, Words},
+        select_word::{Words, select_word},
     },
     storage_traits::StorageTrait,
     utils::extract_words::extract_words,

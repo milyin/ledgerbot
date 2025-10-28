@@ -1,6 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use crate::storage_traits::Expense;
+use teloxide::types::ChatId;
+
+use crate::{
+    menus::select_word::Words,
+    storage_traits::{Expense, StorageTrait},
+};
 
 /// Extract unique words from uncategorized expenses
 /// Returns a sorted vector of unique words (lowercased) from expense descriptions
@@ -46,6 +51,51 @@ pub fn extract_words(
     let mut result: Vec<String> = words.into_iter().collect();
     result.sort();
     result
+}
+
+pub fn merge_words(existing: &[String], available: &[String]) -> Vec<String> {
+    let mut merged = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    // Add existing words first
+    for word in existing.iter() {
+        if seen.insert(word.clone()) {
+            merged.push(word.clone());
+        }
+    }
+
+    // Then add available words
+    for word in available.iter() {
+        if seen.insert(word.clone()) {
+            merged.push(word.clone());
+        }
+    }
+
+    merged
+}
+
+pub async fn extract_and_merge_words(
+    storage: &Arc<dyn StorageTrait>,
+    chat_id: ChatId,
+    words: Option<Words>,
+) -> Words {
+    let expenses = storage
+        .clone()
+        .as_expense_storage()
+        .get_chat_expenses(chat_id)
+        .await;
+    let categories = storage
+        .clone()
+        .as_category_storage()
+        .get_chat_categories(chat_id)
+        .await
+        .unwrap_or_default();
+
+    // Extract words from uncategorized expenses
+    let available_words = extract_words(&expenses, &categories);
+
+    let current_words: Vec<String> = words.map(|w| w.into()).unwrap_or_default();
+    merge_words(&current_words, &available_words).into()
 }
 
 #[cfg(test)]

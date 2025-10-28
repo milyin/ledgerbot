@@ -110,6 +110,12 @@ impl From<Vec<String>> for Words {
     }
 }
 
+impl From<Words> for Vec<String> {
+    fn from(val: Words) -> Self {
+        val.0
+    }
+}
+
 /// Display a menu with word suggestions for filter creation
 /// Words are displayed in a grid (4 words per row)
 /// Handles pagination internally - pass full word list and page number
@@ -173,6 +179,7 @@ pub async fn select_word<
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn create_word_menu_data(
     all_words: &[String],
     selected_words: &[String],

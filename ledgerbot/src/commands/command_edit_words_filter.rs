@@ -12,10 +12,10 @@ use crate::{
         common::read_category_filter_by_index,
         select_category::select_category,
         select_category_filter::select_category_filter,
-        select_word::{select_word, Words},
+        select_word::{Words, select_word},
     },
     storage_traits::StorageTrait,
-    utils::extract_words::extract_words,
+    utils::extract_words::extract_and_merge_words,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -107,13 +107,16 @@ impl CommandTrait for CommandEditWordsFilter {
             target,
             &storage.as_category_storage(),
             category,
-            markdown_format!("✏️ Select word\\-based filter to edit in category `{}`", category),
+            markdown_format!(
+                "✏️ Select word\\-based filter to edit in category `{}`",
+                category
+            ),
             |idx, pattern| {
                 // Only show word-based filters (those that can be parsed by Words::read_pattern)
                 Words::read_pattern(pattern).map(|_| CommandEditWordsFilter {
                     category: Some(category.clone()),
                     position: Some(idx),
-                    page: Some(0),
+                    page: None,
                     words: None,
                 })
             },
@@ -129,34 +132,9 @@ impl CommandTrait for CommandEditWordsFilter {
         category: &String,
         position: &usize,
     ) -> ResponseResult<()> {
-        // Load the current filter pattern and parse it
-        self.run4(target, storage, category, position, &0, &Words::default())
-            .await
-    }
-
-    async fn run3(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-        category: &String,
-        position: &usize,
-        page: &usize,
-    ) -> ResponseResult<()> {
-        // Navigate to a different page
-        self.run4(target, storage, category, position, page, &Words::default())
-            .await
-    }
-
-    async fn run4(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-        category: &String,
-        position: &usize,
-        page: &usize,
-        selected_words: &Words,
-    ) -> ResponseResult<()> {
-        // Read the current filter pattern
+        //
+        // Prefill with words from old pattern only when runned with <category> and <position>
+        //
         let Some(current_pattern) = read_category_filter_by_index(
             target,
             &storage.clone().as_category_storage(),
@@ -174,55 +152,62 @@ impl CommandTrait for CommandEditWordsFilter {
             return Ok(());
         };
 
-        // Parse the pattern to get current words (if this is the first time entering edit mode)
-        let current_words = if selected_words.as_vec().is_empty() {
-            Words::read_pattern(&current_pattern).unwrap_or_default()
-        } else {
-            selected_words.clone()
-        };
+        let words = Words::read_pattern(&current_pattern).unwrap_or_default();
 
-        // Get expenses and categories to extract available words
-        let expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_chat_expenses(target.chat.id)
-            .await;
-        let categories = storage
-            .clone()
-            .as_category_storage()
-            .get_chat_categories(target.chat.id)
+        // Navigate to next page
+        self.run4(target, storage, category, position, &0, &words)
             .await
-            .unwrap_or_default();
+    }
 
-        // Extract words from uncategorized expenses
-        let available_words = extract_words(&expenses, &categories);
+    async fn run3(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        category: &String,
+        position: &usize,
+        page: &usize,
+    ) -> ResponseResult<()> {
+        //
+        // When page is already selected and words are not provided, assume that current words list is empty
+        //
+        self.run4(target, storage, category, position, page, &Words::default())
+            .await
+    }
 
-        // Get words from the filter being edited
-        let filter_words = Words::read_pattern(&current_pattern)
-            .map(|w| w.as_vec().clone())
-            .unwrap_or_default();
-
-        // Combine filter words with available words (filter words first, then available)
-        // Use a set to deduplicate while preserving order
-        let mut combined_words = filter_words.clone();
-        for word in &available_words {
-            if !combined_words.contains(word) {
-                combined_words.push(word.clone());
-            }
-        }
-
-        if combined_words.is_empty() {
-            target
-                .send_markdown_message(markdown_format!(
-                    "💡 No words available\\. The filter is empty and there are no uncategorized expenses\\.\n\nCurrent filter: `{}`",
-                    &current_pattern
-                ))
-                .await?;
-            return Ok(());
-        }
-
+    async fn run4(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        category: &String,
+        position: &usize,
+        page: &usize,
+        selected_words: &Words,
+    ) -> ResponseResult<()> {
         let category = category.clone();
         let position = *position;
+
+        let Some(current_pattern) = read_category_filter_by_index(
+            target,
+            &storage.clone().as_category_storage(),
+            category.as_str(),
+            position,
+            Some(CommandEditWordsFilter {
+                category: Some(category.clone()),
+                position: None,
+                page: None,
+                words: None,
+            }),
+        )
+        .await?
+        else {
+            return Ok(());
+        };
+        let words = extract_and_merge_words(
+            &storage,
+            target.chat.id,
+            Words::read_pattern(&current_pattern),
+        )
+        .await;
 
         // Show word selection menu with pagination
         let prompt = |current_page: usize, total_pages: usize, total_words: usize| {
@@ -230,7 +215,7 @@ impl CommandTrait for CommandEditWordsFilter {
                 "✏️ Edit word filter **\\#{}** in category `{}`\n\n{}\n\nPage {}/{} \\({} words total\\)",
                 position,
                 &category,
-                @raw if current_words.as_ref().is_empty() { markdown_format!("_no words selected_") } else { markdown_format!("`{}`", current_words.to_string()) },
+                @raw if selected_words.as_ref().is_empty() { markdown_format!("_no words selected_") } else { markdown_format!("`{}`", selected_words.to_string()) },
                 current_page,
                 total_pages,
                 total_words
@@ -238,17 +223,17 @@ impl CommandTrait for CommandEditWordsFilter {
         };
 
         let word_command = |word: &str| {
-            let mut selected_words = current_words.as_ref().clone();
-            if selected_words.contains(&word.to_string()) {
-                selected_words.retain(|w| w != word);
+            let mut new_words = selected_words.as_ref().clone();
+            if new_words.contains(&word.to_string()) {
+                new_words.retain(|w| w != word);
             } else {
-                selected_words.push(word.to_string());
+                new_words.push(word.to_string());
             }
             CommandEditWordsFilter {
                 category: Some(category.clone()),
                 position: Some(position),
                 page: Some(*page),
-                words: Some(selected_words.into()),
+                words: Some(new_words.into()),
             }
         };
 
@@ -256,21 +241,21 @@ impl CommandTrait for CommandEditWordsFilter {
             category: Some(category.clone()),
             position: Some(position),
             page: Some(page_num),
-            words: Some(current_words.clone()),
+            words: Some(selected_words.clone()),
         };
 
         // Apply command will edit the existing filter
         let apply_command = CommandEditFilter {
             category: Some(category.clone()),
             position: Some(position),
-            pattern: current_words.build_pattern(),
+            pattern: selected_words.build_pattern(),
         };
 
         select_word(
             target,
             prompt,
-            &combined_words,
-            current_words.as_ref(),
+            words.as_ref(),
+            selected_words.as_ref(),
             *page,
             word_command,
             page_command,

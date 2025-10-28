@@ -160,7 +160,9 @@ impl From<Command> for String {
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
             Command::AddExpense(add_expense) => add_expense.to_command_string(true),
             Command::AddWordsFilter(add_words_filter) => add_words_filter.to_command_string(true),
-            Command::EditWordsFilter(edit_words_filter) => edit_words_filter.to_command_string(true),
+            Command::EditWordsFilter(edit_words_filter) => {
+                edit_words_filter.to_command_string(true)
+            }
         }
     }
 }
