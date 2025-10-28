@@ -71,40 +71,65 @@ impl CommandTrait for CommandReport {
             return Ok(());
         }
 
-        // If category is specified, show detailed report for that category only
-        if let Some(ref category_name) = self.category {
-            let messages = format_expenses_by_category(&chat_expenses, &chat_categories);
+        // Show summary with category selection menu
+        let (message, buttons) = format_category_summary(&chat_expenses, &chat_categories);
 
-            // Find the message for the requested category
-            // The format_expenses_by_category returns messages in order: categories (sorted), Other, Total
-            // We need to find the one matching our category
-            let mut found = false;
-            for message in messages {
-                let msg_str = message.as_str();
-                // Check if this message starts with the category name
-                if msg_str.starts_with(&format!("*{}*:", category_name)) {
-                    target.send_markdown_message(message).await?;
-                    found = true;
-                    break;
-                }
-            }
-
-            if !found {
-                target.send_markdown_message(
-                    yoroolbot::markdown_format!("Category '{}' not found or has no expenses\\.", category_name)
-                ).await?;
-            }
+        if buttons.is_empty() {
+            // No categories, just send the message
+            target.send_markdown_message(message).await?;
         } else {
-            // No category specified - show summary with category selection menu
-            let (message, buttons) = format_category_summary(&chat_expenses, &chat_categories);
+            // Send message with category selection menu
+            target.send_markdown_message_with_menu(message, buttons).await?;
+        }
 
-            if buttons.is_empty() {
-                // No categories, just send the message
+        Ok(())
+    }
+
+    async fn run1(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        category: &Self::A,
+    ) -> ResponseResult<()> {
+        let chat_id = target.chat.id;
+        let chat_expenses = storage
+            .clone()
+            .as_expense_storage()
+            .get_chat_expenses(chat_id)
+            .await;
+        let chat_categories = storage
+            .clone()
+            .as_category_storage()
+            .get_chat_categories(chat_id)
+            .await
+            .unwrap_or_default();
+
+        // Check for category conflicts before generating report
+        if let Some(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
+            target.send_markdown_message(conflict_message).await?;
+            return Ok(());
+        }
+
+        // Show detailed report for the specified category
+        let messages = format_expenses_by_category(&chat_expenses, &chat_categories);
+
+        // Find the message for the requested category
+        // The format_expenses_by_category returns messages in order: categories (sorted), Other, Total
+        let mut found = false;
+        for message in messages {
+            let msg_str = message.as_str();
+            // Check if this message starts with the category name
+            if msg_str.starts_with(&format!("*{}*:", category)) {
                 target.send_markdown_message(message).await?;
-            } else {
-                // Send message with category selection menu
-                target.send_markdown_message_with_menu(message, buttons).await?;
+                found = true;
+                break;
             }
+        }
+
+        if !found {
+            target.send_markdown_message(
+                yoroolbot::markdown_format!("Category '{}' not found or has no expenses\\.", category)
+            ).await?;
         }
 
         Ok(())
