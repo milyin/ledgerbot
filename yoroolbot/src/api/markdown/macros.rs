@@ -8,30 +8,83 @@ macro_rules! markdown_string {
     }};
 }
 
+/// Helper macro to process arguments in any order, handling @raw and regular arguments.
+///
+/// This uses incremental TT munching to process one argument at a time.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! md_process_args {
+    // Base case: no more arguments, return accumulated vector
+    (@munch [] -> [$($processed:tt)*]) => {
+        vec![$($processed)*]
+    };
+
+    // Process @raw argument
+    (@munch [@raw $raw_arg:expr $(, $($tail:tt)*)?] -> [$($processed:tt)*]) => {
+        $crate::md_process_args!(@munch [$($($tail)*)?] -> [
+            $($processed)*
+            {
+                let markdown: $crate::markdown::MarkdownString = $raw_arg;
+                markdown.as_str().to_string()
+            },
+        ])
+    };
+
+    // Process regular argument
+    (@munch [$arg:expr $(, $($tail:tt)*)?] -> [$($processed:tt)*]) => {
+        $crate::md_process_args!(@munch [$($($tail)*)?] -> [
+            $($processed)*
+            {
+                let arg_markdown: $crate::markdown::MarkdownString = $arg.into();
+                arg_markdown.as_str().to_string()
+            },
+        ])
+    };
+
+    // Entry point
+    ($($args:tt)*) => {
+        $crate::md_process_args!(@munch [$($args)*] -> [])
+    };
+}
+
 /// Formats a MarkdownString using either a &str literal (with compile-time validation) or a MarkdownString as the template.
 ///
 /// If a &str literal is provided, it will be validated at compile-time using `markdown_string!`.
-/// Arguments must be types that can be converted to MarkdownString.
+/// Arguments must be types that implement `Into<MarkdownString>`.
+///
+/// To pass a MarkdownString without re-escaping (for pre-formatted markdown), prefix it with `@raw`.
+/// You can mix `@raw` and regular arguments in any order.
+///
+/// # Examples
+/// ```ignore
+/// let formatted = markdown_string!("*bold*");
+/// let result = markdown_format!("Value: {}, Header: {}, Plain: {}", "text", @raw formatted, "more");
+/// ```
 #[macro_export]
 macro_rules! markdown_format {
-    // Match string literals and apply compile-time validation
-    ($format_str:literal $(, $arg:expr)*) => {
-        $crate::markdown_format!($crate::markdown_string!($format_str) $(, $arg)*)
+    // String literal with no arguments
+    ($format_str:literal) => {
+        $crate::markdown_string!($format_str)
     };
-    // Match MarkdownString expressions
-    ($format_markdown:expr $(, $arg:expr)*) => {{
-        // Use the MarkdownString directly
-        let markdown_string: $crate::markdown::MarkdownString = $format_markdown;
 
-        // Get the format string from the MarkdownString
+    // String literal with arguments - delegate to MarkdownString version
+    ($format_str:literal, $($args:tt)*) => {
+        $crate::markdown_format!($crate::markdown_string!($format_str), $($args)*)
+    };
+
+    // MarkdownString with no arguments
+    ($format_markdown:expr) => {{
+        let markdown_string: $crate::markdown::MarkdownString = $format_markdown;
+        markdown_string
+    }};
+
+    // MarkdownString with arguments
+    ($format_markdown:expr, $($args:tt)*) => {{
+        let markdown_string: $crate::markdown::MarkdownString = $format_markdown;
         let format_str = markdown_string.as_str();
 
-        // Convert all arguments to strings for replacement
-        let escaped_args: Vec<String> = vec![$({
-            // Convert to MarkdownString for type safety
-            let arg_markdown: $crate::markdown::MarkdownString = $arg.into();
-            arg_markdown.as_str().to_string()
-        }),*];
+        // Process all arguments using the helper macro
+        let escaped_args: Vec<String> = $crate::md_process_args!($($args)*);
 
         // Replace placeholders with converted arguments
         let mut result = format_str.to_string();

@@ -750,6 +750,92 @@ mod tests {
         assert_eq!(result4.as_str(), "Proper *bold* template with `code`");
     }
 
+    #[test]
+    fn test_markdown_format_raw_prefix() {
+        // Test @raw with a single pre-formatted MarkdownString
+        let formatted_text = markdown_string!("*bold* and _italic_");
+        let result = markdown_format!("Header: {}", @raw formatted_text.clone());
+        assert_eq!(result.as_str(), "Header: *bold* and _italic_");
+
+        // Without @raw, it would double-escape (which we don't want)
+        let result_escaped = markdown_format!("Header: {}", formatted_text.as_str());
+        // as_str() returns the raw markdown, which gets escaped as a plain string
+        assert_eq!(
+            result_escaped.as_str(),
+            "Header: \\*bold\\* and \\_italic\\_"
+        );
+    }
+
+    #[test]
+    fn test_markdown_format_raw_prefix_multiple() {
+        // Test @raw with multiple pre-formatted arguments
+        let bold = markdown_string!("*bold*");
+        let italic = markdown_string!("_italic_");
+        let result = markdown_format!("Text: {} and {}", @raw bold, @raw italic);
+        assert_eq!(result.as_str(), "Text: *bold* and _italic_");
+    }
+
+    #[test]
+    fn test_markdown_format_raw_prefix_mixed() {
+        // Test mixing @raw and regular arguments - @raw first
+        let formatted = markdown_string!("*bold*");
+        let plain_text = "plain text with special chars!";
+        let result = markdown_format!("Formatted: {}, Plain: {}", @raw formatted, plain_text);
+        assert_eq!(
+            result.as_str(),
+            "Formatted: *bold*, Plain: plain text with special chars\\!"
+        );
+    }
+
+    #[test]
+    fn test_markdown_format_raw_prefix_mixed_any_order() {
+        // Test mixing @raw and regular arguments in various orders
+        let bold = markdown_string!("*bold*");
+        let italic = markdown_string!("_italic_");
+
+        // Regular, @raw, regular
+        let result1 = markdown_format!("A: {}, B: {}, C: {}", "plain", @raw bold.clone(), "text!");
+        assert_eq!(result1.as_str(), "A: plain, B: *bold*, C: text\\!");
+
+        // @raw, regular, @raw
+        let result2 = markdown_format!("X: {}, Y: {}, Z: {}", @raw italic.clone(), "normal", @raw bold.clone());
+        assert_eq!(result2.as_str(), "X: _italic_, Y: normal, Z: *bold*");
+
+        // Regular, regular, @raw
+        let result3 = markdown_format!("1: {}, 2: {}, 3: {}", "foo", "bar!", @raw italic);
+        assert_eq!(result3.as_str(), "1: foo, 2: bar\\!, 3: _italic_");
+    }
+
+    #[test]
+    fn test_markdown_format_raw_prefix_complex() {
+        // Real-world example: combining pre-formatted regex pattern with regular text
+        // @raw and regular arguments can be mixed in any order
+        let words = vec![
+            "word1".to_string(),
+            "word2".to_string(),
+            "word3".to_string(),
+        ];
+        let pattern = format!(r"(?i)\b({})\b", words.join("|"));
+        let pattern_markdown = markdown_string!("`{}`");
+        let formatted_pattern = markdown_format!(pattern_markdown, &pattern);
+
+        let category = "Food";
+
+        // Test with @raw after regular argument
+        let result = markdown_format!(
+            "Category: {}, Pattern: {}",
+            category,
+            @raw formatted_pattern
+        );
+
+        // The pattern inside backticks gets escaped because it's passed as a string
+        // Regex special chars like (, ), |, \ are escaped by MarkdownV2
+        assert_eq!(
+            result.as_str(),
+            "Category: Food, Pattern: `\\(?i\\)\\\\b\\(word1\\|word2\\|word3\\)\\\\b`"
+        );
+    }
+
     // The following tests verify that the markdown_string! macro would catch invalid syntax
     // at compile time. These are included as documentation but commented out since
     // they would actually fail compilation.
