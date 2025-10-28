@@ -14,7 +14,7 @@ use yoroolbot::{
 /// Automatically shows inactive buttons when at page boundaries
 /// Selected words are marked with a tick (✓)
 #[allow(clippy::too_many_arguments)]
-pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTrait>(
+pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTrait, APPLY: CommandTrait>(
     target: &CommandReplyTarget,
     prompt: impl Fn(usize, usize, usize) -> MarkdownString,
     all_words: &[String],
@@ -22,7 +22,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
     page: usize,
     word_command: impl Fn(&str) -> NEXT,
     page_command: impl Fn(usize) -> PAGE,
-    apply_command: impl Fn() -> String,
+    apply_command: APPLY,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     const WORDS_PER_PAGE: usize = 20;
@@ -43,7 +43,7 @@ pub async fn select_word<NEXT: CommandTrait, PAGE: CommandTrait, BACK: CommandTr
         page_number,
         total_pages,
         |page_num| page_command(page_num).to_command_string(false),
-        apply_command,
+        apply_command.to_command_string(false),
         back_command.as_ref(),
     );
 
@@ -73,7 +73,7 @@ fn create_word_menu_data(
     page_number: usize,
     total_pages: usize,
     page_command: impl Fn(usize) -> String,
-    apply_command: impl Fn() -> String,
+    apply_command: String,
     back_command: Option<&impl CommandTrait>,
 ) -> Vec<Vec<ButtonData>> {
     const WORDS_PER_PAGE: usize = 20;
@@ -152,7 +152,7 @@ fn create_word_menu_data(
     // Add apply button (switch inline query type)
     nav_row.push(ButtonData::SwitchInlineQuery(
         "✅ Apply".to_string(),
-        apply_command(),
+        apply_command,
     ));
 
     buttons.push(nav_row);

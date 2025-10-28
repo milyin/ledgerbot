@@ -7,9 +7,7 @@ use yoroolbot::{
 };
 
 use crate::{
-    menus::{select_category::select_category, select_word::select_word},
-    storage_traits::StorageTrait,
-    utils::extract_words::extract_words,
+    commands::command_add_filter::CommandAddFilter, menus::{select_category::select_category, select_word::select_word}, storage_traits::StorageTrait, utils::extract_words::extract_words
 };
 
 /// Represents a collection of words separated by '|'
@@ -64,6 +62,16 @@ pub struct CommandAddWordsFilter {
     pub category: Option<String>,
     pub page: Option<usize>,
     pub words: Option<Words>,
+}
+
+impl Words {
+    pub fn build_pattern(&self) -> Option<String> {
+        if self.as_ref().is_empty() {
+            return None;
+        }
+        let escaped_words: Vec<String> = self.as_ref().iter().map(|w| regex::escape(w)).collect();
+        Some(format!(r"(?i)\b({})\b", escaped_words.join("|")))
+    }
 }
 
 impl CommandTrait for CommandAddWordsFilter {
@@ -188,70 +196,53 @@ impl CommandTrait for CommandAddWordsFilter {
 
         let category = category.clone();
 
-        // Helper function to build regex pattern from selected words
-        let build_pattern = |words: &[String]| -> String {
-            let escaped_words: Vec<String> = words.iter().map(|w| regex::escape(w)).collect();
-            format!(r"(?i)\b({})\b", escaped_words.join("|"))
+        // Show word selection menu with pagination
+        let prompt = |current_page: usize, total_pages: usize, total_words: usize| {
+            markdown_format!(
+                "💡 Select word\\(s\\) for filter in category `{}`\n\n*Pattern:* {}\n\nPage {}/{} \\({} words total\\)",
+                &category,
+                // use some nice unicode icons for empty pattern
+                selected_words
+                    .build_pattern()
+                    .unwrap_or_else(|| "🚫".to_string()),
+                current_page,
+                total_pages,
+                total_words
+            )
         };
 
-        // Show word selection menu with pagination
+        let word_command = |word: &str| {
+            let mut selected_words = selected_words.as_ref().clone();
+            if selected_words.contains(&word.to_string()) {
+                selected_words.retain(|w| w != word);
+            } else {
+                selected_words.push(word.to_string());
+            }
+            CommandAddWordsFilter {
+                category: Some(category.clone()),
+                page: Some(*page),
+                words: Some(selected_words.into()),
+            }
+        };
+
+        let page_command = |page_num: usize| CommandAddWordsFilter {
+            category: Some(category.clone()),
+            page: Some(page_num),
+            words: Some(selected_words.clone()),
+        };
+
+        // Build regex pattern from selected words
         select_word(
             target,
-            |current_page, total_pages, total_words| {
-                // Build regex pattern from selected words like in old implementation
-                let pattern_display = if selected_words.as_ref().is_empty() {
-                    "\\(none selected\\)".to_string()
-                } else {
-                    let pattern = build_pattern(selected_words.as_ref());
-                    format!("`{}`", pattern)
-                };
-
-                markdown_format!(
-                    "💡 Select word\\(s\\) for filter in category `{}`\n\n*Pattern:* {}\n\nPage {}/{} \\({} words total\\)",
-                    &category,
-                    pattern_display,
-                    current_page,
-                    total_pages,
-                    total_words
-                )
-            },
+            prompt,
             &words,
             selected_words.as_ref(),
             *page,
-            |_word| {
-                let mut selected_words = selected_words.as_ref().clone();
-                if selected_words.contains(&_word.to_string()) {
-                    selected_words.retain(|w| w != _word);
-                } else {
-                    selected_words.push(_word.to_string());
-                }
-                CommandAddWordsFilter {
-                    category: Some(category.clone()),
-                    page: Some(*page),
-                    words: Some(selected_words.into()),
-                }
-            },
-            |page_num| CommandAddWordsFilter {
+            word_command,
+            page_command,
+            CommandAddFilter {
                 category: Some(category.clone()),
-                page: Some(page_num),
-                words: Some(selected_words.clone()),
-            },
-            || {
-                // Generate the /add_filter command for the Apply button
-                use crate::commands::command_add_filter::CommandAddFilter;
-
-                if selected_words.as_ref().is_empty() {
-                    // No words selected, just put category name with space for user to type pattern
-                    format!("/{} {} ", CommandAddFilter::NAME, category)
-                } else {
-                    // Build regex pattern from selected words
-                    let pattern = build_pattern(selected_words.as_ref());
-                    CommandAddFilter {
-                        category: Some(category.clone()),
-                        pattern: Some(pattern),
-                    }
-                    .to_command_string(true)
-                }
+                pattern: selected_words.build_pattern(),
             },
             Some(CommandAddWordsFilter {
                 category: None,

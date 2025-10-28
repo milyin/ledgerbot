@@ -1,4 +1,3 @@
-//! MarkdownString type for safe Telegram MarkdownV2 messages
 
 use std::{fmt, ops::Add};
 
