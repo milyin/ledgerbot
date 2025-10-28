@@ -80,6 +80,11 @@ impl MarkdownString {
     pub fn into_string(self) -> String {
         self.0
     }
+
+    /// Split the MarkdownString into lines
+    pub fn lines(&self) -> impl Iterator<Item = MarkdownString> + '_ {
+        self.0.lines().map(MarkdownString::from_validated_string)
+    }
 }
 
 impl Default for MarkdownString {
@@ -206,15 +211,21 @@ const TELEGRAM_MAX_MESSAGE_LENGTH: usize = 4096;
 /// Truncates a message if it exceeds Telegram's maximum message length.
 /// If truncation is needed, appends "..." to the end.
 fn truncate_if_needed(text: MarkdownString) -> MarkdownString {
-    let content = text.as_str();
-    if content.len() <= TELEGRAM_MAX_MESSAGE_LENGTH {
+    if text.as_str().len() <= TELEGRAM_MAX_MESSAGE_LENGTH {
         return text;
     }
 
     let truncation_marker = markdown_string!("\\.\\.\\.");
-    let max_content_length = TELEGRAM_MAX_MESSAGE_LENGTH - truncation_marker.as_str().len();
-    let truncated = &content[..max_content_length];
-    MarkdownString::from_validated_string(format!("{}{}", truncated, truncation_marker.as_str()))
+    let mut truncated = MarkdownString::new();
+    let cr = markdown_string!("\n");
+    for line in text.lines() {
+        if truncated.as_str().len() + line.as_str().len() + cr.as_str().len() + truncation_marker.as_str().len() > TELEGRAM_MAX_MESSAGE_LENGTH {
+            break;
+        }
+        truncated = truncated + line + &cr;
+    }
+    truncated = truncated + truncation_marker;
+    truncated
 }
 
 /// Trait for sending markdown messages with Bot
