@@ -173,28 +173,27 @@ pub fn format_expenses_by_category(
             .unwrap_or(0)
             .max(5); // At least as wide as "Total"
 
-        // Build the entire table as a single string
-        let mut table_content = String::from("```\n");
+        // Build the table content
+        let mut table_lines = Vec::new();
 
         // Add each category row
         for (category_name, subtotal) in &category_subtotals {
             let padded_name = format!("{:<width$}", category_name, width = max_name_len);
             let amount_str = format!("{:>10.2}", subtotal);
-            table_content.push_str(&format!("{} {}\n", padded_name, amount_str));
+            table_lines.push(format!("{} {}", padded_name, amount_str));
         }
 
         // Add separator line
-        table_content.push_str(&format!("{}\n", "-".repeat(max_name_len + 11)));
+        table_lines.push("-".repeat(max_name_len + 11));
 
         // Add total row
         let total_label = format!("{:<width$}", "Total", width = max_name_len);
         let total_amount = format!("{:>10.2}", total);
-        table_content.push_str(&format!("{} {}\n", total_label, total_amount));
+        table_lines.push(format!("{} {}", total_label, total_amount));
 
-        table_content.push_str("```");
-
-        // Create MarkdownString from the complete table
-        let total_message = MarkdownString::from_validated_string(table_content);
+        // Join all lines and use @code modifier to wrap in code block
+        let table_content = table_lines.join("\n");
+        let total_message = markdown_format!("{}", @code table_content);
 
         messages.push(total_message);
     }
@@ -205,7 +204,6 @@ pub fn format_expenses_by_category(
 /// Helper function to format a single category as a standalone message
 fn format_category_message(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {
     let mut category_total = 0.0;
-    let mut section = markdown_format!("*{}*:\n", category_name);
 
     // Find the maximum description length for alignment
     let max_desc_len = expenses
@@ -215,30 +213,28 @@ fn format_category_message(category_name: &str, expenses: &[Expense]) -> (Markdo
         .unwrap_or(0)
         .max(9); // At least as wide as "Subtotal:"
 
-    // Build the table as a single string
-    let mut table_content = String::from("```\n");
+    // Build the table content
+    let mut table_lines = Vec::new();
 
     for expense in expenses {
         let date_str = format_timestamp(expense.timestamp);
         let padded_desc = format!("{:<width$}", expense.description, width = max_desc_len);
         let amount_str = format!("{:>10.2}", expense.amount);
-        table_content.push_str(&format!("{}  {} {}\n", date_str.as_str(), padded_desc, amount_str));
+        table_lines.push(format!("{}  {} {}", date_str.as_str(), padded_desc, amount_str));
         category_total += expense.amount;
     }
 
     // Add separator line
-    table_content.push_str(&format!("{}\n", "-".repeat(date_str_len() + 2 + max_desc_len + 11)));
+    table_lines.push("-".repeat(date_str_len() + 2 + max_desc_len + 11));
 
     // Add subtotal row
     let subtotal_label = format!("{:<width$}", "Subtotal:", width = date_str_len() + 2 + max_desc_len);
     let subtotal_amount = format!("{:>10.2}", category_total);
-    table_content.push_str(&format!("{} {}\n", subtotal_label, subtotal_amount));
+    table_lines.push(format!("{} {}", subtotal_label, subtotal_amount));
 
-    table_content.push_str("```");
-
-    // Create MarkdownString from the complete table
-    let table = MarkdownString::from_validated_string(table_content);
-    section = section + table;
+    // Join all lines and use @code modifier to wrap in code block
+    let table_content = table_lines.join("\n");
+    let section = markdown_format!("*{}*:\n{}", category_name, @code table_content);
 
     (section, category_total)
 }

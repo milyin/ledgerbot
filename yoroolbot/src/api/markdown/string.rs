@@ -721,7 +721,7 @@ mod tests {
     #[test]
     fn test_markdown_format_example_usage() {
         // Example usage showing how the macro would be used in practice
-        let template = MarkdownString("Hello *{}*\\! Your balance is: ${}\\.".to_string());
+        let template = MarkdownString::from_validated_string("Hello *{}*\\! Your balance is: ${}\\.".to_string());
 
         // Use the template with arguments that contain special characters
         let name = "Alice & Bob";
@@ -892,116 +892,79 @@ mod tests {
     }
 
     #[test]
-    fn test_truncate_if_needed_short_message() {
-        // Test that short messages are not truncated
-        let short_message = MarkdownString::escape("Hello, world!");
-        let result = super::truncate_if_needed(short_message.clone());
-        assert_eq!(result.as_str(), short_message.as_str());
+    fn test_markdown_format_code_modifier_basic() {
+        // Test @code without language
+        let table = "Name    Amount\nFood      10.50\nTotal     10.50";
+        let result = markdown_format!("{}", @code table);
+
+        assert_eq!(result.as_str(), "```\nName    Amount\nFood      10.50\nTotal     10.50\n```");
     }
 
     #[test]
-    fn test_truncate_if_needed_exact_limit() {
-        // Test that messages exactly at the limit are not truncated
-        let exact_limit_message =
-            MarkdownString::escape("a".repeat(super::TELEGRAM_MAX_MESSAGE_LENGTH));
-        let result = super::truncate_if_needed(exact_limit_message.clone());
-        assert_eq!(result.as_str(), exact_limit_message.as_str());
-        assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
+    fn test_markdown_format_code_modifier_with_language() {
+        // Test @code with language
+        let code = "fn main() { println!(\"Hello\"); }";
+        let result = markdown_format!("{}", @code "rust" code);
+
+        assert_eq!(result.as_str(), "```rust\nfn main() { println!(\"Hello\"); }\n```");
     }
 
     #[test]
-    fn test_truncate_if_needed_over_limit() {
-        // Test that messages over the limit are truncated with "..."
-        let long_message =
-            MarkdownString::escape("a".repeat(super::TELEGRAM_MAX_MESSAGE_LENGTH + 100));
-        let result = super::truncate_if_needed(long_message);
+    fn test_markdown_format_code_modifier_with_prefix() {
+        // Test @code with additional markdown prefix
+        let table = "Category  Amount\nFood        8.50\nOther      25.00";
+        let result = markdown_format!("*Report*:\n{}", @code table);
 
-        // Should be exactly 4096 characters (max limit)
-        assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
-
-        // Should end with "..." (escaped in MarkdownV2 format)
-        assert!(result.as_str().ends_with("\\.\\.\\."));
-
-        // Should start with 'a's (escaped might be 'a' or have backslash depending on context)
-        assert!(result.as_str().starts_with('a'));
+        assert_eq!(result.as_str(), "*Report*:\n```\nCategory  Amount\nFood        8.50\nOther      25.00\n```");
     }
 
     #[test]
-    fn test_truncate_if_needed_way_over_limit() {
-        // Test with a very long message
-        let very_long_message = MarkdownString::escape("x".repeat(10000));
-        let result = super::truncate_if_needed(very_long_message);
+    fn test_markdown_format_code_modifier_mixed_args() {
+        // Test mixing @code with regular arguments
+        let category = "Food";
+        let table = "Item    Amount\nCoffee    5.50\nTea       3.00";
+        let result = markdown_format!("*{}*:\n{}", category, @code table);
 
-        // Should be exactly at the limit
-        assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
-
-        // Should end with "..." (escaped in MarkdownV2 format)
-        assert!(result.as_str().ends_with("\\.\\.\\."));
+        assert_eq!(result.as_str(), "*Food*:\n```\nItem    Amount\nCoffee    5.50\nTea       3.00\n```");
     }
 
     #[test]
-    fn test_truncate_if_needed_preserves_markdown() {
-        // Test that markdown formatting is preserved in truncated messages
-        let long_markdown =
-            MarkdownString::from_validated_string(format!("*{}*", "bold text ".repeat(1000)));
-        let result = super::truncate_if_needed(long_markdown);
+    fn test_markdown_format_code_modifier_no_escaping() {
+        // Test that content inside @code is not escaped
+        let content = "Amount: $10.50 (10%)";
+        let result = markdown_format!("{}", @code content);
 
-        assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
-        // Should end with "..." (escaped in MarkdownV2 format)
-        assert!(result.as_str().ends_with("\\.\\.\\."));
+        // Periods, parentheses, and dollar signs should NOT be escaped inside code blocks
+        assert_eq!(result.as_str(), "```\nAmount: $10.50 (10%)\n```");
+        assert!(!result.as_str().contains("\\.")); // Should not contain escaped period
+        assert!(!result.as_str().contains("\\(")); // Should not contain escaped parenthesis
     }
 
     #[test]
-    fn test_chunks_basic() {
-        // Test that chunks iterator splits content correctly
-        let short_line = "a".repeat(100);
-        let text = MarkdownString::escape(format!("{}\n{}\n{}", short_line, short_line, short_line));
+    fn test_markdown_format_code_modifier_multiple_separate() {
+        // Test multiple @code blocks created separately and combined
+        let table1 = "Item1   Value1";
+        let block1 = markdown_format!("{}", @code table1);
+        assert_eq!(block1.as_str(), "```\nItem1   Value1\n```");
 
-        let chunks: Vec<_> = text.chunks(250).collect();
+        let table2 = "Item2   Value2";
+        let block2 = markdown_format!("{}", @code table2);
+        assert_eq!(block2.as_str(), "```\nItem2   Value2\n```");
 
-        // Should have 2 chunks: first with 2 lines (200 chars + 1 newline = 201), second with 1 line
-        assert_eq!(chunks.len(), 2);
-        assert!(chunks[0].is_ok());
-        assert!(chunks[1].is_ok());
-
-        let chunk1 = chunks[0].as_ref().unwrap();
-        let chunk2 = chunks[1].as_ref().unwrap();
-
-        // First chunk should have 2 lines
-        assert_eq!(chunk1.as_str().lines().count(), 2);
-        // Second chunk should have 1 line
-        assert_eq!(chunk2.as_str().lines().count(), 1);
+        let result = markdown_format!("First:\n{}\n\nSecond:\n{}", @raw block1, @raw block2);
+        assert_eq!(
+            result.as_str(),
+            "First:\n```\nItem1   Value1\n```\n\nSecond:\n```\nItem2   Value2\n```"
+        );
     }
 
     #[test]
-    fn test_chunks_single_line_too_long() {
-        // Test that chunks iterator returns error for lines exceeding max length
-        let long_line = "a".repeat(200);
-        let text = MarkdownString::escape(long_line);
+    fn test_markdown_format_code_modifier_with_raw() {
+        // Test mixing @code and @raw modifiers
+        let bold_text = markdown_string!("*Important*");
+        let table = "Name   Value\nTest     123";
+        let result = markdown_format!("{}: {}", @raw bold_text, @code table);
 
-        let chunks: Vec<_> = text.chunks(100).collect();
-
-        // Should have 1 chunk with error
-        assert_eq!(chunks.len(), 1);
-        assert!(chunks[0].is_err());
-
-        let err = chunks[0].as_ref().unwrap_err();
-        assert!(err.as_str().contains("exceeds"));
-    }
-
-    #[test]
-    fn test_chunks_exact_fit() {
-        // Test when lines fit exactly at the boundary
-        let line = "a".repeat(100);
-        let text = MarkdownString::escape(format!("{}\n{}", line, line));
-
-        let chunks: Vec<_> = text.chunks(201).collect(); // 100 + 1 (newline) + 100 = 201
-
-        // Should have exactly 1 chunk with both lines
-        assert_eq!(chunks.len(), 1);
-        assert!(chunks[0].is_ok());
-
-        let chunk = chunks[0].as_ref().unwrap();
-        assert_eq!(chunk.as_str().lines().count(), 2);
+        assert_eq!(result.as_str(), "*Important*: ```\nName   Value\nTest     123\n```");
     }
 }

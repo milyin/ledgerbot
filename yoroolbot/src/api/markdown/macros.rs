@@ -8,7 +8,7 @@ macro_rules! markdown_string {
     }};
 }
 
-/// Helper macro to process arguments in any order, handling @raw and regular arguments.
+/// Helper macro to process arguments in any order, handling @code, @raw, and regular arguments.
 ///
 /// This uses incremental TT munching to process one argument at a time.
 #[doc(hidden)]
@@ -17,6 +17,28 @@ macro_rules! md_process_args {
     // Base case: no more arguments, return accumulated vector
     (@munch [] -> [$($processed:tt)*]) => {
         vec![$($processed)*]
+    };
+
+    // Process @code with language - must come before @raw to match correctly
+    (@munch [@code $lang:literal $code_content:expr $(, $($tail:tt)*)?] -> [$($processed:tt)*]) => {
+        $crate::md_process_args!(@munch [$($($tail)*)?] -> [
+            $($processed)*
+            {
+                let content: String = $code_content.into();
+                format!("```{}\n{}\n```", $lang, content)
+            },
+        ])
+    };
+
+    // Process @code without language
+    (@munch [@code $code_content:expr $(, $($tail:tt)*)?] -> [$($processed:tt)*]) => {
+        $crate::md_process_args!(@munch [$($($tail)*)?] -> [
+            $($processed)*
+            {
+                let content: String = $code_content.into();
+                format!("```\n{}\n```", content)
+            },
+        ])
     };
 
     // Process @raw argument
@@ -52,13 +74,27 @@ macro_rules! md_process_args {
 /// If a &str literal is provided, it will be validated at compile-time using `markdown_string!`.
 /// Arguments must be types that implement `Into<MarkdownString>`.
 ///
-/// To pass a MarkdownString without re-escaping (for pre-formatted markdown), prefix it with `@raw`.
-/// You can mix `@raw` and regular arguments in any order.
+/// # Special Argument Modifiers
+///
+/// - `@raw`: Pass a MarkdownString without re-escaping (for pre-formatted markdown)
+/// - `@code`: Wrap content in a code block (```). Content is not escaped.
+/// - `@code "lang"`: Wrap content in a language-specific code block (```lang)
+///
+/// You can mix these modifiers and regular arguments in any order.
 ///
 /// # Examples
 /// ```ignore
+/// // Using @raw for pre-formatted markdown
 /// let formatted = markdown_string!("*bold*");
 /// let result = markdown_format!("Value: {}, Header: {}, Plain: {}", "text", @raw formatted, "more");
+///
+/// // Using @code for code blocks
+/// let table = "Name    Amount\nFood      10.50\nTotal     10.50";
+/// let result = markdown_format!("Report:\n{}", @code table);
+///
+/// // Using @code with language
+/// let code = "fn main() { println!(\"Hello\"); }";
+/// let result = markdown_format!("Example:\n{}", @code "rust" code);
 /// ```
 #[macro_export]
 macro_rules! markdown_format {
