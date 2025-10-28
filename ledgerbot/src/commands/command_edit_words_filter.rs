@@ -195,12 +195,26 @@ impl CommandTrait for CommandEditWordsFilter {
             .unwrap_or_default();
 
         // Extract words from uncategorized expenses
-        let words = extract_words(&expenses, &categories);
+        let available_words = extract_words(&expenses, &categories);
 
-        if words.is_empty() {
+        // Get words from the filter being edited
+        let filter_words = Words::read_pattern(&current_pattern)
+            .map(|w| w.as_vec().clone())
+            .unwrap_or_default();
+
+        // Combine filter words with available words (filter words first, then available)
+        // Use a set to deduplicate while preserving order
+        let mut combined_words = filter_words.clone();
+        for word in &available_words {
+            if !combined_words.contains(word) {
+                combined_words.push(word.clone());
+            }
+        }
+
+        if combined_words.is_empty() {
             target
                 .send_markdown_message(markdown_format!(
-                    "💡 No uncategorized expenses found\\. No new words available\\.\n\nCurrent filter: `{}`",
+                    "💡 No words available\\. The filter is empty and there are no uncategorized expenses\\.\n\nCurrent filter: `{}`",
                     &current_pattern
                 ))
                 .await?;
@@ -254,7 +268,7 @@ impl CommandTrait for CommandEditWordsFilter {
         select_word(
             target,
             prompt,
-            &words,
+            &combined_words,
             current_words.as_ref(),
             *page,
             word_command,
