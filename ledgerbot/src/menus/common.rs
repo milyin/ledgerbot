@@ -124,7 +124,10 @@ pub async fn read_category_filter_by_index(
 
 #[cfg(test)]
 mod tests {
-    use yoroolbot::storage::CallbackDataStorage;
+    use teloxide::types::ChatId;
+    use yoroolbot::storage::{
+        CallbackDataStorage, CallbackDataStorageTrait, pack_callback_data, unpack_callback_data,
+    };
 
     use super::*;
 
