@@ -27,15 +27,15 @@ use crate::{markdown_format, markdown_string};
 pub struct MarkdownString(String);
 
 /// Iterator over message chunks grouped by maximum length
-pub struct ChunksIterator {
-    lines: Vec<String>,
+pub struct MarkdownChunksIterator {
+    lines: Vec<MarkdownString>,
     max_length: usize,
     current_index: usize,
     current_chunk: MarkdownString,
     finished: bool,
 }
 
-impl Iterator for ChunksIterator {
+impl Iterator for MarkdownChunksIterator {
     type Item = Result<MarkdownString, MarkdownString>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -46,7 +46,7 @@ impl Iterator for ChunksIterator {
         }
 
         while self.current_index < self.lines.len() {
-            let line = MarkdownString::from_validated_string(self.lines[self.current_index].clone());
+            let line = self.lines[self.current_index].clone();
             self.current_index += 1;
 
             // Check if a single line exceeds max length
@@ -81,7 +81,7 @@ impl Iterator for ChunksIterator {
         // Return the last chunk if it's not empty
         if !self.current_chunk.as_str().is_empty() {
             self.finished = true;
-            let chunk = std::mem::replace(&mut self.current_chunk, MarkdownString::new());
+            let chunk = std::mem::take(&mut self.current_chunk);
             return Some(Ok(chunk));
         }
 
@@ -151,9 +151,9 @@ impl MarkdownString {
 
     /// Iterator over message chunks, each not larger than telegram max message length
     /// Yields Ok(chunk) for valid chunks, Err(line) if a single line exceeds max length
-    pub fn chunks(&self, max_length: usize) -> ChunksIterator {
-        ChunksIterator {
-            lines: self.0.lines().map(|s| s.to_string()).collect(),
+    pub fn chunks(&self, max_length: usize) -> MarkdownChunksIterator {
+        MarkdownChunksIterator {
+            lines: self.lines().collect(),
             max_length,
             current_index: 0,
             current_chunk: MarkdownString::new(),
