@@ -207,22 +207,46 @@ fn format_category_message(category_name: &str, expenses: &[Expense]) -> (Markdo
     let mut category_total = 0.0;
     let mut section = markdown_format!("*{}*:\n", category_name);
 
+    // Find the maximum description length for alignment
+    let max_desc_len = expenses
+        .iter()
+        .map(|e| e.description.len())
+        .max()
+        .unwrap_or(0)
+        .max(9); // At least as wide as "Subtotal:"
+
+    // Build the table as a single string
+    let mut table_content = String::from("```\n");
+
     for expense in expenses {
         let date_str = format_timestamp(expense.timestamp);
-        let expense_line = markdown_format!(
-            "  • {} {} {}\n",
-            date_str,
-            &*expense.description,
-            expense.amount
-        );
-        section = section + expense_line;
+        let padded_desc = format!("{:<width$}", expense.description, width = max_desc_len);
+        let amount_str = format!("{:>10.2}", expense.amount);
+        table_content.push_str(&format!("{}  {} {}\n", date_str.as_str(), padded_desc, amount_str));
         category_total += expense.amount;
     }
 
-    let subtotal_line = markdown_format!("  *Subtotal: {}*", category_total);
-    section = section + subtotal_line;
+    // Add separator line
+    table_content.push_str(&format!("{}\n", "-".repeat(date_str_len() + 2 + max_desc_len + 11)));
+
+    // Add subtotal row
+    let subtotal_label = format!("{:<width$}", "Subtotal:", width = date_str_len() + 2 + max_desc_len);
+    let subtotal_amount = format!("{:>10.2}", category_total);
+    table_content.push_str(&format!("{} {}\n", subtotal_label, subtotal_amount));
+
+    table_content.push_str("```");
+
+    // Create MarkdownString from the complete table
+    let table = MarkdownString::from_validated_string(table_content);
+    section = section + table;
 
     (section, category_total)
+}
+
+/// Helper function to get the length of the formatted date string
+fn date_str_len() -> usize {
+    // Date format is "YYYY-MM-DD" which is always 10 characters
+    10
 }
 
 /// Helper function to format a single category section with its expenses (for single-message report)
@@ -276,19 +300,23 @@ mod tests {
         // Should have 3 messages: Food category, Other category, and Total
         assert_eq!(messages.len(), 3);
 
-        // First message should be Food category
+        // First message should be Food category with table format
         assert!(messages[0].as_str().contains("*Food*"));
+        assert!(messages[0].as_str().contains("```")); // Code block for table
         assert!(messages[0].as_str().contains("Coffee"));
         assert!(messages[0].as_str().contains("Tea"));
         assert!(messages[0].as_str().contains("Subtotal"));
-        // Numbers are escaped in MarkdownV2 format
-        assert!(messages[0].as_str().contains("8\\.5"));
+        // Numbers are in code block (not escaped), formatted with 2 decimals
+        assert!(messages[0].as_str().contains("5.50"));
+        assert!(messages[0].as_str().contains("3.00"));
+        assert!(messages[0].as_str().contains("8.50"));
 
-        // Second message should be Other category
+        // Second message should be Other category with table format
         assert!(messages[1].as_str().contains("*Other*"));
+        assert!(messages[1].as_str().contains("```")); // Code block for table
         assert!(messages[1].as_str().contains("Groceries"));
         assert!(messages[1].as_str().contains("Subtotal"));
-        assert!(messages[1].as_str().contains("25"));
+        assert!(messages[1].as_str().contains("25.00"));
 
         // Third message should be Total with category breakdown in table format
         let total_msg = messages[2].as_str();

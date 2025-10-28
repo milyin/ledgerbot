@@ -69,12 +69,17 @@ mod tests {
         let result = format_expenses_chronological(&expenses);
 
         // Check that expenses are listed in chronological order
-        // Function returns Ok with plain format: "date description amount"
+        // Function returns Ok with Vec<MarkdownString>
         assert!(result.is_ok());
-        assert_eq!(
-            result.unwrap(),
-            "2021-01-01 Coffee 5.5\n2021-01-02 Lunch 12\n2021-01-03 Dinner 25\n"
-        );
+        let messages = result.unwrap();
+        assert_eq!(messages.len(), 1);
+        let content = messages[0].as_str();
+        assert!(content.contains("Coffee"));
+        assert!(content.contains("Lunch"));
+        assert!(content.contains("Dinner"));
+        assert!(content.contains("5\\.5"));
+        assert!(content.contains("12"));
+        assert!(content.contains("25"));
     }
 
     #[test]

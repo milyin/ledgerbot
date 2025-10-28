@@ -26,6 +26,69 @@ use crate::{markdown_format, markdown_string};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MarkdownString(String);
 
+/// Iterator over message chunks grouped by maximum length
+pub struct ChunksIterator {
+    lines: Vec<String>,
+    max_length: usize,
+    current_index: usize,
+    current_chunk: MarkdownString,
+    finished: bool,
+}
+
+impl Iterator for ChunksIterator {
+    type Item = Result<MarkdownString, MarkdownString>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use crate::markdown_format;
+
+        if self.finished {
+            return None;
+        }
+
+        while self.current_index < self.lines.len() {
+            let line = MarkdownString::from_validated_string(self.lines[self.current_index].clone());
+            self.current_index += 1;
+
+            // Check if a single line exceeds max length
+            if line.as_str().len() > self.max_length {
+                self.finished = true;
+                return Some(Err(markdown_format!(
+                    "A single line exceeds Telegram's maximum message length of {} characters\\.",
+                    self.max_length
+                )));
+            }
+
+            // Check if adding this line would exceed max length
+            let would_exceed = if self.current_chunk.as_str().is_empty() {
+                line.as_str().len() > self.max_length
+            } else {
+                self.current_chunk.as_str().len() + 1 + line.as_str().len() > self.max_length
+            };
+
+            if would_exceed {
+                // Return the current chunk and start a new one with this line
+                let chunk = std::mem::replace(&mut self.current_chunk, line);
+                return Some(Ok(chunk));
+            } else {
+                // Add line to current chunk
+                if !self.current_chunk.as_str().is_empty() {
+                    self.current_chunk = self.current_chunk.clone() + &crate::markdown_string!("\n");
+                }
+                self.current_chunk = self.current_chunk.clone() + &line;
+            }
+        }
+
+        // Return the last chunk if it's not empty
+        if !self.current_chunk.as_str().is_empty() {
+            self.finished = true;
+            let chunk = std::mem::replace(&mut self.current_chunk, MarkdownString::new());
+            return Some(Ok(chunk));
+        }
+
+        None
+    }
+}
+
 impl MarkdownString {
     /// Creates a MarkdownString by escaping all markdown special characters in the input.
     /// This is safe to use with any string content as all special characters will be escaped.
@@ -86,33 +149,28 @@ impl MarkdownString {
         self.0.lines().map(MarkdownString::from_validated_string)
     }
 
+    /// Iterator over message chunks, each not larger than telegram max message length
+    /// Yields Ok(chunk) for valid chunks, Err(line) if a single line exceeds max length
+    pub fn chunks(&self, max_length: usize) -> ChunksIterator {
+        ChunksIterator {
+            lines: self.0.lines().map(|s| s.to_string()).collect(),
+            max_length,
+            current_index: 0,
+            current_chunk: MarkdownString::new(),
+            finished: false,
+        }
+    }
+
     /// Truncate to group of strings by "\n", each not larger than telegram max message length
     /// Returns error if any single line exceeds max length
     pub fn split_by_max_length(&self) -> Result<Vec<MarkdownString>, MarkdownString> {
         let mut result = Vec::new();
-        let mut current_chunk = MarkdownString::new();
 
-        for line in self.lines() {
-            if line.as_str().len() > TELEGRAM_MAX_MESSAGE_LENGTH {
-                return Err(markdown_format!(
-                    "A single line exceeds Telegram's maximum message length of {} characters\\.",
-                    TELEGRAM_MAX_MESSAGE_LENGTH
-                ));
+        for chunk in self.chunks(TELEGRAM_MAX_MESSAGE_LENGTH) {
+            match chunk {
+                Ok(chunk) => result.push(chunk),
+                Err(err) => return Err(err),
             }
-
-            if current_chunk.as_str().len() + line.as_str().len() + 1 > TELEGRAM_MAX_MESSAGE_LENGTH {
-                result.push(current_chunk);
-                current_chunk = line;
-            } else {
-                if !current_chunk.as_str().is_empty() {
-                    current_chunk = current_chunk + &markdown_string!("\n");
-                }
-                current_chunk = current_chunk + &line;
-            }
-        }
-
-        if !current_chunk.as_str().is_empty() {
-            result.push(current_chunk);
         }
 
         Ok(result)
@@ -242,23 +300,33 @@ impl Add<&MarkdownString> for &MarkdownString {
 const TELEGRAM_MAX_MESSAGE_LENGTH: usize = 4096;
 
 /// Truncates a message if it exceeds Telegram's maximum message length.
-/// If truncation is needed, appends "..." to the end.
+/// If truncation is needed, appends "..." to the end if there's space.
 fn truncate_if_needed(text: MarkdownString) -> MarkdownString {
     if text.as_str().len() <= TELEGRAM_MAX_MESSAGE_LENGTH {
         return text;
     }
 
     let truncation_marker = markdown_string!("\\.\\.\\.");
-    let mut truncated = MarkdownString::new();
-    let cr = markdown_string!("\n");
-    for line in text.lines() {
-        if truncated.as_str().len() + line.as_str().len() + cr.as_str().len() + truncation_marker.as_str().len() > TELEGRAM_MAX_MESSAGE_LENGTH {
-            break;
+    let truncation_marker_len = truncation_marker.as_str().len();
+    let max_content_len = TELEGRAM_MAX_MESSAGE_LENGTH - truncation_marker_len;
+
+    // Get the first chunk
+    let truncated = match text.chunks(max_content_len).next() {
+        Some(Ok(chunk)) => chunk,
+        Some(Err(_)) | None => {
+            // Single line too long or no content - truncate the text directly
+            let text_str = text.as_str();
+            let truncated_str = &text_str[..max_content_len.min(text_str.len())];
+            MarkdownString::from_validated_string(truncated_str.to_string())
         }
-        truncated = truncated + line + &cr;
+    };
+
+    // Try to add truncation marker if there's space
+    if truncated.as_str().len() + truncation_marker_len <= TELEGRAM_MAX_MESSAGE_LENGTH {
+        truncated + truncation_marker
+    } else {
+        truncated
     }
-    truncated = truncated + truncation_marker;
-    truncated
 }
 
 /// Trait for sending markdown messages with Bot
@@ -982,5 +1050,59 @@ mod tests {
         assert_eq!(result.as_str().len(), super::TELEGRAM_MAX_MESSAGE_LENGTH);
         // Should end with "..." (escaped in MarkdownV2 format)
         assert!(result.as_str().ends_with("\\.\\.\\."));
+    }
+
+    #[test]
+    fn test_chunks_basic() {
+        // Test that chunks iterator splits content correctly
+        let short_line = "a".repeat(100);
+        let text = MarkdownString::escape(format!("{}\n{}\n{}", short_line, short_line, short_line));
+
+        let chunks: Vec<_> = text.chunks(250).collect();
+
+        // Should have 2 chunks: first with 2 lines (200 chars + 1 newline = 201), second with 1 line
+        assert_eq!(chunks.len(), 2);
+        assert!(chunks[0].is_ok());
+        assert!(chunks[1].is_ok());
+
+        let chunk1 = chunks[0].as_ref().unwrap();
+        let chunk2 = chunks[1].as_ref().unwrap();
+
+        // First chunk should have 2 lines
+        assert_eq!(chunk1.as_str().lines().count(), 2);
+        // Second chunk should have 1 line
+        assert_eq!(chunk2.as_str().lines().count(), 1);
+    }
+
+    #[test]
+    fn test_chunks_single_line_too_long() {
+        // Test that chunks iterator returns error for lines exceeding max length
+        let long_line = "a".repeat(200);
+        let text = MarkdownString::escape(long_line);
+
+        let chunks: Vec<_> = text.chunks(100).collect();
+
+        // Should have 1 chunk with error
+        assert_eq!(chunks.len(), 1);
+        assert!(chunks[0].is_err());
+
+        let err = chunks[0].as_ref().unwrap_err();
+        assert!(err.as_str().contains("exceeds"));
+    }
+
+    #[test]
+    fn test_chunks_exact_fit() {
+        // Test when lines fit exactly at the boundary
+        let line = "a".repeat(100);
+        let text = MarkdownString::escape(format!("{}\n{}", line, line));
+
+        let chunks: Vec<_> = text.chunks(201).collect(); // 100 + 1 (newline) + 100 = 201
+
+        // Should have exactly 1 chunk with both lines
+        assert_eq!(chunks.len(), 1);
+        assert!(chunks[0].is_ok());
+
+        let chunk = chunks[0].as_ref().unwrap();
+        assert_eq!(chunk.as_str().lines().count(), 2);
     }
 }
