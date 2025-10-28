@@ -12,7 +12,7 @@ use teloxide::{
     },
 };
 
-use crate::markdown_string;
+use crate::{markdown_format, markdown_string};
 
 /// A wrapper around String that ensures safe MarkdownV2 formatting for Telegram messages.
 ///
@@ -85,6 +85,39 @@ impl MarkdownString {
     pub fn lines(&self) -> impl Iterator<Item = MarkdownString> + '_ {
         self.0.lines().map(MarkdownString::from_validated_string)
     }
+
+    /// Truncate to group of strings by "\n", each not larger than telegram max message length
+    /// Returns error if any single line exceeds max length
+    pub fn split_by_max_length(&self) -> Result<Vec<MarkdownString>, MarkdownString> {
+        let mut result = Vec::new();
+        let mut current_chunk = MarkdownString::new();
+
+        for line in self.lines() {
+            if line.as_str().len() > TELEGRAM_MAX_MESSAGE_LENGTH {
+                return Err(markdown_format!(
+                    "A single line exceeds Telegram's maximum message length of {} characters\\.",
+                    TELEGRAM_MAX_MESSAGE_LENGTH
+                ));
+            }
+
+            if current_chunk.as_str().len() + line.as_str().len() + 1 > TELEGRAM_MAX_MESSAGE_LENGTH {
+                result.push(current_chunk);
+                current_chunk = line;
+            } else {
+                if !current_chunk.as_str().is_empty() {
+                    current_chunk = current_chunk + &markdown_string!("\n");
+                }
+                current_chunk = current_chunk + &line;
+            }
+        }
+
+        if !current_chunk.as_str().is_empty() {
+            result.push(current_chunk);
+        }
+
+        Ok(result)
+    }
+
 }
 
 impl Default for MarkdownString {

@@ -3,7 +3,6 @@ use std::sync::Arc;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format,
 };
 
 use crate::{
@@ -54,9 +53,9 @@ impl CommandTrait for CommandList {
         match format_expenses_chronological(&chat_expenses) {
             Ok(expenses_list) => {
                 // Plain text list of expenses - send as is
-                target
-                    .send_markdown_message(markdown_format!("{}", expenses_list))
-                    .await?;
+                for expenses_chunk in expenses_list {
+                    target.send_markdown_message(expenses_chunk).await?;
+                }
             }
             Err(error_message) => {
                 // Error message (e.g., no expenses) - send as MarkdownString
