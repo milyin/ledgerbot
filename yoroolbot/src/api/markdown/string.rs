@@ -26,7 +26,10 @@ use crate::markdown_string;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MarkdownString(String, bool);
 
+const TRUNCATION_MARKER: &str = "\\.\\.\\.";
+
 impl MarkdownString {
+
     /// Creates a MarkdownString by escaping all markdown special characters in the input.
     /// This is safe to use with any string content as all special characters will be escaped.
     ///
@@ -63,7 +66,17 @@ impl MarkdownString {
     /// This should only be called by trusted code that has already validated the input.
     #[doc(hidden)]
     pub fn from_validated_string(s: impl Into<String>) -> Self {
-        MarkdownString(s.into(), false)
+        let s: String = s.into();
+        if s.len() > TELEGRAM_MAX_MESSAGE_LENGTH {
+            // Truncate, escape and mark as truncated
+            let safe_length = TELEGRAM_MAX_MESSAGE_LENGTH - 100; // additional space for escaping
+            let truncated_str = s[..safe_length].to_string();
+            let mut escaped_truncated_str = MarkdownString::escape(truncated_str);
+            let truncation_marker = markdown_string!(TRUNCATION_MARKER);
+            escaped_truncated_str.push(&truncation_marker);
+            return MarkdownString(escaped_truncated_str.0, true);
+        }
+        MarkdownString(s, false)
     }
 
     /// Test-only constructor for creating templates in tests.
@@ -99,7 +112,7 @@ impl MarkdownString {
             // Already truncated, do nothing
             return;
         }
-        let truncation_marker = markdown_string!("\\.\\.\\.");
+        let truncation_marker = markdown_string!(TRUNCATION_MARKER);
         let combined_length = self.0.len() + other.0.len() + truncation_marker.as_str().len();
         if combined_length > TELEGRAM_MAX_MESSAGE_LENGTH {
             if self.0.len() + truncation_marker.as_str().len() <= TELEGRAM_MAX_MESSAGE_LENGTH {
