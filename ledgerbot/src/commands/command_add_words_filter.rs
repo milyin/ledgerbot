@@ -1,6 +1,6 @@
-use std::{fmt::Display, str::FromStr, sync::Arc};
+use std::sync::Arc;
 
-use teloxide::{prelude::ResponseResult, utils::command::ParseError};
+use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
     markdown_format, markdown_string,
@@ -8,73 +8,19 @@ use yoroolbot::{
 
 use crate::{
     commands::command_add_filter::CommandAddFilter,
-    menus::{select_category::select_category, select_word::select_word},
+    menus::{
+        select_category::select_category,
+        select_word::{select_word, Words},
+    },
     storage_traits::StorageTrait,
     utils::extract_words::extract_words,
 };
-
-/// Represents a collection of words separated by '|'
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct Words(Vec<String>);
-
-impl Words {
-    pub fn new(words: Vec<String>) -> Self {
-        Self(words)
-    }
-
-    pub fn as_vec(&self) -> &Vec<String> {
-        &self.0
-    }
-}
-
-impl Display for Words {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.join("|"))
-    }
-}
-
-impl FromStr for Words {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let words = s.split('|').map(|w| w.trim().to_string()).collect();
-        Ok(Words(words))
-    }
-}
-
-impl AsRef<Vec<String>> for Words {
-    fn as_ref(&self) -> &Vec<String> {
-        &self.0
-    }
-}
-
-impl AsMut<Vec<String>> for Words {
-    fn as_mut(&mut self) -> &mut Vec<String> {
-        &mut self.0
-    }
-}
-
-impl From<Vec<String>> for Words {
-    fn from(words: Vec<String>) -> Self {
-        Words::new(words)
-    }
-}
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddWordsFilter {
     pub category: Option<String>,
     pub page: Option<usize>,
     pub words: Option<Words>,
-}
-
-impl Words {
-    pub fn build_pattern(&self) -> Option<String> {
-        if self.as_ref().is_empty() {
-            return None;
-        }
-        let escaped_words: Vec<String> = self.as_ref().iter().map(|w| regex::escape(w)).collect();
-        Some(format!(r"(?i)\b({})\b", escaped_words.join("|")))
-    }
 }
 
 impl CommandTrait for CommandAddWordsFilter {

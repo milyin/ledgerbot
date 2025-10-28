@@ -1,12 +1,114 @@
+use std::{fmt::Display, str::FromStr};
+
+use regex::Regex;
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
+    utils::command::ParseError,
 };
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
     markdown::MarkdownString,
     storage::{ButtonData, pack_callback_data},
 };
+
+/// Represents a collection of words separated by '|'
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Words(Vec<String>);
+
+impl Words {
+    pub fn new(words: Vec<String>) -> Self {
+        Self(words)
+    }
+
+    pub fn as_vec(&self) -> &Vec<String> {
+        &self.0
+    }
+
+    /// Build a regex pattern from the words: (?i)\b(word1|word2|word3)\b
+    pub fn build_pattern(&self) -> Option<String> {
+        if self.0.is_empty() {
+            return None;
+        }
+        let escaped_words: Vec<String> = self.0.iter().map(|w| regex::escape(w)).collect();
+        Some(format!(r"(?i)\b({})\b", escaped_words.join("|")))
+    }
+
+    /// Parse a regex pattern back into Words
+    /// Expects pattern format: (?i)\b(word1|word2|word3)\b
+    /// Returns None if pattern doesn't match this format
+    pub fn read_pattern(pattern: &str) -> Option<Self> {
+        // Pattern to match: (?i)\b(word1|word2|word3)\b
+        // We need to extract the words from between \b( and )\b
+        let re = Regex::new(r"^\(\?i\)\\b\((.+)\)\\b$").ok()?;
+        let captures = re.captures(pattern)?;
+        let words_part = captures.get(1)?.as_str();
+
+        // Split by | and unescape each word
+        let words: Vec<String> = words_part
+            .split('|')
+            .map(|escaped_word| {
+                // Unescape regex escapes - reverse of regex::escape()
+                // regex::escape escapes: . + * ? ( ) | [ ] { } ^ $ # & - ~ \ /
+                escaped_word
+                    .replace(r"\.", ".")
+                    .replace(r"\+", "+")
+                    .replace(r"\*", "*")
+                    .replace(r"\?", "?")
+                    .replace(r"\(", "(")
+                    .replace(r"\)", ")")
+                    .replace(r"\|", "|")
+                    .replace(r"\[", "[")
+                    .replace(r"\]", "]")
+                    .replace(r"\{", "{")
+                    .replace(r"\}", "}")
+                    .replace(r"\^", "^")
+                    .replace(r"\$", "$")
+                    .replace(r"\#", "#")
+                    .replace(r"\&", "&")
+                    .replace(r"\-", "-")
+                    .replace(r"\~", "~")
+                    .replace(r"\\", "\\")
+                    .replace(r"\/", "/")
+            })
+            .collect();
+
+        Some(Words::new(words))
+    }
+}
+
+impl Display for Words {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.join("|"))
+    }
+}
+
+impl FromStr for Words {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let words = s.split('|').map(|w| w.trim().to_string()).collect();
+        Ok(Words(words))
+    }
+}
+
+impl AsRef<Vec<String>> for Words {
+    fn as_ref(&self) -> &Vec<String> {
+        &self.0
+    }
+}
+
+impl AsMut<Vec<String>> for Words {
+    fn as_mut(&mut self) -> &mut Vec<String> {
+        &mut self.0
+    }
+}
+
+impl From<Vec<String>> for Words {
+    fn from(words: Vec<String>) -> Self {
+        Words::new(words)
+    }
+}
 
 /// Display a menu with word suggestions for filter creation
 /// Words are displayed in a grid (4 words per row)

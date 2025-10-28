@@ -6,6 +6,7 @@ pub mod command_categories;
 pub mod command_clear_categories;
 pub mod command_clear_expenses;
 pub mod command_edit_filter;
+pub mod command_edit_words_filter;
 pub mod command_help;
 pub mod command_list;
 pub mod command_remove_category;
@@ -34,9 +35,10 @@ use crate::{
         command_add_filter::CommandAddFilter, command_add_words_filter::CommandAddWordsFilter,
         command_categories::CommandCategories, command_clear_categories::CommandClearCategories,
         command_clear_expenses::CommandClearExpenses, command_edit_filter::CommandEditFilter,
-        command_help::CommandHelp, command_list::CommandList,
-        command_remove_category::CommandRemoveCategory, command_remove_filter::CommandRemoveFilter,
-        command_report::CommandReport, command_start::CommandStart,
+        command_edit_words_filter::CommandEditWordsFilter, command_help::CommandHelp,
+        command_list::CommandList, command_remove_category::CommandRemoveCategory,
+        command_remove_filter::CommandRemoveFilter, command_report::CommandReport,
+        command_start::CommandStart,
     },
     handlers::CallbackData,
     storage_traits::StorageTrait,
@@ -123,11 +125,17 @@ pub enum Command {
     )]
     AddExpense(CommandAddExpense),
     #[command(
-        description = "add filter to category (new implementation)",
+        description = "add new word-based filter to category",
         rename = "add_words_filter",
         parse_with = CommandAddWordsFilter::parse_arguments
     )]
     AddWordsFilter(CommandAddWordsFilter),
+    #[command(
+        description = "edit word-based filter in category by position",
+        rename = "edit_words_filter",
+        parse_with = CommandEditWordsFilter::parse_arguments
+    )]
+    EditWordsFilter(CommandEditWordsFilter),
 }
 
 // Command constants as string representations
@@ -151,7 +159,8 @@ impl From<Command> for String {
             Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
             Command::AddExpense(add_expense) => add_expense.to_command_string(true),
-            Command::AddWordsFilter(add_filter2) => add_filter2.to_command_string(true),
+            Command::AddWordsFilter(add_words_filter) => add_words_filter.to_command_string(true),
+            Command::EditWordsFilter(edit_words_filter) => edit_words_filter.to_command_string(true),
         }
     }
 }
@@ -398,8 +407,11 @@ pub async fn execute_command(
                 .run(&target, storage.clone().as_expense_storage())
                 .await?;
         }
-        Command::AddWordsFilter(add_filter2) => {
-            add_filter2.run(&target, storage.clone()).await?;
+        Command::AddWordsFilter(add_words_filter) => {
+            add_words_filter.run(&target, storage.clone()).await?;
+        }
+        Command::EditWordsFilter(edit_words_filter) => {
+            edit_words_filter.run(&target, storage.clone()).await?;
         }
     }
     Ok(())
