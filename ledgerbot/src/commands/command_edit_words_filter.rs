@@ -7,7 +7,7 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::command_add_filter::CommandAddFilter,
+    commands::command_edit_filter::CommandEditFilter,
     menus::{
         common::read_category_filter_by_index,
         select_category::select_category,
@@ -259,9 +259,10 @@ impl CommandTrait for CommandEditWordsFilter {
             words: Some(current_words.clone()),
         };
 
-        // Apply command will remove old filter and add new one
-        let apply_command = CommandAddFilter {
+        // Apply command will edit the existing filter
+        let apply_command = CommandEditFilter {
             category: Some(category.clone()),
+            position: Some(position),
             pattern: current_words.build_pattern(),
         };
 
@@ -281,28 +282,7 @@ impl CommandTrait for CommandEditWordsFilter {
                 words: None,
             }),
         )
-        .await?;
-
-        // If we got here and apply was clicked, we need to remove the old filter first
-        // But this is handled by the apply command which is CommandAddFilter
-        // We need to remove the old pattern first
-
-        // Actually, the apply button just inserts the command into the input box
-        // So we need to handle the actual update differently
-
-        // Let me reconsider - the select_word function takes an apply_command that uses
-        // SwitchInlineQuery, which puts the command in the input box for the user to send
-
-        // So the flow is:
-        // 1. User clicks apply
-        // 2. The new filter command is put in the input box
-        // 3. User sends it (or could edit it first)
-        // 4. The CommandAddFilter runs and adds/updates the filter
-
-        // But we need to remove the old filter first. Let me check if CommandAddFilter
-        // handles updating existing filters...
-
-        Ok(())
+        .await
     }
 }
 
