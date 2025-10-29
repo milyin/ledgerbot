@@ -298,26 +298,34 @@ pub fn filter_category_expenses<'a>(
 }
 
 /// Wrap text to a maximum width, breaking at word boundaries
+/// Uses Unicode character counting for proper width calculation
 fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
-    if text.len() <= max_width {
+    let char_count = text.chars().count();
+    if char_count <= max_width {
         return vec![text.to_string()];
     }
 
     let mut lines = Vec::new();
     let mut current_line = String::new();
+    let mut current_width = 0;
 
     for word in text.split_whitespace() {
-        if current_line.is_empty() {
+        let word_width = word.chars().count();
+
+        if current_width == 0 {
             // First word on the line - keep it whole even if longer than max_width
             current_line = word.to_string();
-        } else if current_line.len() + 1 + word.len() <= max_width {
-            // Word fits on current line
+            current_width = word_width;
+        } else if current_width + 1 + word_width <= max_width {
+            // Word fits on current line (including space separator)
             current_line.push(' ');
             current_line.push_str(word);
+            current_width += 1 + word_width;
         } else {
             // Start new line
             lines.push(current_line);
             current_line = word.to_string();
+            current_width = word_width;
         }
     }
 
