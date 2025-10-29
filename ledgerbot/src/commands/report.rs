@@ -336,17 +336,30 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
     lines
 }
 
-/// Format a simple report for single category with first 30 records
+/// Format a simple report for single category with pagination
 pub fn format_single_category_report(
     category_name: &str,
     expenses: &[&Expense],
+    page_number: usize,
+    total_pages: usize,
+    total_amount: f64,
 ) -> MarkdownString {
+    const RECORDS_PER_PAGE: usize = 30;
+
     if expenses.is_empty() {
         return markdown_format!("*{}*: No expenses in this category\\.", category_name);
     }
 
-    // Take first 30 records
-    let records_to_show: Vec<&Expense> = expenses.iter().take(30).copied().collect();
+    // Calculate page offset
+    let page_offset = page_number * RECORDS_PER_PAGE;
+
+    // Get records for current page
+    let records_to_show: Vec<&Expense> = expenses
+        .iter()
+        .skip(page_offset)
+        .take(RECORDS_PER_PAGE)
+        .copied()
+        .collect();
 
     // Find maximum amount width for alignment
     let max_amount_width = records_to_show
@@ -381,20 +394,32 @@ pub fn format_single_category_report(
         let amount_str = format!("{:>width$.2}", expense.amount, width = max_amount_width);
 
         // First line with date, description, and amount
+        // Pad description to fixed width using char count for Unicode support
+        let desc_width = description_lines[0].chars().count();
+        let padding = if desc_width < DESCRIPTION_WIDTH {
+            " ".repeat(DESCRIPTION_WIDTH - desc_width)
+        } else {
+            String::new()
+        };
         let first_line = format!(
-            "{}  {}  {}",
-            date_field,
-            format!("{:<width$}", description_lines[0], width = DESCRIPTION_WIDTH),
-            amount_str
+            "{}  {}{}  {}",
+            date_field, &description_lines[0], padding, amount_str
         );
         report_lines.push(first_line);
 
         // Additional lines for wrapped description (if any)
         for desc_line in description_lines.iter().skip(1) {
+            let desc_width = desc_line.chars().count();
+            let padding = if desc_width < DESCRIPTION_WIDTH {
+                " ".repeat(DESCRIPTION_WIDTH - desc_width)
+            } else {
+                String::new()
+            };
             let continuation_line = format!(
-                "{}  {}",
+                "{}  {}{}",
                 " ".repeat(10), // Date column
-                format!("{:<width$}", desc_line, width = DESCRIPTION_WIDTH)
+                desc_line,
+                padding
             );
             report_lines.push(continuation_line);
         }
@@ -403,8 +428,21 @@ pub fn format_single_category_report(
     // Join all lines
     let report = report_lines.join("\n");
 
+    // Build header with category name, page info, and total
+    let header = if total_pages > 1 {
+        markdown_format!(
+            "*{}* \\(page {}/{}\\), total: {}:",
+            category_name,
+            page_number + 1,
+            total_pages,
+            total_amount
+        )
+    } else {
+        markdown_format!("*{}*, total: {}:", category_name, total_amount)
+    };
+
     // Wrap in code block with header
-    markdown_format!("*{}*:\n{}", category_name, @code report)
+    header + &markdown_format!("\n{}", @code report)
 }
 
 /// Format category summary with interactive menu for category selection
@@ -514,6 +552,7 @@ pub fn format_category_summary(
     for (category_name, _) in &category_subtotals {
         let command = crate::commands::command_report::CommandReport {
             category: Some(category_name.clone()),
+            page: None,
         };
         current_row.push(ButtonData::Callback(
             category_name.clone(),

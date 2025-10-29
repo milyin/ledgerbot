@@ -87,7 +87,7 @@ pub async fn execute_batch(
                     expense_count,
                     total_amount,
                     CommandList.to_command_string(false),
-                    CommandReport { category: None }.to_command_string(false)
+                    CommandReport { category: None, page: None }.to_command_string(false)
                 ),
             )
             .await
