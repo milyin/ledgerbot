@@ -57,17 +57,10 @@ impl CommandTrait for CommandClearCategories {
 
         let buttons = vec![
             vec![
-                ButtonData::Callback(
+                ButtonData::SwitchInlineQuery(
                     "✅ Yes, Clear All".to_string(),
                     CommandClearCategories {
                         confirm: Some(true),
-                    }
-                    .to_command_string(false),
-                ),
-                ButtonData::Callback(
-                    "❌ Cancel".to_string(),
-                    CommandClearCategories {
-                        confirm: Some(false),
                     }
                     .to_command_string(false),
                 ),
