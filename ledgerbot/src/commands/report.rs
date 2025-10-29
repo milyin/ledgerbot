@@ -397,11 +397,3 @@ pub fn format_category_summary(
 
     (summary_message, buttons)
 }
-
-#[cfg(test)]
-mod tests {
-    // Tests for the new report system have been removed as the implementation
-    // has been completely rewritten to use interactive menus and pagination.
-    // The old format_expenses_by_category function no longer exists.
-    // New functionality is tested through integration tests.
-}

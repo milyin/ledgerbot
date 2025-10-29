@@ -209,6 +209,27 @@ impl CategoryStorageTrait for CategoryStorage {
         Ok(())
     }
 
+    async fn rename_category(
+        &self,
+        chat_id: ChatId,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), MarkdownString> {
+        let mut storage_guard = self.data.lock().await;
+        let Some(chat_categories) = storage_guard.get_mut(&chat_id) else {
+            return Err(markdown_format!("Category {} not exists", old_name));
+        };
+        if !chat_categories.contains_key(old_name) {
+            return Err(markdown_format!("Category {} not exists", old_name));
+        }
+        if chat_categories.contains_key(new_name) {
+            return Err(markdown_format!("Category {} already exists", new_name));
+        }
+        let patterns = chat_categories.remove(old_name).unwrap();
+        chat_categories.insert(new_name.to_string(), patterns);
+        Ok(())
+    }
+
     async fn replace_categories(
         &self,
         chat_id: ChatId,
@@ -384,6 +405,25 @@ impl CategoryStorageTrait for PersistentCategoryStorage {
         self.ensure_loaded(chat_id).await?;
         self.memory_storage
             .remove_category(chat_id, category_name)
+            .await?;
+
+        // Save updated categories to disk
+        let categories = self.memory_storage.get_chat_categories(chat_id).await?;
+        self.save_chat_categories(chat_id, &categories)
+            .await
+            .map_err(|e| markdown_format!("{}", e.to_string()))?;
+        Ok(())
+    }
+
+    async fn rename_category(
+        &self,
+        chat_id: ChatId,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), MarkdownString> {
+        self.ensure_loaded(chat_id).await?;
+        self.memory_storage
+            .rename_category(chat_id, old_name, new_name)
             .await?;
 
         // Save updated categories to disk

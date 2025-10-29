@@ -321,7 +321,7 @@ mod tests {
 
         assert!(matches!(&results[0], Ok(Command::Help(_))));
         assert!(matches!(&results[1], Ok(Command::Report(_))));
-        assert!(matches!(&results[2], Ok(Command::Clear(_))));
+        assert!(matches!(&results[2], Ok(Command::ClearExpenses(_))));
     }
 
     #[test]
@@ -339,7 +339,7 @@ mod tests {
         let results2 = parse_expenses(text2, None, timestamp);
 
         assert_eq!(results2.len(), 1);
-        assert!(matches!(&results2[0], Ok(Command::Clear(_))));
+        assert!(matches!(&results2[0], Ok(Command::ClearExpenses(_))));
 
         // Test with category command
         let text3 = "📂 /categories";
@@ -388,7 +388,7 @@ mod tests {
         assert!(matches!(&results[1], Ok(Command::Help(_))));
         assert!(matches!(&results[2], Ok(Command::List(_))));
         assert!(matches!(&results[3], Ok(Command::Report(_))));
-        assert!(matches!(&results[4], Ok(Command::Clear(_))));
+        assert!(matches!(&results[4], Ok(Command::ClearExpenses(_))));
         assert!(matches!(&results[5], Ok(Command::Categories(_))));
         assert!(matches!(&results[6], Ok(Command::ClearCategories(_))));
 

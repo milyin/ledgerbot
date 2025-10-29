@@ -69,6 +69,14 @@ pub trait CategoryStorageTrait: Send + Sync {
         category_name: &str,
     ) -> Result<(), MarkdownString>;
 
+    /// Rename a category for a specific chat
+    async fn rename_category(
+        &self,
+        chat_id: ChatId,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), MarkdownString>;
+
     /// Clear all categories for a specific chat
     async fn replace_categories(
         &self,

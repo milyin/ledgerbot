@@ -89,7 +89,10 @@ impl CommandTrait for CommandRemoveCategory {
                 name: Some(name.to_string()),
                 confirm: Some(true),
             },
-            None::<NoopCommand>,
+            Some(CommandRemoveCategory {
+                name: None,
+                confirm: None,
+            }),
         )
         .await
     }

@@ -3,7 +3,8 @@ use std::{collections::HashMap, sync::Arc};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_string, storage::ButtonData,
+    markdown_string,
+    storage::ButtonData,
 };
 
 use crate::storage_traits::CategoryStorageTrait;
@@ -55,17 +56,13 @@ impl CommandTrait for CommandClearCategories {
         // Show confirmation prompt with buttons
         let message = markdown_string!("🗑️ Confirm clearing all categories\\?");
 
-        let buttons = vec![
-            vec![
-                ButtonData::SwitchInlineQuery(
-                    "✅ Yes, Clear All".to_string(),
-                    CommandClearCategories {
-                        confirm: Some(true),
-                    }
-                    .to_command_string(false),
-                ),
-            ],
-        ];
+        let buttons = vec![vec![ButtonData::SwitchInlineQuery(
+            "✅ Yes, Clear All".to_string(),
+            CommandClearCategories {
+                confirm: Some(true),
+            }
+            .to_command_string(false),
+        )]];
 
         target.markdown_message_with_menu(message, buttons).await?;
         Ok(())

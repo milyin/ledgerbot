@@ -11,6 +11,7 @@ pub mod command_help;
 pub mod command_list;
 pub mod command_remove_category;
 pub mod command_remove_filter;
+pub mod command_rename_category;
 pub mod command_report;
 pub mod command_start;
 pub mod expenses;
@@ -33,8 +34,8 @@ use crate::{
         command_clear_expenses::CommandClearExpenses, command_edit_filter::CommandEditFilter,
         command_edit_words_filter::CommandEditWordsFilter, command_help::CommandHelp,
         command_list::CommandList, command_remove_category::CommandRemoveCategory,
-        command_remove_filter::CommandRemoveFilter, command_report::CommandReport,
-        command_start::CommandStart,
+        command_remove_filter::CommandRemoveFilter, command_rename_category::CommandRenameCategory,
+        command_report::CommandReport, command_start::CommandStart,
     },
     storage_traits::StorageTrait,
 };
@@ -102,6 +103,12 @@ pub enum Command {
     )]
     RemoveCategory(CommandRemoveCategory),
     #[command(
+        description = "rename expense category",
+        rename = "rename_category",
+        parse_with = CommandRenameCategory::parse_arguments
+    )]
+    RenameCategory(CommandRenameCategory),
+    #[command(
         description = "remove filter from category by position",
         rename = "remove_filter",
         parse_with = CommandRemoveFilter::parse_arguments
@@ -151,6 +158,7 @@ impl From<Command> for String {
             Command::AddCategory(add_category) => add_category.to_command_string(true),
             Command::AddFilter(add_filter) => add_filter.to_command_string(true),
             Command::RemoveCategory(remove_category) => remove_category.to_command_string(true),
+            Command::RenameCategory(rename_category) => rename_category.to_command_string(true),
             Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
             Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
             Command::AddExpense(add_expense) => add_expense.to_command_string(true),
@@ -223,6 +231,11 @@ pub async fn execute_command(
         }
         Command::RemoveCategory(remove_category) => {
             remove_category
+                .run(&target, storage.clone().as_category_storage())
+                .await?;
+        }
+        Command::RenameCategory(rename_category) => {
+            rename_category
                 .run(&target, storage.clone().as_category_storage())
                 .await?;
         }
