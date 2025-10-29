@@ -12,7 +12,9 @@ fn format_timestamp(timestamp: i64) -> String {
 /// Format expenses as a chronological list without category grouping
 /// Returns Ok(Vec<MarkdownString>) with one or more messages (split if needed to avoid overflow),
 /// or Err(MarkdownString) with error message
-pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<Vec<MarkdownString>, MarkdownString> {
+pub fn format_expenses_chronological(
+    expenses: &[Expense],
+) -> Result<Vec<MarkdownString>, MarkdownString> {
     if expenses.is_empty() {
         return Err(markdown_format!(
             "📝 No expenses recorded yet\\. Send a message like `2024\\-10\\-09 Coffee 5\\.50` to add one\\."
@@ -145,7 +147,11 @@ mod tests {
         let messages = result.unwrap();
 
         // Should have split into multiple messages
-        assert!(messages.len() > 1, "Expected multiple messages, got {}", messages.len());
+        assert!(
+            messages.len() > 1,
+            "Expected multiple messages, got {}",
+            messages.len()
+        );
 
         // All messages should be non-empty
         for (idx, message) in messages.iter().enumerate() {
@@ -153,7 +159,8 @@ mod tests {
         }
 
         // Verify all expenses are included across all messages
-        let combined = messages.iter()
+        let combined = messages
+            .iter()
             .map(|m| m.as_str())
             .collect::<Vec<_>>()
             .join("");

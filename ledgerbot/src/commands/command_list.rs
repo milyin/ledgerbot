@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::expenses::format_expenses_chronological, storage_traits::ExpenseStorageTrait,

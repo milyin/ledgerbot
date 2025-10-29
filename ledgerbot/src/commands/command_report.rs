@@ -4,7 +4,10 @@ use teloxide::prelude::ResponseResult;
 use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
-    commands::report::{check_category_conflicts, filter_category_expenses, format_category_summary, format_single_category_report},
+    commands::report::{
+        check_category_conflicts, filter_category_expenses, format_category_summary,
+        format_single_category_report,
+    },
     storage_traits::StorageTrait,
 };
 
@@ -123,7 +126,8 @@ impl CommandTrait for CommandReport {
             .unwrap_or_default();
 
         // Filter expenses for the category
-        let filtered_expenses = filter_category_expenses(category, &chat_expenses, &chat_categories);
+        let filtered_expenses =
+            filter_category_expenses(category, &chat_expenses, &chat_categories);
 
         // Calculate pagination
         let total_expenses = filtered_expenses.len();
@@ -135,7 +139,8 @@ impl CommandTrait for CommandReport {
         let total_amount: f64 = filtered_expenses.iter().map(|e| e.amount).sum();
 
         // Format category report with pagination (just the data)
-        let report_text = format_single_category_report(&filtered_expenses, *page_number, RECORDS_PER_PAGE);
+        let report_text =
+            format_single_category_report(&filtered_expenses, *page_number, RECORDS_PER_PAGE);
 
         // Build header with category name, page info, and total
         let message = if filtered_expenses.is_empty() {
@@ -212,7 +217,9 @@ impl CommandTrait for CommandReport {
         )];
         nav_buttons.push(back_button_row);
 
-        target.markdown_message_with_menu(message, nav_buttons).await?;
+        target
+            .markdown_message_with_menu(message, nav_buttons)
+            .await?;
 
         Ok(())
     }

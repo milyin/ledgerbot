@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
 use yoroolbot::{
-    command_trait::CommandTrait,
-    markdown::MarkdownString,
-    markdown_format, markdown_string,
+    command_trait::CommandTrait, markdown::MarkdownString, markdown_format, markdown_string,
     storage::ButtonData,
 };
 
@@ -118,9 +116,9 @@ pub fn filter_category_expenses<'a>(
             .iter()
             .filter(|expense| {
                 // Check if expense doesn't match any category
-                !category_matchers.iter().any(|(_, regexes)| {
-                    regexes.iter().any(|re| re.is_match(&expense.description))
-                })
+                !category_matchers
+                    .iter()
+                    .any(|(_, regexes)| regexes.iter().any(|re| re.is_match(&expense.description)))
             })
             .collect()
     } else {
@@ -188,7 +186,6 @@ pub fn format_single_category_report(
     page_number: usize,
     records_per_page: usize,
 ) -> String {
-
     if expenses.is_empty() {
         return String::new();
     }

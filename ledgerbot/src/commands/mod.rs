@@ -23,9 +23,7 @@ use teloxide::{
     types::{Chat, MessageId},
     utils::command::BotCommands,
 };
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait},
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::{
     commands::{

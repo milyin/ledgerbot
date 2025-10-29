@@ -29,7 +29,6 @@ pub struct MarkdownString(String, bool);
 const TRUNCATION_MARKER: &str = "\\.\\.\\.";
 
 impl MarkdownString {
-
     /// Creates a MarkdownString by escaping all markdown special characters in the input.
     /// This is safe to use with any string content as all special characters will be escaped.
     ///
@@ -734,7 +733,9 @@ mod tests {
     #[test]
     fn test_markdown_format_example_usage() {
         // Example usage showing how the macro would be used in practice
-        let template = MarkdownString::from_validated_string("Hello *{}*\\! Your balance is: ${}\\.".to_string());
+        let template = MarkdownString::from_validated_string(
+            "Hello *{}*\\! Your balance is: ${}\\.".to_string(),
+        );
 
         // Use the template with arguments that contain special characters
         let name = "Alice & Bob";
@@ -910,7 +911,10 @@ mod tests {
         let table = "Name    Amount\nFood      10.50\nTotal     10.50";
         let result = markdown_format!("{}", @code table);
 
-        assert_eq!(result.as_str(), "```\nName    Amount\nFood      10.50\nTotal     10.50\n```");
+        assert_eq!(
+            result.as_str(),
+            "```\nName    Amount\nFood      10.50\nTotal     10.50\n```"
+        );
     }
 
     #[test]
@@ -919,7 +923,10 @@ mod tests {
         let code = "fn main() { println!(\"Hello\"); }";
         let result = markdown_format!("{}", @code "rust" code);
 
-        assert_eq!(result.as_str(), "```rust\nfn main() { println!(\"Hello\"); }\n```");
+        assert_eq!(
+            result.as_str(),
+            "```rust\nfn main() { println!(\"Hello\"); }\n```"
+        );
     }
 
     #[test]
@@ -928,7 +935,10 @@ mod tests {
         let table = "Category  Amount\nFood        8.50\nOther      25.00";
         let result = markdown_format!("*Report*:\n{}", @code table);
 
-        assert_eq!(result.as_str(), "*Report*:\n```\nCategory  Amount\nFood        8.50\nOther      25.00\n```");
+        assert_eq!(
+            result.as_str(),
+            "*Report*:\n```\nCategory  Amount\nFood        8.50\nOther      25.00\n```"
+        );
     }
 
     #[test]
@@ -938,7 +948,10 @@ mod tests {
         let table = "Item    Amount\nCoffee    5.50\nTea       3.00";
         let result = markdown_format!("*{}*:\n{}", category, @code table);
 
-        assert_eq!(result.as_str(), "*Food*:\n```\nItem    Amount\nCoffee    5.50\nTea       3.00\n```");
+        assert_eq!(
+            result.as_str(),
+            "*Food*:\n```\nItem    Amount\nCoffee    5.50\nTea       3.00\n```"
+        );
     }
 
     #[test]
@@ -978,6 +991,9 @@ mod tests {
         let table = "Name   Value\nTest     123";
         let result = markdown_format!("{}: {}", @raw bold_text, @code table);
 
-        assert_eq!(result.as_str(), "*Important*: ```\nName   Value\nTest     123\n```");
+        assert_eq!(
+            result.as_str(),
+            "*Important*: ```\nName   Value\nTest     123\n```"
+        );
     }
 }
