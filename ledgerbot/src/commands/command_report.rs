@@ -135,7 +135,7 @@ impl CommandTrait for CommandReport {
         let total_amount: f64 = filtered_expenses.iter().map(|e| e.amount).sum();
 
         // Format category report with pagination (just the data)
-        let report_text = format_single_category_report(&filtered_expenses, *page_number);
+        let report_text = format_single_category_report(&filtered_expenses, *page_number, RECORDS_PER_PAGE);
 
         // Build header with category name, page info, and total
         let message = if filtered_expenses.is_empty() {

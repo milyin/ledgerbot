@@ -186,21 +186,21 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 pub fn format_single_category_report(
     expenses: &[&Expense],
     page_number: usize,
+    records_per_page: usize,
 ) -> String {
-    const RECORDS_PER_PAGE: usize = 25;
 
     if expenses.is_empty() {
         return String::new();
     }
 
     // Calculate page offset
-    let page_offset = page_number * RECORDS_PER_PAGE;
+    let page_offset = page_number * records_per_page;
 
     // Get records for current page
     let records_to_show: Vec<&Expense> = expenses
         .iter()
         .skip(page_offset)
-        .take(RECORDS_PER_PAGE)
+        .take(records_per_page)
         .copied()
         .collect();
 
