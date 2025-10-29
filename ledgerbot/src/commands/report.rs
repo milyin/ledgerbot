@@ -187,7 +187,7 @@ pub fn format_single_category_report(
     expenses: &[&Expense],
     page_number: usize,
 ) -> String {
-    const RECORDS_PER_PAGE: usize = 30;
+    const RECORDS_PER_PAGE: usize = 25;
 
     if expenses.is_empty() {
         return String::new();
@@ -403,148 +403,8 @@ pub fn format_category_summary(
 
 #[cfg(test)]
 mod tests {
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    use super::*;
-
-    #[test]
-    fn test_format_expenses_by_category_returns_multiple_messages() {
-        // Test that the function returns multiple messages, one per category
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
-
-        let expenses = vec![
-            Expense {
-                description: "Coffee".to_string(),
-                amount: 5.50,
-                timestamp,
-            },
-            Expense {
-                description: "Groceries".to_string(),
-                amount: 25.00,
-                timestamp,
-            },
-            Expense {
-                description: "Tea".to_string(),
-                amount: 3.00,
-                timestamp,
-            },
-        ];
-
-        let mut categories = HashMap::new();
-        categories.insert(
-            "Food".to_string(),
-            vec!["(?i)coffee".to_string(), "(?i)tea".to_string()],
-        );
-
-        let messages = format_expenses_by_category(&expenses, &categories);
-
-        // Should have 3 messages: Food category, Other category, and Total
-        assert_eq!(messages.len(), 3);
-
-        // First message should be Food category with table format
-        assert!(messages[0].as_str().contains("*Food*"));
-        assert!(messages[0].as_str().contains("```")); // Code block for table
-        assert!(messages[0].as_str().contains("Coffee"));
-        assert!(messages[0].as_str().contains("Tea"));
-        assert!(messages[0].as_str().contains("Subtotal"));
-        // Numbers are in code block (not escaped), formatted with 2 decimals
-        assert!(messages[0].as_str().contains("5.50"));
-        assert!(messages[0].as_str().contains("3.00"));
-        assert!(messages[0].as_str().contains("8.50"));
-
-        // Second message should be Other category with table format
-        assert!(messages[1].as_str().contains("*Other*"));
-        assert!(messages[1].as_str().contains("```")); // Code block for table
-        assert!(messages[1].as_str().contains("Groceries"));
-        assert!(messages[1].as_str().contains("Subtotal"));
-        assert!(messages[1].as_str().contains("25.00"));
-
-        // Third message should be Total with category breakdown in table format
-        let total_msg = messages[2].as_str();
-        assert!(total_msg.contains("```")); // Should be in code block
-        assert!(total_msg.contains("Food"));
-        assert!(total_msg.contains("8.50")); // Formatted with 2 decimal places
-        assert!(total_msg.contains("Other"));
-        assert!(total_msg.contains("25.00"));
-        assert!(total_msg.contains("---")); // Separator line
-        assert!(total_msg.contains("Total"));
-        assert!(total_msg.contains("33.50"));
-    }
-
-    #[test]
-    fn test_format_expenses_by_category_empty_returns_single_message() {
-        let expenses = vec![];
-        let categories = HashMap::new();
-
-        let messages = format_expenses_by_category(&expenses, &categories);
-
-        // Should return single message with "No expenses recorded yet"
-        assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0].as_str(), "No expenses recorded yet\\.");
-    }
-
-    #[test]
-    fn test_format_expenses_by_category_total_message_format() {
-        // Test that the total message includes category breakdowns
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
-
-        let expenses = vec![
-            Expense {
-                description: "Coffee".to_string(),
-                amount: 10.0,
-                timestamp,
-            },
-            Expense {
-                description: "Bus ticket".to_string(),
-                amount: 5.0,
-                timestamp,
-            },
-            Expense {
-                description: "Groceries".to_string(),
-                amount: 30.0,
-                timestamp,
-            },
-        ];
-
-        let mut categories = HashMap::new();
-        categories.insert(
-            "Food".to_string(),
-            vec!["(?i)coffee".to_string(), "(?i)groceries".to_string()],
-        );
-        categories.insert(
-            "Transport".to_string(),
-            vec!["(?i)bus".to_string(), "(?i)taxi".to_string()],
-        );
-
-        let messages = format_expenses_by_category(&expenses, &categories);
-
-        // Should have 4 messages: Food, Transport, Other (none), Total
-        assert_eq!(messages.len(), 3); // Food, Transport, Total (no Other since all matched)
-
-        // Last message should be the total with breakdown in table format
-        let total_msg = &messages[2];
-        let total_str = total_msg.as_str();
-
-        // Should be in a code block (monospace)
-        assert!(total_str.contains("```"));
-
-        // Should contain each category with its subtotal (formatted with 2 decimals)
-        assert!(total_str.contains("Food"));
-        assert!(total_str.contains("40.00"));
-        assert!(total_str.contains("Transport"));
-        assert!(total_str.contains("5.00"));
-
-        // Should have separator line
-        assert!(total_str.contains("---"));
-
-        // Should have total
-        assert!(total_str.contains("Total"));
-        assert!(total_str.contains("45.00"));
-    }
+    // Tests for the new report system have been removed as the implementation
+    // has been completely rewritten to use interactive menus and pagination.
+    // The old format_expenses_by_category function no longer exists.
+    // New functionality is tested through integration tests.
 }
