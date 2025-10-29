@@ -33,5 +33,5 @@ if [ ! -d "target/openssl-3.6.0" ]; then
   cd ../../
 fi
 
-OPENSSL_DIR=$PWD/target/openssl-3.6.0/install cargo build --target=x86_64-unknown-linux-gnu $CARGO_BUILD_FLAGS
+OPENSSL_DIR=$PWD/target/openssl-3.6.0/install cargo build --package ledgerbot --target=x86_64-unknown-linux-gnu $CARGO_BUILD_FLAGS
 strip target/x86_64-unknown-linux-gnu/$BUILD_DIR/ledgerbot

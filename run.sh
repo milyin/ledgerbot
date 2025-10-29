@@ -30,6 +30,7 @@ echo "Starting ledgerbot on remote host ${DEPLOY_HOST}..."
 echo "Press Ctrl+C to stop the remote process and exit"
 echo "----------------------------------------"
 
+ssh ${DEPLOY_USER}@${DEPLOY_HOST} "rm -f ${DEPLOY_PATH}/ledgerbot"
 scp target/x86_64-unknown-linux-gnu/$BUILD_DIR/ledgerbot ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/ledgerbot
 
 # make ls command to show the deployed binary details

@@ -1,0 +1,21 @@
+[package]
+name = "ledgerbot"
+version = "0.2.0"
+edition = "2024"
+
+[[bin]]
+name = "ledgerbot"
+path = "src/main.rs"
+
+[dependencies]
+teloxide = { workspace = true }
+log = { workspace = true }
+pretty_env_logger = { workspace = true }
+tokio = { workspace = true }
+clap = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+chrono = { workspace = true }
+async-trait = { workspace = true }
+yoroolbot = { path = "../yoroolbot" }
