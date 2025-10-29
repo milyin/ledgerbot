@@ -250,9 +250,84 @@ fn date_str_len() -> usize {
     10
 }
 
-/// Format a stub message for single category report
-pub fn format_single_category_report(category_name: &str) -> MarkdownString {
-    markdown_format!("Category report for *{}* \\(stub\\)", category_name)
+/// Filter expenses for a specific category
+pub fn filter_category_expenses<'a>(
+    category_name: &str,
+    all_expenses: &'a [Expense],
+    categories: &HashMap<String, Vec<String>>,
+) -> Vec<&'a Expense> {
+    if category_name == "Other" {
+        // "Other" category: uncategorized expenses
+        let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
+            .iter()
+            .map(|(name, patterns)| {
+                let regexes: Vec<regex::Regex> = patterns
+                    .iter()
+                    .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                    .collect();
+                (name.clone(), regexes)
+            })
+            .collect();
+
+        all_expenses
+            .iter()
+            .filter(|expense| {
+                // Check if expense doesn't match any category
+                !category_matchers.iter().any(|(_, regexes)| {
+                    regexes.iter().any(|re| re.is_match(&expense.description))
+                })
+            })
+            .collect()
+    } else {
+        // Specific category: expenses matching this category's filters
+        let patterns = categories.get(category_name);
+        if let Some(patterns) = patterns {
+            let regexes: Vec<regex::Regex> = patterns
+                .iter()
+                .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                .collect();
+
+            all_expenses
+                .iter()
+                .filter(|expense| regexes.iter().any(|re| re.is_match(&expense.description)))
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+}
+
+/// Format a simple report for single category with first 30 records
+pub fn format_single_category_report(
+    category_name: &str,
+    expenses: &[&Expense],
+) -> MarkdownString {
+    if expenses.is_empty() {
+        return markdown_format!("*{}*: No expenses in this category\\.", category_name);
+    }
+
+    // Take first 30 records
+    let records_to_show: Vec<&Expense> = expenses.iter().take(30).copied().collect();
+
+    // Build simple text report
+    let mut report_lines = Vec::new();
+
+    for expense in &records_to_show {
+        let date_str = format_timestamp(expense.timestamp);
+        let line = format!(
+            "{}  {}  {}",
+            date_str.as_str(),
+            expense.description,
+            expense.amount
+        );
+        report_lines.push(line);
+    }
+
+    // Join all lines
+    let report = report_lines.join("\n");
+
+    // Wrap in code block with header
+    markdown_format!("*{}*:\n{}", category_name, @code report)
 }
 
 /// Format category summary with interactive menu for category selection

@@ -4,7 +4,7 @@ use teloxide::prelude::ResponseResult;
 use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
-    commands::report::{check_category_conflicts, format_category_summary, format_single_category_report},
+    commands::report::{check_category_conflicts, filter_category_expenses, format_category_summary, format_single_category_report},
     storage_traits::StorageTrait,
 };
 
@@ -88,11 +88,27 @@ impl CommandTrait for CommandReport {
     async fn run1(
         &self,
         target: &CommandReplyTarget,
-        _storage: Self::Context,
+        storage: Self::Context,
         category: &Self::A,
     ) -> ResponseResult<()> {
-        // Show stub message for category report
-        let message = format_single_category_report(category);
+        let chat_id = target.chat.id;
+        let chat_expenses = storage
+            .clone()
+            .as_expense_storage()
+            .get_chat_expenses(chat_id)
+            .await;
+        let chat_categories = storage
+            .clone()
+            .as_category_storage()
+            .get_chat_categories(chat_id)
+            .await
+            .unwrap_or_default();
+
+        // Filter expenses for the category
+        let filtered_expenses = filter_category_expenses(category, &chat_expenses, &chat_categories);
+
+        // Format category report with first 30 records
+        let message = format_single_category_report(category, &filtered_expenses);
 
         // Add a "Back" button to return to summary view
         let back_button = vec![vec![yoroolbot::storage::ButtonData::Callback(
