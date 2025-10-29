@@ -95,161 +95,6 @@ pub fn check_category_conflicts(
     None
 }
 
-/// Format expenses as multiple messages, one per category, plus a final total message
-pub fn format_expenses_by_category(
-    expenses: &[Expense],
-    categories: &HashMap<String, Vec<String>>,
-) -> Vec<MarkdownString> {
-    if expenses.is_empty() {
-        return vec![markdown_string!("No expenses recorded yet\\.")];
-    }
-
-    let mut messages = Vec::new();
-
-    // Build regex matchers for each category (from all patterns)
-    let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
-        .iter()
-        .map(|(name, patterns)| {
-            let regexes: Vec<regex::Regex> = patterns
-                .iter()
-                .filter_map(|pattern| regex::Regex::new(pattern).ok())
-                .collect();
-            (name.clone(), regexes)
-        })
-        .collect();
-
-    // Group expenses by category
-    let mut categorized: HashMap<String, Vec<Expense>> = HashMap::new();
-    let mut uncategorized: Vec<Expense> = Vec::new();
-
-    for expense in expenses.iter() {
-        let mut matched = false;
-
-        // Try to match against each category
-        for (category_name, regexes) in &category_matchers {
-            // Check if description matches any of the patterns in this category
-            if regexes.iter().any(|re| re.is_match(&expense.description)) {
-                categorized
-                    .entry(category_name.clone())
-                    .or_default()
-                    .push(expense.clone());
-                matched = true;
-                break; // Each expense goes into first matching category
-            }
-        }
-
-        if !matched {
-            uncategorized.push(expense.clone());
-        }
-    }
-
-    // Sort category names for consistent output
-    let mut category_names: Vec<String> = categorized.keys().cloned().collect();
-    category_names.sort();
-
-    let mut total = 0.0;
-    let mut category_subtotals: Vec<(String, f64)> = Vec::new();
-
-    // Create a message for each category
-    for category_name in category_names {
-        if let Some(items) = categorized.get(&category_name) {
-            let (section, category_total) = format_category_message(&category_name, items);
-            messages.push(section);
-            category_subtotals.push((category_name.clone(), category_total));
-            total += category_total;
-        }
-    }
-
-    // Create a message for uncategorized expenses
-    if !uncategorized.is_empty() {
-        let (section, category_total) = format_category_message("Other", &uncategorized);
-        messages.push(section);
-        category_subtotals.push(("Other".to_string(), category_total));
-        total += category_total;
-    }
-
-    // Add final total message with category breakdown as a table
-    if !messages.is_empty() {
-        // Find the maximum category name length for alignment
-        let max_name_len = category_subtotals
-            .iter()
-            .map(|(name, _)| name.len())
-            .max()
-            .unwrap_or(0)
-            .max(5); // At least as wide as "Total"
-
-        // Build the table content
-        let mut table_lines = Vec::new();
-
-        // Add each category row
-        for (category_name, subtotal) in &category_subtotals {
-            let padded_name = format!("{:<width$}", category_name, width = max_name_len);
-            let amount_str = format!("{:>10.2}", subtotal);
-            table_lines.push(format!("{} {}", padded_name, amount_str));
-        }
-
-        // Add separator line
-        table_lines.push("-".repeat(max_name_len + 11));
-
-        // Add total row
-        let total_label = format!("{:<width$}", "Total", width = max_name_len);
-        let total_amount = format!("{:>10.2}", total);
-        table_lines.push(format!("{} {}", total_label, total_amount));
-
-        // Join all lines and use @code modifier to wrap in code block
-        let table_content = table_lines.join("\n");
-        let total_message = markdown_format!("{}", @code table_content);
-
-        messages.push(total_message);
-    }
-
-    messages
-}
-
-/// Helper function to format a single category as a standalone message
-fn format_category_message(category_name: &str, expenses: &[Expense]) -> (MarkdownString, f64) {
-    let mut category_total = 0.0;
-
-    // Find the maximum description length for alignment
-    let max_desc_len = expenses
-        .iter()
-        .map(|e| e.description.len())
-        .max()
-        .unwrap_or(0)
-        .max(9); // At least as wide as "Subtotal:"
-
-    // Build the table content
-    let mut table_lines = Vec::new();
-
-    for expense in expenses {
-        let date_str = format_timestamp(expense.timestamp);
-        let padded_desc = format!("{:<width$}", expense.description, width = max_desc_len);
-        let amount_str = format!("{:>10.2}", expense.amount);
-        table_lines.push(format!("{}  {} {}", date_str.as_str(), padded_desc, amount_str));
-        category_total += expense.amount;
-    }
-
-    // Add separator line
-    table_lines.push("-".repeat(date_str_len() + 2 + max_desc_len + 11));
-
-    // Add subtotal row
-    let subtotal_label = format!("{:<width$}", "Subtotal:", width = date_str_len() + 2 + max_desc_len);
-    let subtotal_amount = format!("{:>10.2}", category_total);
-    table_lines.push(format!("{} {}", subtotal_label, subtotal_amount));
-
-    // Join all lines and use @code modifier to wrap in code block
-    let table_content = table_lines.join("\n");
-    let section = markdown_format!("*{}*:\n{}", category_name, @code table_content);
-
-    (section, category_total)
-}
-
-/// Helper function to get the length of the formatted date string
-fn date_str_len() -> usize {
-    // Date format is "YYYY-MM-DD" which is always 10 characters
-    10
-}
-
 /// Filter expenses for a specific category
 pub fn filter_category_expenses<'a>(
     category_name: &str,
@@ -337,17 +182,15 @@ fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
 }
 
 /// Format a simple report for single category with pagination
+/// Returns only the formatted expense data (without header or total)
 pub fn format_single_category_report(
-    category_name: &str,
     expenses: &[&Expense],
     page_number: usize,
-    total_pages: usize,
-    total_amount: f64,
-) -> MarkdownString {
+) -> String {
     const RECORDS_PER_PAGE: usize = 30;
 
     if expenses.is_empty() {
-        return markdown_format!("*{}*: No expenses in this category\\.", category_name);
+        return String::new();
     }
 
     // Calculate page offset
@@ -425,24 +268,8 @@ pub fn format_single_category_report(
         }
     }
 
-    // Join all lines
-    let report = report_lines.join("\n");
-
-    // Build header with category name, page info, and total
-    let header = if total_pages > 1 {
-        markdown_format!(
-            "*{}* \\(page {}/{}\\), total: {}:",
-            category_name,
-            page_number + 1,
-            total_pages,
-            total_amount
-        )
-    } else {
-        markdown_format!("*{}*, total: {}:", category_name, total_amount)
-    };
-
-    // Wrap in code block with header
-    header + &markdown_format!("\n{}", @code report)
+    // Join all lines and return
+    report_lines.join("\n")
 }
 
 /// Format category summary with interactive menu for category selection

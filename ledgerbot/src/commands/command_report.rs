@@ -107,7 +107,7 @@ impl CommandTrait for CommandReport {
         category: &Self::A,
         page: &Self::B,
     ) -> ResponseResult<()> {
-        const RECORDS_PER_PAGE: usize = 30;
+        const RECORDS_PER_PAGE: usize = 25;
 
         let chat_id = target.chat.id;
         let chat_expenses = storage
@@ -134,14 +134,29 @@ impl CommandTrait for CommandReport {
         // Calculate total amount for the category
         let total_amount: f64 = filtered_expenses.iter().map(|e| e.amount).sum();
 
-        // Format category report with pagination
-        let message = format_single_category_report(
-            category,
-            &filtered_expenses,
-            *page_number,
-            total_pages,
-            total_amount,
-        );
+        // Format category report with pagination (just the data)
+        let report_text = format_single_category_report(&filtered_expenses, *page_number);
+
+        // Build header with category name, page info, and total
+        let message = if filtered_expenses.is_empty() {
+            yoroolbot::markdown_format!("*{}*: No expenses in this category\\.", category)
+        } else if total_pages > 1 {
+            yoroolbot::markdown_format!(
+                "*{}*, total `{}`,  page {}/{}\n{}",
+                category,
+                total_amount,
+                page_number + 1,
+                total_pages,
+                @code report_text
+            )
+        } else {
+            yoroolbot::markdown_format!(
+                "*{}*, total `{}`\n{}",
+                category,
+                total_amount,
+                @code report_text
+            )
+        };
 
         // Create navigation buttons
         let mut nav_buttons = Vec::new();
