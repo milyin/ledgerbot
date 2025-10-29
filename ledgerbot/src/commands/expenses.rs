@@ -10,8 +10,9 @@ fn format_timestamp(timestamp: i64) -> String {
 }
 
 /// Format expenses as a chronological list without category grouping
-/// Returns Ok(String) with plain text list of expenses, or Err(MarkdownString) with error message
-pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<MarkdownString, MarkdownString> {
+/// Returns Ok(Vec<MarkdownString>) with one or more messages (split if needed to avoid overflow),
+/// or Err(MarkdownString) with error message
+pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<Vec<MarkdownString>, MarkdownString> {
     if expenses.is_empty() {
         return Err(markdown_format!(
             "📝 No expenses recorded yet\\. Send a message like `2024\\-10\\-09 Coffee 5\\.50` to add one\\."
@@ -22,19 +23,43 @@ pub fn format_expenses_chronological(expenses: &[Expense]) -> Result<MarkdownStr
     let mut sorted_expenses = expenses.to_vec();
     sorted_expenses.sort_by_key(|e| e.timestamp);
 
-    let mut result = MarkdownString::new();
+    let mut messages = Vec::new();
+    let mut current_message = MarkdownString::new();
 
     for expense in sorted_expenses {
         let date_str = format_timestamp(expense.timestamp);
-        result = result + &markdown_format!(
+        let expense_line = markdown_format!(
             "{} {} {}\n",
             &date_str,
             &expense.description,
             &expense.amount.to_string()
         );
+
+        // Try to add the expense line to current message
+        let mut test_message = current_message.clone();
+        test_message.push(&expense_line);
+
+        if test_message.is_truncated() {
+            // Current message would overflow, start a new one
+            if current_message.as_str().is_empty() {
+                // Edge case: single expense line is too long, add it anyway
+                current_message.push(&expense_line);
+            }
+            messages.push(current_message);
+            current_message = MarkdownString::new();
+            current_message.push(&expense_line);
+        } else {
+            // Line fits, update current message
+            current_message = test_message;
+        }
     }
 
-    Ok(result)
+    // Add the last message if it has content
+    if !current_message.as_str().is_empty() {
+        messages.push(current_message);
+    }
+
+    Ok(messages)
 }
 
 #[cfg(test)]
@@ -69,10 +94,14 @@ mod tests {
         let result = format_expenses_chronological(&expenses);
 
         // Check that expenses are listed in chronological order
-        // Function returns Ok with MarkdownString
+        // Function returns Ok with Vec<MarkdownString>
         assert!(result.is_ok());
-        let message = result.unwrap();
-        let content = message.as_str();
+        let messages = result.unwrap();
+        assert!(!messages.is_empty());
+
+        // For small list, should be in a single message
+        assert_eq!(messages.len(), 1);
+        let content = messages[0].as_str();
         assert!(content.contains("Coffee"));
         assert!(content.contains("Lunch"));
         assert!(content.contains("Dinner"));
@@ -91,5 +120,47 @@ mod tests {
         assert!(result.is_err());
         let error_msg = result.unwrap_err();
         assert!(error_msg.as_str().contains("No expenses recorded yet"));
+    }
+
+    #[test]
+    fn test_format_expenses_chronological_large_list() {
+        // Create a large list of expenses that should trigger message splitting
+        // Each expense line is approximately 40-50 characters
+        // Telegram limit is 4096 characters, so we need ~100+ expenses
+        let base_timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let mut expenses = Vec::new();
+
+        for i in 0..150 {
+            expenses.push(Expense {
+                description: format!("Expense number {}", i),
+                amount: 10.50 + (i as f64),
+                timestamp: base_timestamp + (i * 86400), // One day apart
+            });
+        }
+
+        let result = format_expenses_chronological(&expenses);
+
+        // Should return Ok with multiple messages
+        assert!(result.is_ok());
+        let messages = result.unwrap();
+
+        // Should have split into multiple messages
+        assert!(messages.len() > 1, "Expected multiple messages, got {}", messages.len());
+
+        // All messages should be non-empty
+        for (idx, message) in messages.iter().enumerate() {
+            assert!(!message.as_str().is_empty(), "Message {} is empty", idx);
+        }
+
+        // Verify all expenses are included across all messages
+        let combined = messages.iter()
+            .map(|m| m.as_str())
+            .collect::<Vec<_>>()
+            .join("");
+
+        // Check a few sample expenses are present
+        assert!(combined.contains("Expense number 0"));
+        assert!(combined.contains("Expense number 50"));
+        assert!(combined.contains("Expense number 149"));
     }
 }
