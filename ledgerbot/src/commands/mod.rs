@@ -68,9 +68,10 @@ pub enum Command {
     Report(CommandReport),
     #[command(
         description = "clear all expenses",
+        rename = "clear_expenses",
         parse_with = CommandClearExpenses::parse_arguments
     )]
-    Clear(CommandClearExpenses),
+    ClearExpenses(CommandClearExpenses),
     #[command(
         description = "list all categories with filters in command format",
         parse_with = CommandCategories::parse_arguments
@@ -144,7 +145,7 @@ impl From<Command> for String {
             Command::Help(help) => help.to_command_string(true),
             Command::List(list) => list.to_command_string(true),
             Command::Report(report) => report.to_command_string(true),
-            Command::Clear(clear) => clear.to_command_string(true),
+            Command::ClearExpenses(clear_expenses) => clear_expenses.to_command_string(true),
             Command::Categories(categories) => categories.to_command_string(true),
             Command::ClearCategories(clear_categories) => clear_categories.to_command_string(true),
             Command::AddCategory(add_category) => add_category.to_command_string(true),
@@ -197,8 +198,8 @@ pub async fn execute_command(
         Command::Report(report) => {
             report.run(&target, storage.clone()).await?;
         }
-        Command::Clear(clear) => {
-            clear
+        Command::ClearExpenses(clear_expenses) => {
+            clear_expenses
                 .run(&target, storage.clone().as_expense_storage())
                 .await?;
         }
