@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fmt::Display, str::FromStr, sync::Arc};
 
 use teloxide::types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup};
 use tokio::sync::Mutex;
@@ -45,11 +45,65 @@ pub trait CallbackDataStorageTrait: Send + Sync {
     async fn clear_message_callbacks(&self, chat_id: ChatId, message_id: i32);
 }
 
-/// Callback data storage - maps (chat_id, message_id, button_pos) to full callback data
+/// The key for the callback data storage map
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CallbackDataKey {
+    chat_id: ChatId,
+    message_id: i32,
+    button_pos: usize,
+}
+
+impl CallbackDataKey {
+    pub fn new(chat_id: ChatId, message_id: i32, button_pos: usize) -> Self {
+        Self {
+            chat_id,
+            message_id,
+            button_pos,
+        }
+    }
+}
+
+/// Implementation to string conversion for CallbackDataKey
+/// This is used to create unique references in the button callback data
+impl Display for CallbackDataKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "cb:{}:{}:{}",
+            self.chat_id.0, self.message_id, self.button_pos
+        )
+    }
+}
+
+/// Try to convert from string to CallbackDataKey
+/// Returns None if the string is not in the expected format
+/// Example format: "cb:{chat_id}:{message_id}:{button_pos}"
+impl std::str::FromStr for CallbackDataKey {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split(':').collect();
+        if parts.len() != 4 || parts[0] != "cb" {
+            return Err(());
+        }
+
+        let chat_id = parts[1].parse::<i64>().map_err(|_| ())?;
+        let message_id = parts[2].parse::<i32>().map_err(|_| ())?;
+        let button_pos = parts[3].parse::<usize>().map_err(|_| ())?;
+
+        Ok(CallbackDataKey::new(
+            ChatId(chat_id),
+            message_id,
+            button_pos,
+        ))
+    }
+}
+
+/// The CallbackDataStorage implementation which maps short references to full callback data
 /// This is used to work around Telegram's 64-byte limit on callback data
 #[derive(Clone)]
 pub struct CallbackDataStorage {
-    data: Arc<Mutex<HashMap<(ChatId, i32, usize), String>>>,
+    data: Arc<Mutex<HashMap<CallbackDataKey, String>>>,
 }
 
 impl CallbackDataStorage {
@@ -77,32 +131,22 @@ impl CallbackDataStorageTrait for CallbackDataStorage {
         data: String,
     ) -> String {
         let mut storage_guard = self.data.lock().await;
-        let key = (chat_id, message_id, button_pos);
+        let key = CallbackDataKey::new(chat_id, message_id, button_pos);
+        let reference = key.to_string();
         storage_guard.insert(key, data);
-        // Return a compact reference string: "cb:{chat_id}:{message_id}:{button_pos}"
-        format!("cb:{}:{}:{}", chat_id, message_id, button_pos)
+        reference
     }
 
     async fn get_callback_data(&self, reference: &str) -> Option<String> {
-        // Parse reference string: "cb:{chat_id}:{message_id}:{button_pos}"
-        let parts: Vec<&str> = reference.split(':').collect();
-        if parts.len() != 4 || parts[0] != "cb" {
-            return None;
-        }
-
-        let chat_id = parts[1].parse::<i64>().ok()?;
-        let message_id = parts[2].parse::<i32>().ok()?;
-        let button_pos = parts[3].parse::<usize>().ok()?;
+        let key = CallbackDataKey::from_str(reference).ok()?;
 
         let storage_guard = self.data.lock().await;
-        storage_guard
-            .get(&(ChatId(chat_id), message_id, button_pos))
-            .cloned()
+        storage_guard.get(&key).cloned()
     }
 
     async fn clear_message_callbacks(&self, chat_id: ChatId, message_id: i32) {
         let mut storage_guard = self.data.lock().await;
-        storage_guard.retain(|(cid, mid, _), _| *cid != chat_id || *mid != message_id);
+        storage_guard.retain(|key, _| key.chat_id != chat_id || key.message_id != message_id);
     }
 }
 
