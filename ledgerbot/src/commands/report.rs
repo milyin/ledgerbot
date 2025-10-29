@@ -309,14 +309,26 @@ pub fn format_single_category_report(
     // Take first 30 records
     let records_to_show: Vec<&Expense> = expenses.iter().take(30).copied().collect();
 
-    // Build simple text report
+    // Build simple text report, skipping repeating dates
     let mut report_lines = Vec::new();
+    let mut last_date: Option<String> = None;
 
     for expense in &records_to_show {
         let date_str = format_timestamp(expense.timestamp);
+
+        // Check if date is same as previous
+        let date_field = if last_date.as_ref() == Some(&date_str.as_str().to_string()) {
+            // Skip repeating date - use spaces instead
+            " ".repeat(10) // Date is always 10 characters (YYYY-MM-DD)
+        } else {
+            // New date, show it and remember
+            last_date = Some(date_str.as_str().to_string());
+            date_str.as_str().to_string()
+        };
+
         let line = format!(
             "{}  {}  {}",
-            date_str.as_str(),
+            date_field,
             expense.description,
             expense.amount
         );
