@@ -297,6 +297,37 @@ pub fn filter_category_expenses<'a>(
     }
 }
 
+/// Wrap text to a maximum width, breaking at word boundaries
+fn wrap_text(text: &str, max_width: usize) -> Vec<String> {
+    if text.len() <= max_width {
+        return vec![text.to_string()];
+    }
+
+    let mut lines = Vec::new();
+    let mut current_line = String::new();
+
+    for word in text.split_whitespace() {
+        if current_line.is_empty() {
+            // First word on the line - keep it whole even if longer than max_width
+            current_line = word.to_string();
+        } else if current_line.len() + 1 + word.len() <= max_width {
+            // Word fits on current line
+            current_line.push(' ');
+            current_line.push_str(word);
+        } else {
+            // Start new line
+            lines.push(current_line);
+            current_line = word.to_string();
+        }
+    }
+
+    if !current_line.is_empty() {
+        lines.push(current_line);
+    }
+
+    lines
+}
+
 /// Format a simple report for single category with first 30 records
 pub fn format_single_category_report(
     category_name: &str,
@@ -308,6 +339,15 @@ pub fn format_single_category_report(
 
     // Take first 30 records
     let records_to_show: Vec<&Expense> = expenses.iter().take(30).copied().collect();
+
+    // Find maximum amount width for alignment
+    let max_amount_width = records_to_show
+        .iter()
+        .map(|e| format!("{:.2}", e.amount).len())
+        .max()
+        .unwrap_or(0);
+
+    const DESCRIPTION_WIDTH: usize = 20;
 
     // Build simple text report, skipping repeating dates
     let mut report_lines = Vec::new();
@@ -326,13 +366,30 @@ pub fn format_single_category_report(
             date_str.as_str().to_string()
         };
 
-        let line = format!(
+        // Wrap description to max width
+        let description_lines = wrap_text(&expense.description, DESCRIPTION_WIDTH);
+
+        // Format with aligned amount after description
+        let amount_str = format!("{:>width$.2}", expense.amount, width = max_amount_width);
+
+        // First line with date, description, and amount
+        let first_line = format!(
             "{}  {}  {}",
             date_field,
-            expense.description,
-            expense.amount
+            format!("{:<width$}", description_lines[0], width = DESCRIPTION_WIDTH),
+            amount_str
         );
-        report_lines.push(line);
+        report_lines.push(first_line);
+
+        // Additional lines for wrapped description (if any)
+        for desc_line in description_lines.iter().skip(1) {
+            let continuation_line = format!(
+                "{}  {}",
+                " ".repeat(10), // Date column
+                format!("{:<width$}", desc_line, width = DESCRIPTION_WIDTH)
+            );
+            report_lines.push(continuation_line);
+        }
     }
 
     // Join all lines
