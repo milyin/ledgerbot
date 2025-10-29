@@ -88,73 +88,11 @@ impl CommandTrait for CommandReport {
     async fn run1(
         &self,
         target: &CommandReplyTarget,
-        storage: Self::Context,
+        _storage: Self::Context,
         category: &Self::A,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-        let chat_expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_chat_expenses(chat_id)
-            .await;
-        let chat_categories = storage
-            .clone()
-            .as_category_storage()
-            .get_chat_categories(chat_id)
-            .await
-            .unwrap_or_default();
-
-        // Check for category conflicts before generating report
-        if let Some(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
-            target.markdown_message(conflict_message).await?;
-            return Ok(());
-        }
-
-        // Filter expenses for the requested category
-        let category_expenses: Vec<_> = if category == "Other" {
-            // "Other" category: uncategorized expenses
-            let category_matchers: Vec<(String, Vec<regex::Regex>)> = chat_categories
-                .iter()
-                .map(|(name, patterns)| {
-                    let regexes: Vec<regex::Regex> = patterns
-                        .iter()
-                        .filter_map(|pattern| regex::Regex::new(pattern).ok())
-                        .collect();
-                    (name.clone(), regexes)
-                })
-                .collect();
-
-            chat_expenses
-                .iter()
-                .filter(|expense| {
-                    // Check if expense doesn't match any category
-                    !category_matchers.iter().any(|(_, regexes)| {
-                        regexes.iter().any(|re| re.is_match(&expense.description))
-                    })
-                })
-                .cloned()
-                .collect()
-        } else {
-            // Specific category: expenses matching this category's filters
-            let patterns = chat_categories.get(category);
-            if let Some(patterns) = patterns {
-                let regexes: Vec<regex::Regex> = patterns
-                    .iter()
-                    .filter_map(|pattern| regex::Regex::new(pattern).ok())
-                    .collect();
-
-                chat_expenses
-                    .iter()
-                    .filter(|expense| regexes.iter().any(|re| re.is_match(&expense.description)))
-                    .cloned()
-                    .collect()
-            } else {
-                Vec::new()
-            }
-        };
-
-        // Format the report using line-by-line approach with overflow detection
-        let message = format_single_category_report(category, &category_expenses);
+        // Show stub message for category report
+        let message = format_single_category_report(category);
 
         // Add a "Back" button to return to summary view
         let back_button = vec![vec![yoroolbot::storage::ButtonData::Callback(
