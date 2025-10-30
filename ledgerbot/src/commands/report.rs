@@ -5,7 +5,7 @@ use yoroolbot::{
     storage::ButtonData,
 };
 
-use crate::{storages::storage_traits::Expense, utils::format_timestamp};
+use crate::{storages::Expense, utils::format_timestamp};
 
 /// Represents a conflict where an expense matches multiple categories
 #[derive(Debug, Clone)]

@@ -6,7 +6,7 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, storage::unpac
 use crate::{
     batch::{add_to_batch, execute_batch},
     commands::{Command, execute_command},
-    storages::storage_traits::StorageTrait,
+    storages::StorageTrait,
     utils::parse_expenses::parse_expenses,
 };
 

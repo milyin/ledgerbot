@@ -10,7 +10,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::storage_traits::CategoryStorageTrait;
+use crate::storages::CategoryStorageTrait;
 
 pub fn create_buttons_menu(
     titles: &[String],

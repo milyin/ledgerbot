@@ -4,7 +4,7 @@ use teloxide::types::ChatId;
 
 use crate::{
     menus::select_word::Words,
-    storages::storage_traits::{Expense, StorageTrait},
+    storages::{Expense, StorageTrait},
 };
 
 /// Extract unique words from uncategorized expenses
@@ -102,7 +102,7 @@ pub async fn extract_and_merge_words(
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{storages::storage_traits::Expense, utils::extract_words::extract_words};
+    use crate::{storages::Expense, utils::extract_words::extract_words};
 
     #[test]
     fn test_extract_words() {

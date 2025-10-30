@@ -7,7 +7,7 @@ use yoroolbot::{
     storage::ButtonData,
 };
 
-use crate::storages::storage_traits::ExpenseStorageTrait;
+use crate::storages::ExpenseStorageTrait;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClearExpenses {

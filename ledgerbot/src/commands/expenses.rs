@@ -1,7 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use yoroolbot::{markdown::MarkdownString, markdown_format};
 
-use crate::storages::storage_traits::Expense;
+use crate::storages::Expense;
 
 /// Format timestamp as YYYY-MM-DD string
 fn format_timestamp(timestamp: i64) -> String {
@@ -66,9 +66,7 @@ pub fn format_expenses_chronological(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        commands::expenses::format_expenses_chronological, storages::storage_traits::Expense,
-    };
+    use crate::{commands::expenses::format_expenses_chronological, storages::Expense};
 
     #[test]
     fn test_format_expenses_chronological() {

@@ -11,10 +11,10 @@ use std::{path::PathBuf, sync::Arc};
 use clap::Parser;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storages::storage_traits::StorageTrait;
+use storages::StorageTrait;
 use teloxide::prelude::*;
 
-use crate::storages::storage::{PersistentCategoryStorage, Storage};
+use crate::storages::{PersistentCategoryStorage, Storage};
 
 #[tokio::main]
 async fn main() {

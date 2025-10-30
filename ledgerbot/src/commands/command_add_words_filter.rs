@@ -12,7 +12,7 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::storage_traits::StorageTrait,
+    storages::StorageTrait,
     utils::extract_words::extract_words,
 };
 

@@ -10,9 +10,7 @@ use yoroolbot::{
     markdown::MarkdownString,
 };
 
-use crate::{
-    menus::common::read_category_filter_by_index, storages::storage_traits::CategoryStorageTrait,
-};
+use crate::{menus::common::read_category_filter_by_index, storages::CategoryStorageTrait};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn update_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(

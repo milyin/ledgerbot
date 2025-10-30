@@ -13,7 +13,7 @@ use yoroolbot::{
 
 use crate::{
     commands::command_add_category::CommandAddCategory, menus::common::create_buttons_menu,
-    storages::storage_traits::CategoryStorageTrait,
+    storages::CategoryStorageTrait,
 };
 
 pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(

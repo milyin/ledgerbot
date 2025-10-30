@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     commands::{command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter},
-    storages::storage_traits::CategoryStorageTrait,
+    storages::CategoryStorageTrait,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]

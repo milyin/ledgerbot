@@ -7,7 +7,7 @@ use yoroolbot::{
     storage::ButtonData,
 };
 
-use crate::storages::storage_traits::CategoryStorageTrait;
+use crate::storages::CategoryStorageTrait;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClearCategories {

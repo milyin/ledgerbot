@@ -12,7 +12,7 @@ use yoroolbot::{
 
 use crate::{
     menus::common::{create_buttons_menu, read_category_filters_list},
-    storages::storage_traits::CategoryStorageTrait,
+    storages::CategoryStorageTrait,
 };
 
 pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
