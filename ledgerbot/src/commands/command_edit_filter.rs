@@ -12,7 +12,7 @@ use crate::{
         select_category_filter::select_category_filter,
         update_category_filter::update_category_filter,
     },
-    storage_traits::CategoryStorageTrait,
+    storages::storage_traits::CategoryStorageTrait,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]

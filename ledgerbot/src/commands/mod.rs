@@ -37,7 +37,7 @@ use crate::{
         command_remove_filter::CommandRemoveFilter, command_rename_category::CommandRenameCategory,
         command_report::CommandReport, command_start::CommandStart,
     },
-    storage_traits::StorageTrait,
+    storages::storage_traits::StorageTrait,
 };
 
 /// Bot commands

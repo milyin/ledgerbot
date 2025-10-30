@@ -12,7 +12,7 @@ use yoroolbot::{
 
 use crate::{
     commands::{Command, command_categories::CommandCategories},
-    storage_traits::{
+    storages::storage_traits::{
         BatchStorageTrait, CategoryStorageTrait, Expense, ExpenseStorageTrait,
         FilterPageStorageTrait, FilterSelectionStorageTrait, StorageTrait,
     },

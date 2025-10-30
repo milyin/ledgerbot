@@ -8,7 +8,7 @@ use crate::{
         check_category_conflicts, filter_category_expenses, format_category_summary,
         format_single_category_report,
     },
-    storage_traits::StorageTrait,
+    storages::storage_traits::StorageTrait,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]

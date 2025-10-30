@@ -6,7 +6,10 @@ use yoroolbot::{
     markdown_format, markdown_string,
 };
 
-use crate::{ menus::{select_category::select_category, update_category::update_category}, storage_traits::CategoryStorageTrait};
+use crate::{
+    menus::{select_category::select_category, update_category::update_category},
+    storages::storage_traits::CategoryStorageTrait,
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandRenameCategory {
@@ -66,7 +69,8 @@ impl CommandTrait for CommandRenameCategory {
                 new_name: None,
             },
             None::<NoopCommand>,
-        ).await?;
+        )
+        .await?;
 
         Ok(())
     }
@@ -90,8 +94,9 @@ impl CommandTrait for CommandRenameCategory {
             Some(CommandRenameCategory {
                 old_name: None,
                 new_name: None,
-            })
-        ).await?;
+            }),
+        )
+        .await?;
 
         Ok(())
     }
@@ -103,14 +108,20 @@ impl CommandTrait for CommandRenameCategory {
         old_name: &String,
         new_name: &String,
     ) -> ResponseResult<()> {
-
-        if let Err(e) = storage.rename_category(target.chat.id, old_name, new_name).await {
+        if let Err(e) = storage
+            .rename_category(target.chat.id, old_name, new_name)
+            .await
+        {
             target.send_markdown_message(e).await?;
         }
         target
-            .send_markdown_message(markdown_format!("✅ Category `{}` renamed to `{}`\\.", old_name, new_name))
+            .send_markdown_message(markdown_format!(
+                "✅ Category `{}` renamed to `{}`\\.",
+                old_name,
+                new_name
+            ))
             .await?;
-       Ok(())
+        Ok(())
     }
 }
 

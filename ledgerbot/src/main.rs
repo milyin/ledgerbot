@@ -3,17 +3,16 @@ mod commands;
 mod config;
 mod handlers;
 pub mod menus;
-mod storage;
-mod storage_traits;
+mod storages;
 mod utils;
 
 use std::{path::PathBuf, sync::Arc};
 
+use crate::storages::storage::{PersistentCategoryStorage, Storage};
 use clap::Parser;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storage::{PersistentCategoryStorage, Storage};
-use storage_traits::StorageTrait;
+use storages::storage_traits::StorageTrait;
 use teloxide::prelude::*;
 
 #[tokio::main]

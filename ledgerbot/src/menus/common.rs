@@ -10,7 +10,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storage_traits::CategoryStorageTrait;
+use crate::storages::storage_traits::CategoryStorageTrait;
 
 pub fn create_buttons_menu(
     titles: &[String],
@@ -125,7 +125,7 @@ pub async fn read_category_filter_by_index(
 #[cfg(test)]
 mod tests {
     use teloxide::types::ChatId;
-    use yoroolbot::storage::{
+    use yoroolbot::crate::storages::storage::{
         CallbackDataStorage, CallbackDataStorageTrait, pack_callback_data, unpack_callback_data,
     };
 

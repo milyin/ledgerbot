@@ -9,7 +9,7 @@ use crate::{
         command_report::CommandReport, execute_command,
     },
     config::BATCH_TIMEOUT_SECONDS,
-    storage_traits::{BatchStorageTrait, StorageTrait},
+    storages::storage_traits::{BatchStorageTrait, StorageTrait},
 };
 
 /// Add expense data to batch and return whether this is the first message in the batch

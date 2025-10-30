@@ -4,7 +4,8 @@ use teloxide::prelude::ResponseResult;
 use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
-    commands::expenses::format_expenses_chronological, storage_traits::ExpenseStorageTrait,
+    commands::expenses::format_expenses_chronological,
+    storages::storage_traits::ExpenseStorageTrait,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]

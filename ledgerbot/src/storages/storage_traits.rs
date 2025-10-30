@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
-use yoroolbot::markdown::MarkdownString;
+use yoroolbot::{markdown::MarkdownString, storage::CallbackDataStorageTrait};
 
 // Forward declaration - full import would create circular dependency
 use crate::commands::Command;
@@ -140,7 +140,5 @@ pub trait StorageTrait: Send + Sync {
     fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait>;
 
     /// Convert to CallbackDataStorageTrait trait object
-    fn as_callback_data_storage(
-        self: Arc<Self>,
-    ) -> Arc<dyn yoroolbot::storage::CallbackDataStorageTrait>;
+    fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait>;
 }

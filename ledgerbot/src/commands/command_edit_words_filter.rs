@@ -14,7 +14,7 @@ use crate::{
         select_category_filter::select_category_filter,
         select_word::{Words, select_word},
     },
-    storage_traits::StorageTrait,
+    storages::storage_traits::StorageTrait,
     utils::extract_words::extract_and_merge_words,
 };
 

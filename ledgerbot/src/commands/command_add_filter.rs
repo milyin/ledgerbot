@@ -7,7 +7,8 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::command_add_words_filter::CommandAddWordsFilter, storage_traits::StorageTrait,
+    commands::command_add_words_filter::CommandAddWordsFilter,
+    storages::storage_traits::StorageTrait,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]

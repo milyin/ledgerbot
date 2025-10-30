@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     menus::{select_category::select_category, update_category::update_category},
-    storage_traits::CategoryStorageTrait,
+    storages::storage_traits::CategoryStorageTrait,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]

@@ -7,7 +7,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storage_traits::ExpenseStorageTrait;
+use crate::storages::storage_traits::ExpenseStorageTrait;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddExpense {

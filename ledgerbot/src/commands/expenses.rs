@@ -1,7 +1,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use yoroolbot::{markdown::MarkdownString, markdown_format};
 
-use crate::storage_traits::Expense;
+use crate::storages::storage_traits::Expense;
 
 /// Format timestamp as YYYY-MM-DD string
 fn format_timestamp(timestamp: i64) -> String {
