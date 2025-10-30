@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::{Path, PathBuf}, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
@@ -253,9 +253,9 @@ pub struct PersistentCategoryStorage {
 
 impl PersistentCategoryStorage {
     /// Create a new persistent category storage with the specified directory
-    pub fn new(storage_dir: PathBuf) -> Self {
+    pub fn new(storage_dir: &Path) -> Self {
         Self {
-            storage_dir,
+            storage_dir: storage_dir.to_path_buf(),
             memory_storage: CategoryStorage::new(),
             loaded_chats: Arc::new(Mutex::new(HashMap::new())),
         }

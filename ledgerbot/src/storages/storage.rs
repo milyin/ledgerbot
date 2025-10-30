@@ -4,7 +4,7 @@ use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait};
 
 use super::category_storage::CategoryStorage;
 use crate::storages::{
-    BatchStorage, BatchStorageTrait, CategoryStorageTrait, ExpenseStorage, ExpenseStorageTrait,
+    BatchStorage, BatchStorageTrait, CategoryStorageTrait, ExpenseStorage, ExpenseStorageTrait, PeriodsStorage, PeriodsStorageTrait
 };
 
 /// Combined storage trait that provides all storage operations
@@ -21,6 +21,9 @@ pub trait StorageTrait: Send + Sync {
 
     /// Convert to CallbackDataStorageTrait trait object
     fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait>;
+
+    /// Convert to PeriodsStorageTrait trait object
+    fn as_periods_storage(self: Arc<Self>) -> Arc<dyn PeriodsStorageTrait>;
 }
 
 /// Main storage structure that holds all bot data
@@ -31,6 +34,7 @@ pub struct Storage {
     categories: Arc<dyn CategoryStorageTrait>,
     batch: Arc<dyn BatchStorageTrait>,
     callback_data: Arc<dyn CallbackDataStorageTrait>,
+    periods: Arc<dyn PeriodsStorageTrait>,
 }
 
 impl Storage {
@@ -41,6 +45,7 @@ impl Storage {
             categories: Arc::new(CategoryStorage::new()),
             batch: Arc::new(BatchStorage::new()),
             callback_data: Arc::new(CallbackDataStorage::new()),
+            periods: Arc::new(PeriodsStorage::new()),
         }
     }
 
@@ -48,6 +53,13 @@ impl Storage {
     /// Replaces the category storage with the provided implementation
     pub fn categories_storage(mut self, storage: impl CategoryStorageTrait + 'static) -> Self {
         self.categories = Arc::new(storage);
+        self
+    }
+
+    /// Builder-like method to configure periods storage
+    /// Replaces the periods storage with the provided implementation
+    pub fn periods_storage(mut self, storage: impl PeriodsStorageTrait + 'static) -> Self {
+        self.periods = Arc::new(storage);
         self
     }
 }
@@ -74,5 +86,9 @@ impl StorageTrait for Storage {
 
     fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait> {
         self.callback_data.clone()
+    }
+
+    fn as_periods_storage(self: Arc<Self>) -> Arc<dyn PeriodsStorageTrait> {
+        self.periods.clone()
     }
 }

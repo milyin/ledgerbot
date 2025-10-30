@@ -14,7 +14,7 @@ use handlers::{handle_callback_query, handle_text_message};
 use storages::StorageTrait;
 use teloxide::prelude::*;
 
-use crate::storages::{PersistentCategoryStorage, Storage};
+use crate::storages::{PeriodsFileStorage, PersistentCategoryStorage, Storage};
 
 #[tokio::main]
 async fn main() {
@@ -34,7 +34,9 @@ async fn main() {
             "Using persistent category storage in directory: {:?}",
             storage_dir
         );
-        Storage::new().categories_storage(PersistentCategoryStorage::new(storage_dir))
+        Storage::new()
+            .categories_storage(PersistentCategoryStorage::new(&storage_dir))
+            .periods_storage(PeriodsFileStorage::new(&storage_dir))
     } else {
         // Use in-memory storage
         log::info!("Using in-memory category storage");
