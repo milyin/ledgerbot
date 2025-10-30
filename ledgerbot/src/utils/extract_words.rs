@@ -102,7 +102,7 @@ pub async fn extract_and_merge_words(
 mod tests {
     use std::collections::HashMap;
 
-    use crate::{storage_traits::Expense, utils::extract_words::extract_words};
+    use crate::{storages::storage_traits::Expense, utils::extract_words::extract_words};
 
     #[test]
     fn test_extract_words() {

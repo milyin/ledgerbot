@@ -313,7 +313,7 @@ mod tests {
     #[test]
     fn test_parse_commands_with_bot_name() {
         // Test that commands work with bot name prefix
-        let text = "@mybot /help\nmybot /report\n/clear";
+        let text = "@mybot /help\nmybot /report\n/clear_expenses";
         let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
         let results = parse_expenses(text, Some("mybot"), timestamp);
 
@@ -335,7 +335,7 @@ mod tests {
         assert!(matches!(&results[0], Ok(Command::Report(_))));
 
         // Test multiple buttons
-        let text2 = "🗑️ /clear";
+        let text2 = "🗑️ /clear_expenses";
         let results2 = parse_expenses(text2, None, timestamp);
 
         assert_eq!(results2.len(), 1);
@@ -367,7 +367,7 @@ mod tests {
             /help\n\
             /list\n\
             /report\n\
-            /clear\n\
+            /clear_expenses\n\
             /categories\n\
             /clear_categories\n\
             /add_category Food\n\

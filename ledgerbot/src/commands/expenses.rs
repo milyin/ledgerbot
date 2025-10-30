@@ -66,7 +66,9 @@ pub fn format_expenses_chronological(
 
 #[cfg(test)]
 mod tests {
-    use crate::{commands::expenses::format_expenses_chronological, storage_traits::Expense};
+    use crate::{
+        commands::expenses::format_expenses_chronological, storages::storage_traits::Expense,
+    };
 
     #[test]
     fn test_format_expenses_chronological() {
