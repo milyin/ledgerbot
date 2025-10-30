@@ -8,12 +8,13 @@ mod utils;
 
 use std::{path::PathBuf, sync::Arc};
 
-use crate::storages::storage::{PersistentCategoryStorage, Storage};
 use clap::Parser;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
 use storages::storage_traits::StorageTrait;
 use teloxide::prelude::*;
+
+use crate::storages::storage::{PersistentCategoryStorage, Storage};
 
 #[tokio::main]
 async fn main() {
