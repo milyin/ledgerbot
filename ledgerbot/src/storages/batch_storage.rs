@@ -17,7 +17,6 @@ pub trait BatchStorageTrait: Send + Sync {
 
 type BatchStorageData = Arc<Mutex<HashMap<ChatId, Vec<Result<Command, String>>>>>;
 
-
 /// Per-chat batch storage for temporary command batching during message processing
 #[derive(Clone)]
 pub struct BatchStorage {

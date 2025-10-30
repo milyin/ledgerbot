@@ -1,11 +1,12 @@
-use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
+
+use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use tokio::{fs, sync::Mutex};
 use yoroolbot::{command_trait::CommandTrait, markdown::MarkdownString, markdown_format};
 
-use crate::{
-    commands::{command_add_filter::CommandAddFilter, command_categories::CommandCategories},
+use crate::commands::{
+    command_add_filter::CommandAddFilter, command_categories::CommandCategories,
 };
 
 /// Trait for category storage operations
