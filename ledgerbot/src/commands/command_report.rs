@@ -64,7 +64,7 @@ impl CommandTrait for CommandReport {
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_chat_expenses(chat_id)
+            .get_expenses(chat_id)
             .await;
         let chat_categories = storage
             .clone()
@@ -116,7 +116,7 @@ impl CommandTrait for CommandReport {
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_chat_expenses(chat_id)
+            .get_expenses(chat_id)
             .await;
         let chat_categories = storage
             .clone()

@@ -82,7 +82,7 @@ impl CommandTrait for CommandClearExpenses {
         }
 
         let chat_id = target.chat.id;
-        storage.clear_chat_expenses(chat_id).await;
+        storage.clear_expenses(chat_id).await;
 
         target
             .send_markdown_message(markdown_string!("🗑️ All expenses cleared\\!"))

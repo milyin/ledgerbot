@@ -15,7 +15,7 @@ pub struct Expense {
 #[async_trait::async_trait]
 pub trait ExpenseStorageTrait: Send + Sync {
     /// Get expenses for a specific chat
-    async fn get_chat_expenses(&self, chat_id: ChatId) -> Vec<Expense>;
+    async fn get_expenses(&self, chat_id: ChatId) -> Vec<Expense>;
 
     /// Add expenses to a specific chat's storage
     async fn add_expenses(&self, chat_id: ChatId, expenses: Vec<(String, f64, i64)>);
@@ -24,7 +24,7 @@ pub trait ExpenseStorageTrait: Send + Sync {
     async fn add_expense(&self, chat_id: ChatId, description: &str, amount: f64, timestamp: i64);
 
     /// Clear all expenses for a specific chat
-    async fn clear_chat_expenses(&self, chat_id: ChatId);
+    async fn clear_expenses(&self, chat_id: ChatId);
 }
 
 /// Per-chat storage for expenses - each chat has its own expense list
@@ -44,7 +44,7 @@ impl ExpenseStorage {
 /// Implement ExpenseStorageTrait for ExpenseStorage
 #[async_trait::async_trait]
 impl ExpenseStorageTrait for ExpenseStorage {
-    async fn get_chat_expenses(&self, chat_id: ChatId) -> Vec<Expense> {
+    async fn get_expenses(&self, chat_id: ChatId) -> Vec<Expense> {
         let storage_guard = self.data.lock().await;
         storage_guard.get(&chat_id).cloned().unwrap_or_default()
     }
@@ -66,7 +66,7 @@ impl ExpenseStorageTrait for ExpenseStorage {
             .await;
     }
 
-    async fn clear_chat_expenses(&self, chat_id: ChatId) {
+    async fn clear_expenses(&self, chat_id: ChatId) {
         let mut storage_guard = self.data.lock().await;
         storage_guard.remove(&chat_id);
     }

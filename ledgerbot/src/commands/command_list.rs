@@ -44,7 +44,7 @@ impl CommandTrait for CommandList {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let chat_expenses = storage.get_chat_expenses(chat_id).await;
+        let chat_expenses = storage.get_expenses(chat_id).await;
 
         match format_expenses_chronological(&chat_expenses) {
             Ok(messages) => {
