@@ -73,8 +73,13 @@ impl CommandTrait for CommandReport {
             .await
             .unwrap_or_default();
 
-        // Check for category conflicts before generating report
-        if let Some(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
+        // Check for category conflicts before generating report (use all expenses across all periods)
+        let all_expenses = storage
+            .clone()
+            .as_expense_storage()
+            .get_all_expenses(chat_id)
+            .await;
+        if let Some(conflict_message) = check_category_conflicts(&all_expenses, &chat_categories) {
             target.markdown_message(conflict_message).await?;
             return Ok(());
         }

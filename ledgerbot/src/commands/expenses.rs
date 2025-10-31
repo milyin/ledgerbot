@@ -80,16 +80,19 @@ mod tests {
                 description: "Lunch".to_string(),
                 amount: 12.00,
                 timestamp: timestamp2,
+                period: "default".to_string(),
             },
             Expense {
                 description: "Coffee".to_string(),
                 amount: 5.50,
                 timestamp: timestamp1,
+                period: "default".to_string(),
             },
             Expense {
                 description: "Dinner".to_string(),
                 amount: 25.00,
                 timestamp: timestamp3,
+                period: "default".to_string(),
             },
         ];
 
@@ -137,6 +140,7 @@ mod tests {
                 description: format!("Expense number {}", i),
                 amount: 10.50 + (i as f64),
                 timestamp: base_timestamp + (i * 86400), // One day apart
+                period: "default".to_string(),
             });
         }
 

@@ -113,21 +113,25 @@ mod tests {
                 description: "Coffee at Starbucks".to_string(),
                 amount: 5.50,
                 timestamp,
+                period: "default".to_string(),
             },
             Expense {
                 description: "Lunch at restaurant".to_string(),
                 amount: 12.00,
                 timestamp,
+                period: "default".to_string(),
             },
             Expense {
                 description: "Bus ticket".to_string(),
                 amount: 2.75,
                 timestamp,
+                period: "default".to_string(),
             },
             Expense {
                 description: "Taxi ride".to_string(),
                 amount: 15.00,
                 timestamp,
+                period: "default".to_string(),
             },
         ];
 
@@ -169,11 +173,13 @@ mod tests {
                 description: "Coffee".to_string(),
                 amount: 5.50,
                 timestamp,
+                period: "default".to_string(),
             },
             Expense {
                 description: "Lunch".to_string(),
                 amount: 12.00,
                 timestamp,
+                period: "default".to_string(),
             },
         ];
 
