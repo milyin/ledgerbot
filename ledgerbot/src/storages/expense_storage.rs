@@ -15,26 +15,25 @@ pub struct Expense {
 /// Trait for expense storage operations
 #[async_trait::async_trait]
 pub trait ExpenseStorageTrait: Send + Sync {
-    /// Get expenses for a specific chat (filtered by current period)
-    async fn get_expenses(&self, chat_id: ChatId) -> Vec<Expense>;
+    /// Get expenses for a specific chat for the named period
+    async fn get_period_expenses(&self, period: String, chat_id: ChatId) -> Vec<Expense>;
 
-    /// Get all expenses for a specific chat (across all periods, for category verification)
-    async fn get_all_expenses(&self, chat_id: ChatId) -> Vec<Expense>;
+    /// Add expenses to a specific chat's storage for the named period
+    async fn add_period_expenses(&self, chat_id: ChatId, period: String, expenses: Vec<(String, f64, i64)>);
 
-    /// Add expenses to a specific chat's storage (using current period)
-    async fn add_expenses(&self, chat_id: ChatId, expenses: Vec<(String, f64, i64)>);
+    /// Clear all expenses for a specific chat for the named period
+    async fn clear_period_expenses(&self, chat_id: ChatId, period: String);
 
-    /// Add a single expense (using current period)
-    async fn add_expense(&self, chat_id: ChatId, description: &str, amount: f64, timestamp: i64);
+    /// Get all periods available for a chat. List can't be empty. On the startup
+    /// the default period with name "YYYY-MM" is created and selected if no periods exist.
+    async fn list_periods(&self, chat_id: ChatId) -> Vec<String>;
 
-    /// Clear all expenses for a specific chat (in current period only)
-    async fn clear_expenses(&self, chat_id: ChatId);
-
-    /// Select the current period for a chat
+    /// Select the current period for a chat.
     async fn select_period(&self, chat_id: ChatId, period: String);
 
-    /// Get the selected period for a chat
-    async fn get_selected_period(&self, chat_id: ChatId) -> Option<String>;
+    /// Get the selected period for a chat. By default the period
+    /// last by alphabetical order is selected on startup.
+    async fn get_selected_period(&self, chat_id: ChatId) -> String;
 }
 
 /// Per-chat storage for expenses - each chat has its own expense list
@@ -56,7 +55,7 @@ impl ExpenseStorage {
 /// Implement ExpenseStorageTrait for ExpenseStorage
 #[async_trait::async_trait]
 impl ExpenseStorageTrait for ExpenseStorage {
-    async fn get_expenses(&self, chat_id: ChatId) -> Vec<Expense> {
+    async fn get_period_expenses(&self, chat_id: ChatId) -> Vec<Expense> {
         let storage_guard = self.data.lock().await;
         let period_guard = self.selected_period.lock().await;
 
