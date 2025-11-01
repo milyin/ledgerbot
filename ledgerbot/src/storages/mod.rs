@@ -8,7 +8,9 @@ mod variable_storage;
 
 pub use batch_storage::{BatchStorage, BatchStorageTrait};
 pub use category_storage::{CategoryData, CategoryStorage, CategoryStorageTrait};
-pub use datastore::{DataStore, FilesystemYamlStore, InMemStore};
+pub use datastore::{
+    decode_filename_to_key, encode_key_to_filename, DataStore, FilesystemYamlStore, InMemStore,
+};
 pub use expense_period::ExpensePeriod;
 pub use expense_storage::{get_current_period, Expense, ExpenseStorage, ExpenseStorageTrait};
 pub use storage::{Storage, StorageTrait};
