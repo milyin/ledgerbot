@@ -7,7 +7,7 @@ use yoroolbot::{
     storage::ButtonData,
 };
 
-use crate::storages::{ExpenseStorageTrait, DEFAULT_PERIOD};
+use crate::storages::{get_current_period, StorageTrait};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClearExpenses {
@@ -25,7 +25,7 @@ impl CommandTrait for CommandClearExpenses {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn ExpenseStorageTrait>;
+    type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "clear_expenses";
     const PLACEHOLDERS: &[&'static str] = &["<confirm>"];
@@ -82,8 +82,14 @@ impl CommandTrait for CommandClearExpenses {
         }
 
         let chat_id = target.chat.id;
+
+        // Get the current period for this chat
+        let period = get_current_period(&storage, chat_id).await;
+
         storage
-            .clear_expenses(chat_id, DEFAULT_PERIOD.to_string())
+            .clone()
+            .as_expense_storage()
+            .clear_expenses(chat_id, period.to_string())
             .await;
 
         target

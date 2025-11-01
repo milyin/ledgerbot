@@ -5,8 +5,24 @@ use chrono::NaiveDate;
 use teloxide::types::ChatId;
 use tokio::sync::Mutex;
 
-/// Default period name constant - used until multi-period support is implemented
+use super::{ExpensePeriod, StorageTrait};
+
+/// Default period name constant - used for backward compatibility
+/// TODO: Remove once all code uses ExpensePeriod
 pub const DEFAULT_PERIOD: &str = "default_period";
+
+/// Helper function to get the current period for a chat
+/// Returns the selected period from VariableStorage, or current month if not set
+pub async fn get_current_period(
+    storage: &Arc<dyn StorageTrait>,
+    chat_id: ChatId,
+) -> ExpensePeriod {
+    let var_storage = storage.clone().as_variable_storage();
+    var_storage
+        .get::<ExpensePeriod>(chat_id)
+        .await
+        .unwrap_or_else(ExpensePeriod::current)
+}
 
 // #[derive(Debug, Clone, Serialize, Deserialize)] // Commented out - serialization not supported yet
 #[derive(Debug, Clone)]

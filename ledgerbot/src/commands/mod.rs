@@ -209,16 +209,13 @@ pub async fn execute_command(
             help.run(&target, ()).await?;
         }
         Command::List(list) => {
-            list.run(&target, storage.clone().as_expense_storage())
-                .await?;
+            list.run(&target, storage.clone()).await?;
         }
         Command::Report(report) => {
             report.run(&target, storage.clone()).await?;
         }
         Command::ClearExpenses(clear_expenses) => {
-            clear_expenses
-                .run(&target, storage.clone().as_expense_storage())
-                .await?;
+            clear_expenses.run(&target, storage.clone()).await?;
         }
         Command::ClearCategories(clear_categories) => {
             clear_categories
@@ -259,9 +256,7 @@ pub async fn execute_command(
                 .await?;
         }
         Command::AddExpense(add_expense) => {
-            add_expense
-                .run(&target, storage.clone().as_expense_storage())
-                .await?;
+            add_expense.run(&target, storage.clone()).await?;
         }
         Command::AddWordsFilter(add_words_filter) => {
             add_words_filter.run(&target, storage.clone()).await?;
@@ -270,9 +265,7 @@ pub async fn execute_command(
             edit_words_filter.run(&target, storage.clone()).await?;
         }
         Command::SelectPeriod(select_period) => {
-            select_period
-                .run(&target, storage.clone().as_expense_storage())
-                .await?;
+            select_period.run(&target, storage.clone()).await?;
         }
     }
     Ok(())

@@ -8,7 +8,7 @@ use crate::{
         check_category_conflicts, filter_category_expenses, format_category_summary,
         format_single_category_report,
     },
-    storages::{StorageTrait, DEFAULT_PERIOD},
+    storages::{get_current_period, StorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -61,10 +61,14 @@ impl CommandTrait for CommandReport {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
+
+        // Get the current period for this chat
+        let period = get_current_period(&storage, chat_id).await;
+
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_expenses(chat_id, DEFAULT_PERIOD.to_string())
+            .get_expenses(chat_id, period.to_string())
             .await;
         let chat_categories = storage
             .clone()
@@ -115,10 +119,14 @@ impl CommandTrait for CommandReport {
         const RECORDS_PER_PAGE: usize = 25;
 
         let chat_id = target.chat.id;
+
+        // Get the current period for this chat
+        let period = get_current_period(&storage, chat_id).await;
+
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_expenses(chat_id, DEFAULT_PERIOD.to_string())
+            .get_expenses(chat_id, period.to_string())
             .await;
         let chat_categories = storage
             .clone()

@@ -5,6 +5,7 @@ use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait};
 use super::category_storage::CategoryStorage;
 use crate::storages::{
     BatchStorage, BatchStorageTrait, CategoryStorageTrait, ExpenseStorage, ExpenseStorageTrait,
+    VariableStorage,
 };
 
 /// Combined storage trait that provides all storage operations
@@ -21,6 +22,9 @@ pub trait StorageTrait: Send + Sync {
 
     /// Convert to CallbackDataStorageTrait trait object
     fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait>;
+
+    /// Get variable storage (concrete type, not trait object, because of generic methods)
+    fn as_variable_storage(self: Arc<Self>) -> Arc<VariableStorage>;
 }
 
 /// Main storage structure that holds all bot data
@@ -31,6 +35,7 @@ pub struct Storage {
     categories: Arc<dyn CategoryStorageTrait>,
     batch: Arc<dyn BatchStorageTrait>,
     callback_data: Arc<dyn CallbackDataStorageTrait>,
+    variables: Arc<VariableStorage>,
 }
 
 impl Storage {
@@ -41,6 +46,7 @@ impl Storage {
             categories: Arc::new(CategoryStorage::new()),
             batch: Arc::new(BatchStorage::new()),
             callback_data: Arc::new(CallbackDataStorage::new()),
+            variables: Arc::new(VariableStorage::new()),
         }
     }
 
@@ -74,5 +80,9 @@ impl StorageTrait for Storage {
 
     fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait> {
         self.callback_data.clone()
+    }
+
+    fn as_variable_storage(self: Arc<Self>) -> Arc<VariableStorage> {
+        self.variables.clone()
     }
 }
