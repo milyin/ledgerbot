@@ -7,6 +7,9 @@ use tokio::sync::Mutex;
 
 use super::{ExpensePeriod, StorageTrait};
 
+// Type alias to simplify complex nested HashMap type
+type ExpenseData = Arc<Mutex<HashMap<ChatId, HashMap<String, Vec<Expense>>>>>;
+
 /// Helper function to get the current period for a chat
 /// Returns the selected period from VariableStorage, or current month if not set
 pub async fn get_current_period(storage: &Arc<dyn StorageTrait>, chat_id: ChatId) -> ExpensePeriod {
@@ -75,7 +78,7 @@ pub trait ExpenseStorageTrait: Send + Sync {
 /// Per-chat storage for expenses - each chat has its own expense list
 #[derive(Clone)]
 pub struct ExpenseStorage {
-    data: Arc<Mutex<HashMap<ChatId, HashMap<String, Vec<Expense>>>>>,
+    data: ExpenseData,
 }
 
 impl ExpenseStorage {

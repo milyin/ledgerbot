@@ -214,12 +214,10 @@ where
             Ok(mut entries) => {
                 let mut keys = Vec::new();
                 while let Ok(Some(entry)) = entries.next_entry().await {
-                    if let Some(file_name) = entry.file_name().to_str() {
-                        if file_name.ends_with(".yaml") {
-                            let encoded_key = file_name.trim_end_matches(".yaml");
-                            let decoded_key = decode_filename_to_key(encoded_key);
-                            keys.push(decoded_key);
-                        }
+                    if let Some(file_name) = entry.file_name().to_str() && file_name.ends_with(".yaml") {
+                        let encoded_key = file_name.trim_end_matches(".yaml");
+                        let decoded_key = decode_filename_to_key(encoded_key);
+                        keys.push(decoded_key);
                     }
                 }
                 keys

@@ -7,13 +7,16 @@ use std::{
 use teloxide::types::ChatId;
 use tokio::sync::Mutex;
 
+// Type alias to simplify complex nested HashMap type
+type VariableData = Arc<Mutex<HashMap<ChatId, HashMap<TypeId, Arc<dyn Any + Send + Sync>>>>>;
+
 /// Storage for per-chat typed variables using TypeId as key
 /// This allows storing different types of data per chat without type erasure
 #[derive(Clone)]
 pub struct VariableStorage {
     // Outer map: ChatId -> Inner map of variables
     // Inner map: TypeId -> Arc<dyn Any> (the actual value)
-    data: Arc<Mutex<HashMap<ChatId, HashMap<TypeId, Arc<dyn Any + Send + Sync>>>>>,
+    data: VariableData,
 }
 
 impl VariableStorage {
@@ -60,6 +63,12 @@ impl VariableStorage {
     pub async fn clear_chat(&self, chat_id: ChatId) {
         let mut data_guard = self.data.lock().await;
         data_guard.remove(&chat_id);
+    }
+}
+
+impl Default for VariableStorage {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
