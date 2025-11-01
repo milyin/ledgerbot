@@ -69,8 +69,9 @@ impl VariableStorage {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use teloxide::types::ChatId;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_set_and_get() {

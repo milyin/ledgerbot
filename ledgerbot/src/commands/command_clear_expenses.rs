@@ -7,7 +7,7 @@ use yoroolbot::{
     storage::ButtonData,
 };
 
-use crate::storages::{get_current_period, StorageTrait};
+use crate::storages::{StorageTrait, get_current_period};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClearExpenses {

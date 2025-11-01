@@ -13,7 +13,10 @@ impl ExpensePeriod {
     /// Create a new ExpensePeriod
     pub fn new(year: i32, month: u32) -> Result<Self, String> {
         if !(1..=12).contains(&month) {
-            return Err(format!("Invalid month: {}. Must be between 1 and 12", month));
+            return Err(format!(
+                "Invalid month: {}. Must be between 1 and 12",
+                month
+            ));
         }
         Ok(ExpensePeriod { year, month })
     }
@@ -28,6 +31,7 @@ impl ExpensePeriod {
     }
 
     /// Create period from a date
+    #[allow(dead_code)]
     pub fn from_date(date: NaiveDate) -> Self {
         ExpensePeriod {
             year: date.year(),
@@ -55,12 +59,8 @@ impl ExpensePeriod {
         Self::new(year, month)
     }
 
-    /// Convert period to string in format "YYYY-MM"
-    pub fn to_string(&self) -> String {
-        format!("{:04}-{:02}", self.year, self.month)
-    }
-
     /// Get the next period (month)
+    #[allow(dead_code)]
     pub fn next_month(&self) -> Self {
         if self.month == 12 {
             ExpensePeriod {
@@ -76,6 +76,7 @@ impl ExpensePeriod {
     }
 
     /// Get the previous period (month)
+    #[allow(dead_code)]
     pub fn prev_month(&self) -> Self {
         if self.month == 1 {
             ExpensePeriod {
@@ -91,6 +92,7 @@ impl ExpensePeriod {
     }
 
     /// Check if a date falls within this period
+    #[allow(dead_code)]
     pub fn contains_date(&self, date: NaiveDate) -> bool {
         date.year() == self.year && date.month() == self.month
     }

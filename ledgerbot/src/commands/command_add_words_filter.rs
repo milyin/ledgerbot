@@ -12,7 +12,7 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::{get_current_period, StorageTrait},
+    storages::{StorageTrait, get_current_period},
     utils::extract_words::extract_words,
 };
 

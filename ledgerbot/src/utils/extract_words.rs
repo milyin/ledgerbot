@@ -4,7 +4,7 @@ use teloxide::types::ChatId;
 
 use crate::{
     menus::select_word::Words,
-    storages::{get_current_period, Expense, StorageTrait},
+    storages::{Expense, StorageTrait, get_current_period},
 };
 
 /// Extract unique words from uncategorized expenses

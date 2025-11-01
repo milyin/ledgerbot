@@ -7,7 +7,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::{get_current_period, Expense, StorageTrait};
+use crate::storages::{Expense, StorageTrait, get_current_period};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddExpense {

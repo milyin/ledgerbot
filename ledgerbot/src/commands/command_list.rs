@@ -5,7 +5,7 @@ use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::expenses::format_expenses_chronological,
-    storages::{get_current_period, StorageTrait},
+    storages::{StorageTrait, get_current_period},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
