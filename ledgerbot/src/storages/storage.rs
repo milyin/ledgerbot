@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait};
+use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait, InMemStore};
 
 use crate::storages::{
     BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait,
-    ExpenseStorage, ExpenseStorageTrait, InMemStore, VariableStorage,
+    ExpenseStorage, ExpenseStorageTrait, VariableStorage,
 };
 
 /// Combined storage trait that provides all storage operations

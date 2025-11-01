@@ -11,8 +11,3 @@ pub use expense_period::ExpensePeriod;
 pub use expense_storage::{get_current_period, Expense, ExpenseStorage, ExpenseStorageTrait};
 pub use storage::{Storage, StorageTrait};
 pub use variable_storage::VariableStorage;
-
-// Re-export DataStore types from yoroolbot
-pub use yoroolbot::storage::{
-    decode_filename_to_key, encode_key_to_filename, DataStore, FilesystemYamlStore, InMemStore,
-};

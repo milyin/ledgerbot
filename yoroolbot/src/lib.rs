@@ -28,7 +28,10 @@ pub mod storage {
         unpack_callback_data,
     };
     pub use crate::api::storage::datastore::{
-        decode_filename_to_key, encode_key_to_filename, DataStore, FilesystemYamlStore,
+        DataStore, FilesystemYamlStore,
         InMemStore,
+    };
+    pub use crate::api::storage::utils::{
+        decode_filename_to_key, encode_key_to_filename,
     };
 }
