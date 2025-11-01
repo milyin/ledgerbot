@@ -11,3 +11,5 @@ path = "src/lib.rs"
 teloxide = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }

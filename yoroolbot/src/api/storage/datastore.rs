@@ -20,7 +20,7 @@ use tokio::{fs, sync::Mutex};
 ///
 /// # Examples
 /// ```
-/// # use ledgerbot::storages::encode_key_to_filename;
+/// # use yoroolbot::storage::encode_key_to_filename;
 /// assert_eq!(encode_key_to_filename("simple"), "simple");
 /// assert_eq!(encode_key_to_filename("path/to/key"), "path%2Fto%2Fkey");
 /// assert_eq!(encode_key_to_filename(".hidden"), "%2Ehidden");
@@ -56,7 +56,7 @@ pub fn encode_key_to_filename(key: &str) -> String {
 ///
 /// # Examples
 /// ```
-/// # use ledgerbot::storages::{encode_key_to_filename, decode_filename_to_key};
+/// # use yoroolbot::storage::{encode_key_to_filename, decode_filename_to_key};
 /// assert_eq!(decode_filename_to_key("simple"), "simple");
 /// assert_eq!(decode_filename_to_key("path%2Fto%2Fkey"), "path/to/key");
 /// assert_eq!(decode_filename_to_key("%2Ehidden"), ".hidden");
@@ -527,7 +527,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_filesystem_store_set_and_get() {
-        let temp_dir = std::env::temp_dir().join("ledgerbot_test_fs_store");
+        let temp_dir = std::env::temp_dir().join("yoroolbot_test_fs_store");
         let _ = fs::remove_dir_all(&temp_dir).await; // Clean up if exists
         let store = FilesystemYamlStore::<TestData>::new(temp_dir.clone());
 
@@ -547,7 +547,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_filesystem_store_persistence() {
-        let temp_dir = std::env::temp_dir().join("ledgerbot_test_fs_persistence");
+        let temp_dir = std::env::temp_dir().join("yoroolbot_test_fs_persistence");
         let _ = fs::remove_dir_all(&temp_dir).await; // Clean up if exists
 
         let data = TestData {
@@ -574,7 +574,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_filesystem_store_remove() {
-        let temp_dir = std::env::temp_dir().join("ledgerbot_test_fs_remove");
+        let temp_dir = std::env::temp_dir().join("yoroolbot_test_fs_remove");
         let _ = fs::remove_dir_all(&temp_dir).await; // Clean up if exists
         let store = FilesystemYamlStore::<TestData>::new(temp_dir.clone());
 
@@ -600,7 +600,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_filesystem_store_with_encoded_keys() {
-        let temp_dir = std::env::temp_dir().join("ledgerbot_test_fs_encoded");
+        let temp_dir = std::env::temp_dir().join("yoroolbot_test_fs_encoded");
         let _ = fs::remove_dir_all(&temp_dir).await; // Clean up if exists
         let store = FilesystemYamlStore::<TestData>::new(temp_dir.clone());
 
@@ -642,7 +642,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_filesystem_store_keys_with_encoding() {
-        let temp_dir = std::env::temp_dir().join("ledgerbot_test_fs_keys_encoded");
+        let temp_dir = std::env::temp_dir().join("yoroolbot_test_fs_keys_encoded");
         let _ = fs::remove_dir_all(&temp_dir).await; // Clean up if exists
         let store = FilesystemYamlStore::<TestData>::new(temp_dir.clone());
 
@@ -680,7 +680,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_filesystem_store_round_trip_complex_keys() {
-        let temp_dir = std::env::temp_dir().join("ledgerbot_test_fs_complex");
+        let temp_dir = std::env::temp_dir().join("yoroolbot_test_fs_complex");
         let _ = fs::remove_dir_all(&temp_dir).await; // Clean up if exists
 
         // Test with complex keys that have multiple forbidden characters

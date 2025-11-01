@@ -27,4 +27,8 @@ pub mod storage {
         ButtonData, CallbackDataStorage, CallbackDataStorageTrait, pack_callback_data,
         unpack_callback_data,
     };
+    pub use crate::api::storage::datastore::{
+        decode_filename_to_key, encode_key_to_filename, DataStore, FilesystemYamlStore,
+        InMemStore,
+    };
 }

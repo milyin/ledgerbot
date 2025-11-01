@@ -2,13 +2,13 @@ use std::{collections::HashMap, marker::PhantomData};
 
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
-use yoroolbot::{command_trait::CommandTrait, markdown::MarkdownString, markdown_format};
+use yoroolbot::{
+    command_trait::CommandTrait, markdown::MarkdownString, markdown_format, storage::DataStore,
+};
 
 use crate::commands::{
     command_add_filter::CommandAddFilter, command_categories::CommandCategories,
 };
-
-use super::datastore::DataStore;
 
 /// Trait for category storage operations
 #[async_trait::async_trait]
