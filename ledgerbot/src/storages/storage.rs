@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait};
 
-use super::category_storage::CategoryStorage;
 use crate::storages::{
-    BatchStorage, BatchStorageTrait, CategoryStorageTrait, ExpenseStorage, ExpenseStorageTrait,
-    VariableStorage,
+    BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait,
+    ExpenseStorage, ExpenseStorageTrait, InMemStore, VariableStorage,
 };
 
 /// Combined storage trait that provides all storage operations
@@ -43,7 +42,7 @@ impl Storage {
     pub fn new() -> Self {
         Self {
             expenses: Arc::new(ExpenseStorage::new()),
-            categories: Arc::new(CategoryStorage::new()),
+            categories: Arc::new(CategoryStorage::new(InMemStore::<CategoryData>::new())),
             batch: Arc::new(BatchStorage::new()),
             callback_data: Arc::new(CallbackDataStorage::new()),
             variables: Arc::new(VariableStorage::new()),
