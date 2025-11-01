@@ -3,7 +3,10 @@ use std::sync::Arc;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
-use crate::{commands::expenses::format_expenses_chronological, storages::ExpenseStorageTrait};
+use crate::{
+    commands::expenses::format_expenses_chronological,
+    storages::{ExpenseStorageTrait, DEFAULT_PERIOD},
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandList;
@@ -44,7 +47,9 @@ impl CommandTrait for CommandList {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let chat_expenses = storage.get_period_expenses(chat_id).await;
+        let chat_expenses = storage
+            .get_expenses(chat_id, DEFAULT_PERIOD.to_string())
+            .await;
 
         match format_expenses_chronological(&chat_expenses) {
             Ok(messages) => {

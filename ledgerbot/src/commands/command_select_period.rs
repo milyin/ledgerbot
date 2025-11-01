@@ -1,3 +1,6 @@
+// COMMENTED OUT - Period selection will be implemented in future iteration
+// This command is kept registered but implementation is disabled for now
+
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
@@ -50,37 +53,27 @@ impl CommandTrait for CommandSelectPeriod {
     async fn run0(
         &self,
         target: &CommandReplyTarget,
-        storage: Self::Context,
+        _storage: Self::Context,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-        let current_period = storage.get_selected_period(chat_id).await;
-
-        let message = if let Some(period) = current_period {
-            yoroolbot::markdown_format!(
-                "📅 Current period: *{}*\n\nUse `/select\\_period <name>` to switch periods\\.",
-                period
-            )
-        } else {
-            markdown_string!("📅 No period selected \\(using default\\)\\.\n\nUse `/select\\_period <name>` to select a period\\.")
-        };
-
-        target.send_markdown_message(message).await?;
+        target
+            .send_markdown_message(markdown_string!(
+                "📅 Period selection is not yet implemented\\.\n\n\
+                 Currently using default period for all expenses\\."
+            ))
+            .await?;
         Ok(())
     }
 
     async fn run1(
         &self,
         target: &CommandReplyTarget,
-        storage: Self::Context,
-        period: &String,
+        _storage: Self::Context,
+        _period: &String,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-        storage.select_period(chat_id, period.clone()).await;
-
         target
-            .send_markdown_message(yoroolbot::markdown_format!(
-                "📅 Period selected: *{}*",
-                period
+            .send_markdown_message(markdown_string!(
+                "📅 Period selection is not yet implemented\\.\n\n\
+                 Currently using default period for all expenses\\."
             ))
             .await?;
         Ok(())
@@ -92,3 +85,45 @@ impl From<CommandSelectPeriod> for crate::commands::Command {
         crate::commands::Command::SelectPeriod(cmd)
     }
 }
+
+// FUTURE IMPLEMENTATION (commented out):
+// impl CommandTrait for CommandSelectPeriod {
+//     async fn run0(
+//         &self,
+//         target: &CommandReplyTarget,
+//         storage: Self::Context,
+//     ) -> ResponseResult<()> {
+//         let chat_id = target.chat.id;
+//         let current_period = storage.get_selected_period(chat_id).await;
+//
+//         let message = if let Some(period) = current_period {
+//             yoroolbot::markdown_format!(
+//                 "📅 Current period: *{}*\n\nUse `/select\\_period <name>` to switch periods\\.",
+//                 period
+//             )
+//         } else {
+//             markdown_string!("📅 No period selected \\(using default\\)\\.\n\nUse `/select\\_period <name>` to select a period\\.")
+//         };
+//
+//         target.send_markdown_message(message).await?;
+//         Ok(())
+//     }
+//
+//     async fn run1(
+//         &self,
+//         target: &CommandReplyTarget,
+//         storage: Self::Context,
+//         period: &String,
+//     ) -> ResponseResult<()> {
+//         let chat_id = target.chat.id;
+//         storage.select_period(chat_id, period.clone()).await;
+//
+//         target
+//             .send_markdown_message(yoroolbot::markdown_format!(
+//                 "📅 Period selected: *{}*",
+//                 period
+//             ))
+//             .await?;
+//         Ok(())
+//     }
+// }

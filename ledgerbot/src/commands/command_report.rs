@@ -8,7 +8,7 @@ use crate::{
         check_category_conflicts, filter_category_expenses, format_category_summary,
         format_single_category_report,
     },
-    storages::StorageTrait,
+    storages::{StorageTrait, DEFAULT_PERIOD},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -64,7 +64,7 @@ impl CommandTrait for CommandReport {
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_period_expenses(chat_id)
+            .get_expenses(chat_id, DEFAULT_PERIOD.to_string())
             .await;
         let chat_categories = storage
             .clone()
@@ -73,12 +73,9 @@ impl CommandTrait for CommandReport {
             .await
             .unwrap_or_default();
 
-        // Check for category conflicts before generating report (use all expenses across all periods)
-        let all_expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_all_expenses(chat_id)
-            .await;
+        // Check for category conflicts before generating report
+        // TODO: In multi-period implementation, check across all periods
+        let all_expenses = chat_expenses.clone();
         if let Some(conflict_message) = check_category_conflicts(&all_expenses, &chat_categories) {
             target.markdown_message(conflict_message).await?;
             return Ok(());
@@ -121,7 +118,7 @@ impl CommandTrait for CommandReport {
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_period_expenses(chat_id)
+            .get_expenses(chat_id, DEFAULT_PERIOD.to_string())
             .await;
         let chat_categories = storage
             .clone()

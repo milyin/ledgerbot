@@ -12,7 +12,7 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::StorageTrait,
+    storages::{StorageTrait, DEFAULT_PERIOD},
     utils::extract_words::extract_words,
 };
 
@@ -122,7 +122,7 @@ impl CommandTrait for CommandAddWordsFilter {
         let expenses = storage
             .clone()
             .as_expense_storage()
-            .get_period_expenses(target.chat.id)
+            .get_expenses(target.chat.id, DEFAULT_PERIOD.to_string())
             .await;
         let categories = storage
             .clone()

@@ -71,7 +71,7 @@ pub fn check_category_conflicts(
             );
 
         for conflict in conflicts {
-            let date_str = format_timestamp(conflict.expense.timestamp);
+            let date_str = format_timestamp(conflict.expense.timestamp());
             error_message = error_message
                 + markdown_format!(
                     "📝 *Expense:* {} {} {}\n",
@@ -215,7 +215,7 @@ pub fn format_single_category_report(
     let mut last_date: Option<String> = None;
 
     for expense in &records_to_show {
-        let date_str = format_timestamp(expense.timestamp);
+        let date_str = format_timestamp(expense.timestamp());
 
         // Check if date is same as previous
         let date_field = if last_date.as_ref() == Some(&date_str.as_str().to_string()) {

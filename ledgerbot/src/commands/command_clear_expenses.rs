@@ -7,7 +7,7 @@ use yoroolbot::{
     storage::ButtonData,
 };
 
-use crate::storages::ExpenseStorageTrait;
+use crate::storages::{ExpenseStorageTrait, DEFAULT_PERIOD};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClearExpenses {
@@ -82,7 +82,9 @@ impl CommandTrait for CommandClearExpenses {
         }
 
         let chat_id = target.chat.id;
-        storage.clear_expenses(chat_id).await;
+        storage
+            .clear_expenses(chat_id, DEFAULT_PERIOD.to_string())
+            .await;
 
         target
             .send_markdown_message(markdown_string!("🗑️ All expenses cleared\\!"))
