@@ -80,10 +80,9 @@ fn create_periods_menu(
 
     // Add new period button if command provided
     if let Some(command) = new_period_command {
-        buttons.push(vec![InlineKeyboardButton::switch_inline_query_current_chat(
-            "➕ New Period",
-            command,
-        )]);
+        buttons.push(vec![
+            InlineKeyboardButton::switch_inline_query_current_chat("➕ New Period", command),
+        ]);
     }
 
     // Add back button if provided

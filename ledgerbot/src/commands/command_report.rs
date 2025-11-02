@@ -144,9 +144,7 @@ impl CommandTrait for CommandReport {
         let all_periods = expense_storage.list_periods(chat_id).await;
         let mut all_expenses = Vec::new();
         for period_str in all_periods {
-            let period_expenses = expense_storage
-                .get_expenses(chat_id, period_str)
-                .await;
+            let period_expenses = expense_storage.get_expenses(chat_id, period_str).await;
             all_expenses.extend(period_expenses);
         }
 
