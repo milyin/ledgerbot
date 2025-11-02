@@ -9,7 +9,7 @@ use crate::{
         command_report::CommandReport, execute_command,
     },
     config::BATCH_TIMEOUT_SECONDS,
-    storages::{BatchStorageTrait, StorageTrait},
+    storages::{BatchStorageTrait, ExpensePeriod, StorageTrait},
 };
 
 /// Add expense data to batch and return whether this is the first message in the batch
@@ -75,15 +75,23 @@ pub async fn execute_batch(
             }
         }
 
+        let current_period = storage
+            .as_variable_storage()
+            .get(chat.id)
+            .await
+            .unwrap_or(ExpensePeriod::current());
+
         if let Err(e) = bot
             .markdown_message(
                 chat.id,
                 None,
                 markdown_format!(
                     "✅ **Batch Summary Report**\n\n\
+            Current period: {}\n\
             Expense records parsed: {}\n\
             Total amount: {}\n\n\
             Use {} or {} to see all expenses\\.",
+                    current_period.to_string(),
                     expense_count,
                     total_amount,
                     CommandList { period: None }.to_command_string(false),
