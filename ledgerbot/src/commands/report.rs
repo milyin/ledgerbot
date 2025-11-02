@@ -383,6 +383,7 @@ pub fn format_category_summary(
 
     for (category_name, _) in &category_subtotals {
         let command = crate::commands::command_report::CommandReport {
+            period: Some(period.to_string()),
             category: Some(category_name.clone()),
             page: None,
         };

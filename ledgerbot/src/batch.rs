@@ -88,6 +88,7 @@ pub async fn execute_batch(
                     total_amount,
                     CommandList.to_command_string(false),
                     CommandReport {
+                        period: None,
                         category: None,
                         page: None
                     }

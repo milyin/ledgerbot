@@ -1,26 +1,31 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_format,
+};
 
 use crate::{
     commands::report::{
         check_category_conflicts, filter_category_expenses, format_category_summary,
         format_single_category_report,
     },
-    storages::{StorageTrait, get_current_period},
+    menus::select_period::select_period,
+    storages::{ExpensePeriod, StorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandReport {
+    pub period: Option<String>,
     pub category: Option<String>,
     pub page: Option<usize>,
 }
 
 impl CommandTrait for CommandReport {
     type A = String;
-    type B = usize;
-    type C = EmptyArg;
+    type B = String;
+    type C = usize;
     type D = EmptyArg;
     type E = EmptyArg;
     type F = EmptyArg;
@@ -31,12 +36,12 @@ impl CommandTrait for CommandReport {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "report";
-    const PLACEHOLDERS: &[&'static str] = &["category", "page"];
+    const PLACEHOLDERS: &[&'static str] = &["period", "category", "page"];
 
     fn from_arguments(
-        category: Option<Self::A>,
-        page: Option<Self::B>,
-        _: Option<Self::C>,
+        period: Option<Self::A>,
+        category: Option<Self::B>,
+        page: Option<Self::C>,
         _: Option<Self::D>,
         _: Option<Self::E>,
         _: Option<Self::F>,
@@ -44,14 +49,22 @@ impl CommandTrait for CommandReport {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandReport { category, page }
+        CommandReport {
+            period,
+            category,
+            page,
+        }
     }
 
     fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
+        self.period.as_ref()
     }
 
     fn param2(&self) -> Option<&Self::B> {
+        self.category.as_ref()
+    }
+
+    fn param3(&self) -> Option<&Self::C> {
         self.page.as_ref()
     }
 
@@ -61,9 +74,63 @@ impl CommandTrait for CommandReport {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
+        let var_storage = storage.clone().as_variable_storage();
+        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
-        // Get the current period for this chat
-        let period = get_current_period(&storage, chat_id).await;
+        let current_period_str = if let Some(period) = current_period {
+            period.to_string()
+        } else {
+            ExpensePeriod::current().to_string()
+        };
+
+        let prompt = markdown_format!(
+            "📊 *Report for period*\n\n\
+             Current period: *{}*\n\n\
+             Select a period to view its report:",
+            current_period_str
+        );
+
+        // Show menu with available periods
+        let expense_storage = storage.clone().as_expense_storage();
+        select_period(
+            target,
+            &expense_storage,
+            prompt,
+            |period| CommandReport {
+                period: Some(period.to_string()),
+                category: None,
+                page: None,
+            },
+            None::<CommandReport>,
+            None, // No new period button for reports, only existing periods
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn run1(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        period_str: &Self::A,
+    ) -> ResponseResult<()> {
+        let chat_id = target.chat.id;
+
+        // Parse the period string
+        let period = match ExpensePeriod::from_string(period_str) {
+            Ok(p) => p,
+            Err(err) => {
+                target
+                    .send_markdown_message(markdown_format!(
+                        "❌ Invalid period format: {}\n\n\
+                         Please use format YYYY\\-MM \\(e\\.g\\., 2024\\-03\\)",
+                        err
+                    ))
+                    .await?;
+                return Ok(());
+            }
+        };
 
         let chat_expenses = storage
             .clone()
@@ -78,7 +145,6 @@ impl CommandTrait for CommandReport {
             .unwrap_or_default();
 
         // Check for category conflicts before generating report
-        // TODO: In multi-period implementation, check across all periods
         let all_expenses = chat_expenses.clone();
         if let Some(conflict_message) = check_category_conflicts(&all_expenses, &chat_categories) {
             target.markdown_message(conflict_message).await?;
@@ -100,29 +166,43 @@ impl CommandTrait for CommandReport {
         Ok(())
     }
 
-    async fn run1(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-        category: &Self::A,
-    ) -> ResponseResult<()> {
-        // Default to page 0 if not specified
-        self.run2(target, storage, category, &0).await
-    }
-
     async fn run2(
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &Self::A,
-        page: &Self::B,
+        period_str: &Self::A,
+        category: &Self::B,
+    ) -> ResponseResult<()> {
+        // Default to page 0 if not specified
+        self.run3(target, storage, period_str, category, &0).await
+    }
+
+    async fn run3(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        period_str: &Self::A,
+        category: &Self::B,
+        page: &Self::C,
     ) -> ResponseResult<()> {
         const RECORDS_PER_PAGE: usize = 25;
 
         let chat_id = target.chat.id;
 
-        // Get the current period for this chat
-        let period = get_current_period(&storage, chat_id).await;
+        // Parse the period string
+        let period = match ExpensePeriod::from_string(period_str) {
+            Ok(p) => p,
+            Err(err) => {
+                target
+                    .send_markdown_message(markdown_format!(
+                        "❌ Invalid period format: {}\n\n\
+                         Please use format YYYY\\-MM \\(e\\.g\\., 2024\\-03\\)",
+                        err
+                    ))
+                    .await?;
+                return Ok(());
+            }
+        };
 
         let chat_expenses = storage
             .clone()
@@ -190,6 +270,7 @@ impl CommandTrait for CommandReport {
             page_nav_row.push(yoroolbot::storage::ButtonData::Callback(
                 "◀️ Prev".to_string(),
                 CommandReport {
+                    period: Some(period.to_string()),
                     category: Some(category.clone()),
                     page: Some(page_number - 1),
                 }
@@ -208,6 +289,7 @@ impl CommandTrait for CommandReport {
             page_nav_row.push(yoroolbot::storage::ButtonData::Callback(
                 "Next ▶️".to_string(),
                 CommandReport {
+                    period: Some(period.to_string()),
                     category: Some(category.clone()),
                     page: Some(page_number + 1),
                 }
@@ -227,6 +309,7 @@ impl CommandTrait for CommandReport {
         let back_button_row = vec![yoroolbot::storage::ButtonData::Callback(
             "↩️ Back to Summary".to_string(),
             CommandReport {
+                period: Some(period.to_string()),
                 category: None,
                 page: None,
             }
