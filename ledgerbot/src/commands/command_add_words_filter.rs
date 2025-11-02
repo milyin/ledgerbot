@@ -12,7 +12,7 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::{StorageTrait, get_current_period},
+    storages::{Expense, StorageTrait},
     utils::extract_words::extract_words,
 };
 
@@ -118,15 +118,16 @@ impl CommandTrait for CommandAddWordsFilter {
         page: &usize,
         selected_words: &Words,
     ) -> ResponseResult<()> {
-        // Get expenses and categories
-        // Get the current period for this chat
-        let period = get_current_period(&storage, target.chat.id).await;
-
-        let expenses = storage
+        // Get all expenses across all periods for word extraction
+        let all_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_expenses(target.chat.id, period)
+            .get_all_expenses(target.chat.id)
             .await;
+
+        // Extract just the Expense objects (ignore period information)
+        let expenses: Vec<Expense> = all_expenses.into_iter().map(|(_, expense)| expense).collect();
+
         let categories = storage
             .clone()
             .as_category_storage()
