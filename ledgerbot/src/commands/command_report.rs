@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
     markdown_format,
 };
 
@@ -112,7 +112,7 @@ impl CommandTrait for CommandReport {
                 }
             },
             None::<CommandReport>,
-            None, // No new period button for reports, only existing periods
+            None::<NoopCommand>, // No new period button for reports, only existing periods
         )
         .await?;
 

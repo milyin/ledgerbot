@@ -66,12 +66,14 @@ impl CommandTrait for CommandSelectPeriod {
         };
 
         // Create inline command for new period with current period as default
-        let new_period_command = format!("/select_period {}", current_period_str);
+        let new_period_command = CommandSelectPeriod { period: None };
+        let new_period_command_str = new_period_command.to_command_string(true);
 
         let prompt = markdown_format!(
             "📅 Current period: *{}*\n\n\
-             Select a period from the list below, use the ➕ button for a new period, or use `/select\\_period <YYYY\\-MM>` to enter manually\\.",
-            current_period_str
+             Select a period from the list below, use the ➕ button for a new period, or use `{}` to enter manually\\.",
+            current_period_str,
+            new_period_command_str
         );
 
         // Show menu with available periods
