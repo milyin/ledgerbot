@@ -8,6 +8,7 @@ use teloxide::{
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
     markdown::MarkdownString,
+    markdown_string,
 };
 
 use crate::storages::ExpenseStorageTrait;
@@ -24,8 +25,8 @@ pub async fn select_period<NEXT: CommandTrait, BACK: CommandTrait, NEWPERIOD: Co
     let msg = target.markdown_message(prompt).await?;
     if periods.is_empty() && new_period_command.is_none() {
         target
-            .send_markdown_message(MarkdownString::from(
-                "📅 No periods available\\. Please add expenses to create periods\\.",
+            .send_markdown_message(markdown_string!(
+                "📅 No periods available\\. Please add expenses to create periods\\."
             ))
             .await?;
         return Ok(());
