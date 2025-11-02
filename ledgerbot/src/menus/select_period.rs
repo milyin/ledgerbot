@@ -22,6 +22,14 @@ pub async fn select_period<NEXT: CommandTrait, BACK: CommandTrait, NEWPERIOD: Co
 ) -> ResponseResult<()> {
     let periods = storage.list_periods(target.chat.id).await;
     let msg = target.markdown_message(prompt).await?;
+    if periods.is_empty() && new_period_command.is_none() {
+        target
+            .send_markdown_message(MarkdownString::from(
+                "📅 No periods available\\. Please add expenses to create periods\\.",
+            ))
+            .await?;
+        return Ok(());
+    }
     let menu = create_periods_menu(
         &periods,
         |period| next_command(period).to_command_string(false),
