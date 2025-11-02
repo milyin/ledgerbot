@@ -30,7 +30,7 @@ impl CommandTrait for CommandSelectPeriod {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "select_period";
-    const PLACEHOLDERS: &[&'static str] = &["period"];
+    const PLACEHOLDERS: &[&'static str] = &["YYYY-MM"];
 
     fn param1(&self) -> Option<&Self::A> {
         self.period.as_ref()
