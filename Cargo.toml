@@ -1,6 +1,7 @@
 [workspace]
 members = ["ledgerbot", "yoroolbot"]
 resolver = "2"
+package.version = "0.3.0"
 
 [workspace.dependencies]
 teloxide = { version = "0.17.0", features = ["macros"] }
