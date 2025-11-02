@@ -1,18 +1,24 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_format,
+};
 
 use crate::{
     commands::expenses::format_expenses_chronological,
-    storages::{StorageTrait, get_current_period},
+    menus::select_period::select_period,
+    storages::{ExpensePeriod, StorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct CommandList;
+pub struct CommandList {
+    pub period: Option<ExpensePeriod>,
+}
 
 impl CommandTrait for CommandList {
-    type A = EmptyArg;
+    type A = ExpensePeriod;
     type B = EmptyArg;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -25,10 +31,14 @@ impl CommandTrait for CommandList {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "list";
-    const PLACEHOLDERS: &[&'static str] = &[];
+    const PLACEHOLDERS: &[&'static str] = &["period"];
+
+    fn param1(&self) -> Option<&Self::A> {
+        self.period.as_ref()
+    }
 
     fn from_arguments(
-        _: Option<Self::A>,
+        period: Option<Self::A>,
         _: Option<Self::B>,
         _: Option<Self::C>,
         _: Option<Self::D>,
@@ -38,7 +48,7 @@ impl CommandTrait for CommandList {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandList
+        CommandList { period }
     }
 
     async fn run0(
@@ -47,9 +57,52 @@ impl CommandTrait for CommandList {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
+        let var_storage = storage.clone().as_variable_storage();
+        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
-        // Get the current period for this chat
-        let period = get_current_period(&storage, chat_id).await;
+        let current_period_str = if let Some(period) = current_period {
+            period.to_string()
+        } else {
+            ExpensePeriod::current().to_string()
+        };
+
+        let prompt = markdown_format!(
+            "📋 *List expenses for period*\n\n\
+             Current period: *{}*\n\n\
+             Select a period to view its expenses:",
+            current_period_str
+        );
+
+        // Show menu with available periods
+        let expense_storage = storage.clone().as_expense_storage();
+        select_period(
+            target,
+            &expense_storage,
+            prompt,
+            |period_str| {
+                // Parse the period string from the menu
+                match ExpensePeriod::from_string(period_str) {
+                    Ok(period) => CommandList {
+                        period: Some(period),
+                    },
+                    Err(_) => CommandList { period: None },
+                }
+            },
+            None::<CommandList>,
+            None, // No new period button for list, only existing periods
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn run1(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        period: &ExpensePeriod,
+    ) -> ResponseResult<()> {
+        let chat_id = target.chat.id;
 
         let chat_expenses = storage
             .clone()

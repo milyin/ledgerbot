@@ -86,7 +86,7 @@ pub async fn execute_batch(
             Use {} or {} to see all expenses\\.",
                     expense_count,
                     total_amount,
-                    CommandList.to_command_string(false),
+                    CommandList { period: None }.to_command_string(false),
                     CommandReport {
                         period: None,
                         category: None,
