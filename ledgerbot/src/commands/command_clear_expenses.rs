@@ -2,21 +2,25 @@ use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_string,
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
+    markdown_format, markdown_string,
     storage::ButtonData,
 };
 
-use crate::storages::{StorageTrait, get_current_period};
+use crate::{
+    menus::select_period::select_period,
+    storages::{ExpensePeriod, StorageTrait},
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandClearExpenses {
+    pub period: Option<ExpensePeriod>,
     pub confirm: Option<bool>,
 }
 
 impl CommandTrait for CommandClearExpenses {
-    type A = bool;
-    type B = EmptyArg;
+    type A = ExpensePeriod;
+    type B = bool;
     type C = EmptyArg;
     type D = EmptyArg;
     type E = EmptyArg;
@@ -28,15 +32,19 @@ impl CommandTrait for CommandClearExpenses {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "clear_expenses";
-    const PLACEHOLDERS: &[&'static str] = &["<confirm>"];
+    const PLACEHOLDERS: &[&'static str] = &["period", "confirm"];
 
     fn param1(&self) -> Option<&Self::A> {
+        self.period.as_ref()
+    }
+
+    fn param2(&self) -> Option<&Self::B> {
         self.confirm.as_ref()
     }
 
     fn from_arguments(
-        confirm: Option<Self::A>,
-        _: Option<Self::B>,
+        period: Option<Self::A>,
+        confirm: Option<Self::B>,
         _: Option<Self::C>,
         _: Option<Self::D>,
         _: Option<Self::E>,
@@ -45,20 +53,74 @@ impl CommandTrait for CommandClearExpenses {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandClearExpenses { confirm }
+        CommandClearExpenses { period, confirm }
     }
 
     async fn run0(
         &self,
         target: &CommandReplyTarget,
+        storage: Self::Context,
+    ) -> ResponseResult<()> {
+        let chat_id = target.chat.id;
+        let var_storage = storage.clone().as_variable_storage();
+        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
+
+        let current_period_str = if let Some(period) = current_period {
+            period.to_string()
+        } else {
+            ExpensePeriod::current().to_string()
+        };
+
+        let prompt = markdown_format!(
+            "🗑️ *Clear expenses for period*\n\n\
+             Current period: *{}*\n\n\
+             Select a period to clear its expenses:",
+            current_period_str
+        );
+
+        // Show menu with available periods
+        let expense_storage = storage.clone().as_expense_storage();
+        select_period(
+            target,
+            &expense_storage,
+            prompt,
+            |period_str| {
+                // Parse the period string from the menu
+                match ExpensePeriod::from_string(period_str) {
+                    Ok(period) => CommandClearExpenses {
+                        period: Some(period),
+                        confirm: None,
+                    },
+                    Err(_) => CommandClearExpenses {
+                        period: None,
+                        confirm: None,
+                    },
+                }
+            },
+            None::<CommandClearExpenses>,
+            None::<NoopCommand>, // No new period button
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn run1(
+        &self,
+        target: &CommandReplyTarget,
         _storage: Self::Context,
+        period: &ExpensePeriod,
     ) -> ResponseResult<()> {
         // Show confirmation prompt with buttons
-        let message = markdown_string!("🗑️ Confirm clearing all expenses\\?");
+        let message = markdown_format!(
+            "🗑️ Confirm clearing all expenses for period *{}*\\?",
+            period.to_string()
+        );
 
         let buttons = vec![vec![ButtonData::SwitchInlineQuery(
             "✅ Yes, Clear All".to_string(),
             CommandClearExpenses {
+                period: Some(*period),
                 confirm: Some(true),
             }
             .to_command_string(false),
@@ -68,10 +130,11 @@ impl CommandTrait for CommandClearExpenses {
         Ok(())
     }
 
-    async fn run1(
+    async fn run2(
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
+        period: &ExpensePeriod,
         confirm: &bool,
     ) -> ResponseResult<()> {
         if !*confirm {
@@ -83,9 +146,6 @@ impl CommandTrait for CommandClearExpenses {
 
         let chat_id = target.chat.id;
 
-        // Get the current period for this chat
-        let period = get_current_period(&storage, chat_id).await;
-
         storage
             .clone()
             .as_expense_storage()
@@ -93,7 +153,10 @@ impl CommandTrait for CommandClearExpenses {
             .await;
 
         target
-            .send_markdown_message(markdown_string!("🗑️ All expenses cleared\\!"))
+            .send_markdown_message(markdown_format!(
+                "🗑️ All expenses for period *{}* cleared\\!",
+                period.to_string()
+            ))
             .await?;
         Ok(())
     }
