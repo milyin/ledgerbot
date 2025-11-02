@@ -65,9 +65,12 @@ impl CommandTrait for CommandSelectPeriod {
             ExpensePeriod::current().to_string()
         };
 
+        // Create inline command for new period with current period as default
+        let new_period_command = format!("/select_period {}", current_period_str);
+
         let prompt = markdown_format!(
             "📅 Current period: *{}*\n\n\
-             Select a period from the list below or use `/select\\_period <YYYY\\-MM>` to enter manually\\.",
+             Select a period from the list below, use the ➕ button for a new period, or use `/select\\_period <YYYY\\-MM>` to enter manually\\.",
             current_period_str
         );
 
@@ -81,6 +84,7 @@ impl CommandTrait for CommandSelectPeriod {
                 period: Some(period.to_string()),
             },
             None::<CommandSelectPeriod>,
+            Some(new_period_command),
         )
         .await?;
 
