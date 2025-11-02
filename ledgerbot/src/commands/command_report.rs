@@ -17,13 +17,13 @@ use crate::{
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandReport {
-    pub period: Option<String>,
+    pub period: Option<ExpensePeriod>,
     pub category: Option<String>,
     pub page: Option<usize>,
 }
 
 impl CommandTrait for CommandReport {
-    type A = String;
+    type A = ExpensePeriod;
     type B = String;
     type C = usize;
     type D = EmptyArg;
@@ -96,10 +96,20 @@ impl CommandTrait for CommandReport {
             target,
             &expense_storage,
             prompt,
-            |period| CommandReport {
-                period: Some(period.to_string()),
-                category: None,
-                page: None,
+            |period_str| {
+                // Parse the period string from the menu
+                match ExpensePeriod::from_string(period_str) {
+                    Ok(period) => CommandReport {
+                        period: Some(period),
+                        category: None,
+                        page: None,
+                    },
+                    Err(_) => CommandReport {
+                        period: None,
+                        category: None,
+                        page: None,
+                    },
+                }
             },
             None::<CommandReport>,
             None, // No new period button for reports, only existing periods
@@ -113,24 +123,9 @@ impl CommandTrait for CommandReport {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        period_str: &Self::A,
+        period: &ExpensePeriod,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-
-        // Parse the period string
-        let period = match ExpensePeriod::from_string(period_str) {
-            Ok(p) => p,
-            Err(err) => {
-                target
-                    .send_markdown_message(markdown_format!(
-                        "❌ Invalid period format: {}\n\n\
-                         Please use format YYYY\\-MM \\(e\\.g\\., 2024\\-03\\)",
-                        err
-                    ))
-                    .await?;
-                return Ok(());
-            }
-        };
 
         let chat_expenses = storage
             .clone()
@@ -170,39 +165,24 @@ impl CommandTrait for CommandReport {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        period_str: &Self::A,
+        period: &ExpensePeriod,
         category: &Self::B,
     ) -> ResponseResult<()> {
         // Default to page 0 if not specified
-        self.run3(target, storage, period_str, category, &0).await
+        self.run3(target, storage, period, category, &0).await
     }
 
     async fn run3(
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        period_str: &Self::A,
+        period: &ExpensePeriod,
         category: &Self::B,
         page: &Self::C,
     ) -> ResponseResult<()> {
         const RECORDS_PER_PAGE: usize = 25;
 
         let chat_id = target.chat.id;
-
-        // Parse the period string
-        let period = match ExpensePeriod::from_string(period_str) {
-            Ok(p) => p,
-            Err(err) => {
-                target
-                    .send_markdown_message(markdown_format!(
-                        "❌ Invalid period format: {}\n\n\
-                         Please use format YYYY\\-MM \\(e\\.g\\., 2024\\-03\\)",
-                        err
-                    ))
-                    .await?;
-                return Ok(());
-            }
-        };
 
         let chat_expenses = storage
             .clone()
@@ -270,7 +250,7 @@ impl CommandTrait for CommandReport {
             page_nav_row.push(yoroolbot::storage::ButtonData::Callback(
                 "◀️ Prev".to_string(),
                 CommandReport {
-                    period: Some(period.to_string()),
+                    period: Some(*period),
                     category: Some(category.clone()),
                     page: Some(page_number - 1),
                 }
@@ -289,7 +269,7 @@ impl CommandTrait for CommandReport {
             page_nav_row.push(yoroolbot::storage::ButtonData::Callback(
                 "Next ▶️".to_string(),
                 CommandReport {
-                    period: Some(period.to_string()),
+                    period: Some(*period),
                     category: Some(category.clone()),
                     page: Some(page_number + 1),
                 }
@@ -309,7 +289,7 @@ impl CommandTrait for CommandReport {
         let back_button_row = vec![yoroolbot::storage::ButtonData::Callback(
             "↩️ Back to Summary".to_string(),
             CommandReport {
-                period: Some(period.to_string()),
+                period: Some(*period),
                 category: None,
                 page: None,
             }

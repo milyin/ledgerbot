@@ -382,8 +382,10 @@ pub fn format_category_summary(
     let mut current_row: Vec<ButtonData> = Vec::new();
 
     for (category_name, _) in &category_subtotals {
+        // Parse the period string to ExpensePeriod for the command
+        let period_obj = crate::storages::ExpensePeriod::from_string(period).ok();
         let command = crate::commands::command_report::CommandReport {
-            period: Some(period.to_string()),
+            period: period_obj,
             category: Some(category_name.clone()),
             page: None,
         };
