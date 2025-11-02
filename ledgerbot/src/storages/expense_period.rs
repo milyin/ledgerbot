@@ -1,12 +1,31 @@
-use std::fmt;
+use std::{error::Error as StdError, fmt, str::FromStr};
 
 use chrono::{Datelike, NaiveDate};
+use serde::{Deserialize, Serialize};
+
+/// Error type for ExpensePeriod parsing
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsePeriodError(String);
+
+impl fmt::Display for ParsePeriodError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl StdError for ParsePeriodError {}
 
 /// Represents a period (year and month) for expense tracking
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ExpensePeriod {
     pub year: i32,
     pub month: u32,
+}
+
+impl Default for ExpensePeriod {
+    fn default() -> Self {
+        Self::current()
+    }
 }
 
 impl ExpensePeriod {
@@ -101,6 +120,14 @@ impl ExpensePeriod {
 impl fmt::Display for ExpensePeriod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:04}-{:02}", self.year, self.month)
+    }
+}
+
+impl FromStr for ExpensePeriod {
+    type Err = ParsePeriodError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_string(s).map_err(ParsePeriodError)
     }
 }
 

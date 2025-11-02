@@ -13,11 +13,11 @@ use crate::{
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandSelectPeriod {
-    pub period: Option<String>,
+    pub period: Option<ExpensePeriod>,
 }
 
 impl CommandTrait for CommandSelectPeriod {
-    type A = String;
+    type A = ExpensePeriod;
     type B = EmptyArg;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -30,7 +30,7 @@ impl CommandTrait for CommandSelectPeriod {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "select_period";
-    const PLACEHOLDERS: &[&'static str] = &["<period_name>"];
+    const PLACEHOLDERS: &[&'static str] = &["period"];
 
     fn param1(&self) -> Option<&Self::A> {
         self.period.as_ref()
@@ -80,8 +80,14 @@ impl CommandTrait for CommandSelectPeriod {
             target,
             &expense_storage,
             prompt,
-            |period| CommandSelectPeriod {
-                period: Some(period.to_string()),
+            |period_str| {
+                // Parse the period string from the menu
+                match ExpensePeriod::from_string(period_str) {
+                    Ok(period) => CommandSelectPeriod {
+                        period: Some(period),
+                    },
+                    Err(_) => CommandSelectPeriod { period: None },
+                }
             },
             None::<CommandSelectPeriod>,
             Some(new_period_command),
@@ -95,28 +101,13 @@ impl CommandTrait for CommandSelectPeriod {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        period_str: &String,
+        period: &ExpensePeriod,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
 
-        // Parse the period string (format: YYYY-MM)
-        let period = match ExpensePeriod::from_string(period_str) {
-            Ok(p) => p,
-            Err(err) => {
-                target
-                    .send_markdown_message(markdown_format!(
-                        "❌ Invalid period format: {}\n\n\
-                         Please use format YYYY\\-MM \\(e\\.g\\., 2024\\-03\\)",
-                        err
-                    ))
-                    .await?;
-                return Ok(());
-            }
-        };
-
         // Store the selected period in VariableStorage
         let var_storage = storage.clone().as_variable_storage();
-        var_storage.set(chat_id, period).await;
+        var_storage.set(chat_id, *period).await;
 
         target
             .send_markdown_message(markdown_format!(
