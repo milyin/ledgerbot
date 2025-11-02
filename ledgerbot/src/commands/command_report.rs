@@ -155,9 +155,24 @@ impl CommandTrait for CommandReport {
             return Ok(());
         }
 
+        // Create back button to return to period selection
+        let back_button = Some(yoroolbot::storage::ButtonData::Callback(
+            "↩️ Back to Periods".to_string(),
+            CommandReport {
+                period: None,
+                category: None,
+                page: None,
+            }
+            .to_command_string(false),
+        ));
+
         // Show summary with category selection menu
-        let (message, buttons) =
-            format_category_summary(&chat_expenses, &chat_categories, &period.to_string());
+        let (message, buttons) = format_category_summary(
+            &chat_expenses,
+            &chat_categories,
+            &period.to_string(),
+            back_button,
+        );
 
         if buttons.is_empty() {
             // No categories, just send the message

@@ -274,11 +274,17 @@ pub fn format_category_summary(
     expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
     period: &str,
+    back_button: Option<ButtonData>,
 ) -> (MarkdownString, Vec<Vec<ButtonData>>) {
     if expenses.is_empty() {
+        let mut buttons = vec![];
+        // Add back button even if no expenses
+        if let Some(back) = back_button {
+            buttons.push(vec![back]);
+        }
         return (
             markdown_format!("No expenses recorded yet for period *{}*\\.", period),
-            vec![],
+            buttons,
         );
     }
 
@@ -404,6 +410,11 @@ pub fn format_category_summary(
     // Add remaining buttons if any
     if !current_row.is_empty() {
         buttons.push(current_row);
+    }
+
+    // Add back button if provided
+    if let Some(back) = back_button {
+        buttons.push(vec![back]);
     }
 
     (summary_message, buttons)
