@@ -9,7 +9,7 @@ pub use batch_storage::{BatchStorage, BatchStorageTrait};
 pub use category_storage::{CategoryData, CategoryStorage, CategoryStorageTrait};
 pub use expense_period::ExpensePeriod;
 pub use expense_storage::{
-    get_current_period, Expense, ExpenseData, ExpenseStorage, ExpenseStorageTrait,
+    Expense, ExpenseData, ExpenseStorage, ExpenseStorageTrait, get_current_period,
 };
 pub use storage::{Storage, StorageTrait};
 pub use variable_storage::VariableStorage;

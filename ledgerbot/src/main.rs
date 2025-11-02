@@ -31,10 +31,7 @@ async fn main() {
     let storage = if let Some(storage_path) = args.persistent_storage {
         // Use persistent storage with provided path or default
         let base_dir = storage_path.unwrap_or_else(|| PathBuf::from("storage"));
-        log::info!(
-            "Using persistent storage in directory: {:?}",
-            base_dir
-        );
+        log::info!("Using persistent storage in directory: {:?}", base_dir);
 
         // Create subdirectories for different data types
         let categories_dir = base_dir.join("categories");

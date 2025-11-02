@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, marker::PhantomData, path::PathBuf, sync::Arc};
+
+use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use tokio::{fs, sync::Mutex};
 
@@ -254,7 +255,9 @@ where
             Ok(mut entries) => {
                 let mut keys = Vec::new();
                 while let Ok(Some(entry)) = entries.next_entry().await {
-                    if let Some(file_name) = entry.file_name().to_str() && file_name.ends_with(".yaml") {
+                    if let Some(file_name) = entry.file_name().to_str()
+                        && file_name.ends_with(".yaml")
+                    {
                         let encoded_key = file_name.trim_end_matches(".yaml");
                         let decoded_key = decode_filename_to_key(encoded_key);
                         keys.push(decoded_key);
@@ -269,8 +272,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     const TEST_CHAT_ID: ChatId = ChatId(12345);
 
