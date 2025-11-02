@@ -273,9 +273,13 @@ pub fn format_single_category_report(
 pub fn format_category_summary(
     expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
+    period: &str,
 ) -> (MarkdownString, Vec<Vec<ButtonData>>) {
     if expenses.is_empty() {
-        return (markdown_string!("No expenses recorded yet\\."), vec![]);
+        return (
+            markdown_format!("No expenses recorded yet for period *{}*\\.", period),
+            vec![],
+        );
     }
 
     // Build regex matchers for each category
@@ -364,7 +368,11 @@ pub fn format_category_summary(
 
     // Join all lines and use @code modifier to wrap in code block
     let table_content = table_lines.join("\n");
-    let summary_message = markdown_format!("📊 *Expense Summary*\n\n{}\n\n", @code table_content);
+    let summary_message = markdown_format!(
+        "📊 *Expense Summary* \\(period: *{}*\\)\n\n{}\n\n",
+        period,
+        @code table_content
+    );
     let summary_message = summary_message + markdown_string!("Select a category to view details:");
 
     // Create inline keyboard button data using Callback

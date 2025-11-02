@@ -86,7 +86,8 @@ impl CommandTrait for CommandReport {
         }
 
         // Show summary with category selection menu
-        let (message, buttons) = format_category_summary(&chat_expenses, &chat_categories);
+        let (message, buttons) =
+            format_category_summary(&chat_expenses, &chat_categories, &period.to_string());
 
         if buttons.is_empty() {
             // No categories, just send the message
@@ -152,13 +153,18 @@ impl CommandTrait for CommandReport {
         let report_text =
             format_single_category_report(&filtered_expenses, *page_number, RECORDS_PER_PAGE);
 
-        // Build header with category name, page info, and total
+        // Build header with category name, period, page info, and total
         let message = if filtered_expenses.is_empty() {
-            yoroolbot::markdown_format!("*{}*: No expenses in this category\\.", category)
+            yoroolbot::markdown_format!(
+                "*{}* \\(period: *{}*\\): No expenses in this category\\.",
+                category,
+                &period.to_string()
+            )
         } else if total_pages > 1 {
             yoroolbot::markdown_format!(
-                "*{}*, total `{}`,  page {}/{}\n{}",
+                "*{}* \\(period: *{}*\\), total `{}`,  page {}/{}\n{}",
                 category,
+                &period.to_string(),
                 total_amount,
                 page_number + 1,
                 total_pages,
@@ -166,8 +172,9 @@ impl CommandTrait for CommandReport {
             )
         } else {
             yoroolbot::markdown_format!(
-                "*{}*, total `{}`\n{}",
+                "*{}* \\(period: *{}*\\), total `{}`\n{}",
                 category,
+                &period.to_string(),
                 total_amount,
                 @code report_text
             )
