@@ -71,7 +71,7 @@ pub fn check_category_conflicts(
             );
 
         for conflict in conflicts {
-            let date_str = format_timestamp(conflict.expense.timestamp);
+            let date_str = format_timestamp(conflict.expense.timestamp());
             error_message = error_message
                 + markdown_format!(
                     "📝 *Expense:* {} {} {}\n",
@@ -215,7 +215,7 @@ pub fn format_single_category_report(
     let mut last_date: Option<String> = None;
 
     for expense in &records_to_show {
-        let date_str = format_timestamp(expense.timestamp);
+        let date_str = format_timestamp(expense.timestamp());
 
         // Check if date is same as previous
         let date_field = if last_date.as_ref() == Some(&date_str.as_str().to_string()) {
@@ -273,9 +273,19 @@ pub fn format_single_category_report(
 pub fn format_category_summary(
     expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
+    period: &str,
+    back_button: Option<ButtonData>,
 ) -> (MarkdownString, Vec<Vec<ButtonData>>) {
     if expenses.is_empty() {
-        return (markdown_string!("No expenses recorded yet\\."), vec![]);
+        let mut buttons = vec![];
+        // Add back button even if no expenses
+        if let Some(back) = back_button {
+            buttons.push(vec![back]);
+        }
+        return (
+            markdown_format!("No expenses recorded yet for period *{}*\\.", period),
+            buttons,
+        );
     }
 
     // Build regex matchers for each category
@@ -364,7 +374,11 @@ pub fn format_category_summary(
 
     // Join all lines and use @code modifier to wrap in code block
     let table_content = table_lines.join("\n");
-    let summary_message = markdown_format!("📊 *Expense Summary*\n\n{}\n\n", @code table_content);
+    let summary_message = markdown_format!(
+        "📊 *Expense Summary* \\(period: *{}*\\)\n\n{}\n\n",
+        period,
+        @code table_content
+    );
     let summary_message = summary_message + markdown_string!("Select a category to view details:");
 
     // Create inline keyboard button data using Callback
@@ -374,7 +388,10 @@ pub fn format_category_summary(
     let mut current_row: Vec<ButtonData> = Vec::new();
 
     for (category_name, _) in &category_subtotals {
+        // Parse the period string to ExpensePeriod for the command
+        let period_obj = crate::storages::ExpensePeriod::from_string(period).ok();
         let command = crate::commands::command_report::CommandReport {
+            period: period_obj,
             category: Some(category_name.clone()),
             page: None,
         };
@@ -393,6 +410,11 @@ pub fn format_category_summary(
     // Add remaining buttons if any
     if !current_row.is_empty() {
         buttons.push(current_row);
+    }
+
+    // Add back button if provided
+    if let Some(back) = back_button {
+        buttons.push(vec![back]);
     }
 
     (summary_message, buttons)

@@ -1,6 +1,7 @@
 [workspace]
 members = ["ledgerbot", "yoroolbot"]
 resolver = "2"
+package.version = "0.3.0"
 
 [workspace.dependencies]
 teloxide = { version = "0.17.0", features = ["macros"] }
@@ -11,5 +12,5 @@ clap = { version = "4.4", features = ["derive"] }
 regex = "1.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 async-trait = "0.1"

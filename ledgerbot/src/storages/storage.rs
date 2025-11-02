@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait};
+use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait, InMemStore};
 
-use super::category_storage::CategoryStorage;
 use crate::storages::{
-    BatchStorage, BatchStorageTrait, CategoryStorageTrait, ExpenseStorage, ExpenseStorageTrait,
+    BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait,
+    ExpenseData, ExpenseStorage, ExpenseStorageTrait, VariableStorage,
 };
 
 /// Combined storage trait that provides all storage operations
@@ -21,6 +21,9 @@ pub trait StorageTrait: Send + Sync {
 
     /// Convert to CallbackDataStorageTrait trait object
     fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait>;
+
+    /// Get variable storage (concrete type, not trait object, because of generic methods)
+    fn as_variable_storage(self: Arc<Self>) -> Arc<VariableStorage>;
 }
 
 /// Main storage structure that holds all bot data
@@ -31,17 +34,26 @@ pub struct Storage {
     categories: Arc<dyn CategoryStorageTrait>,
     batch: Arc<dyn BatchStorageTrait>,
     callback_data: Arc<dyn CallbackDataStorageTrait>,
+    variables: Arc<VariableStorage>,
 }
 
 impl Storage {
     /// Create a new storage with all storage types initialized (in-memory)
     pub fn new() -> Self {
         Self {
-            expenses: Arc::new(ExpenseStorage::new()),
-            categories: Arc::new(CategoryStorage::new()),
+            expenses: Arc::new(ExpenseStorage::new(InMemStore::<ExpenseData>::new())),
+            categories: Arc::new(CategoryStorage::new(InMemStore::<CategoryData>::new())),
             batch: Arc::new(BatchStorage::new()),
             callback_data: Arc::new(CallbackDataStorage::new()),
+            variables: Arc::new(VariableStorage::new()),
         }
+    }
+
+    /// Builder-like method to configure expense storage
+    /// Replaces the expense storage with the provided implementation
+    pub fn expenses_storage(mut self, storage: impl ExpenseStorageTrait + 'static) -> Self {
+        self.expenses = Arc::new(storage);
+        self
     }
 
     /// Builder-like method to configure category storage
@@ -74,5 +86,9 @@ impl StorageTrait for Storage {
 
     fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait> {
         self.callback_data.clone()
+    }
+
+    fn as_variable_storage(self: Arc<Self>) -> Arc<VariableStorage> {
+        self.variables.clone()
     }
 }

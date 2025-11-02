@@ -1,7 +1,7 @@
 [package]
 name = "yoroolbot"
-version = "0.1.0"
 edition = "2024"
+version =  { workspace = true }
 
 [lib]
 name = "yoroolbot"
@@ -11,3 +11,5 @@ path = "src/lib.rs"
 teloxide = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }

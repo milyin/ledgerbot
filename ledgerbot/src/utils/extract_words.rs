@@ -4,7 +4,7 @@ use teloxide::types::ChatId;
 
 use crate::{
     menus::select_word::Words,
-    storages::{Expense, StorageTrait},
+    storages::{Expense, StorageTrait, get_current_period},
 };
 
 /// Extract unique words from uncategorized expenses
@@ -79,10 +79,13 @@ pub async fn extract_and_merge_words(
     chat_id: ChatId,
     words: Option<Words>,
 ) -> Words {
+    // Get the current period for this chat
+    let period = get_current_period(storage, chat_id).await;
+
     let expenses = storage
         .clone()
         .as_expense_storage()
-        .get_chat_expenses(chat_id)
+        .get_expenses(chat_id, period.to_string())
         .await;
     let categories = storage
         .clone()
@@ -102,33 +105,19 @@ pub async fn extract_and_merge_words(
 mod tests {
     use std::collections::HashMap;
 
+    use chrono::NaiveDate;
+
     use crate::{storages::Expense, utils::extract_words::extract_words};
 
     #[test]
     fn test_extract_words() {
         // Create test expenses
-        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let date = NaiveDate::from_ymd_opt(2021, 1, 1).unwrap();
         let expenses = vec![
-            Expense {
-                description: "Coffee at Starbucks".to_string(),
-                amount: 5.50,
-                timestamp,
-            },
-            Expense {
-                description: "Lunch at restaurant".to_string(),
-                amount: 12.00,
-                timestamp,
-            },
-            Expense {
-                description: "Bus ticket".to_string(),
-                amount: 2.75,
-                timestamp,
-            },
-            Expense {
-                description: "Taxi ride".to_string(),
-                amount: 15.00,
-                timestamp,
-            },
+            Expense::new(date, "Coffee at Starbucks".to_string(), 5.50),
+            Expense::new(date, "Lunch at restaurant".to_string(), 12.00),
+            Expense::new(date, "Bus ticket".to_string(), 2.75),
+            Expense::new(date, "Taxi ride".to_string(), 15.00),
         ];
 
         // Create categories with patterns
@@ -163,18 +152,10 @@ mod tests {
     #[test]
     fn test_extract_words_all_categorized() {
         // Create test expenses
-        let timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let date = NaiveDate::from_ymd_opt(2021, 1, 1).unwrap();
         let expenses = vec![
-            Expense {
-                description: "Coffee".to_string(),
-                amount: 5.50,
-                timestamp,
-            },
-            Expense {
-                description: "Lunch".to_string(),
-                amount: 12.00,
-                timestamp,
-            },
+            Expense::new(date, "Coffee".to_string(), 5.50),
+            Expense::new(date, "Lunch".to_string(), 12.00),
         ];
 
         // Create categories that match all expenses

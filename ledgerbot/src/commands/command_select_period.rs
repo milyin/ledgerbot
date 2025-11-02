@@ -7,17 +7,16 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::expenses::format_expenses_chronological,
     menus::select_period::select_period,
     storages::{ExpensePeriod, StorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct CommandList {
+pub struct CommandSelectPeriod {
     pub period: Option<ExpensePeriod>,
 }
 
-impl CommandTrait for CommandList {
+impl CommandTrait for CommandSelectPeriod {
     type A = ExpensePeriod;
     type B = EmptyArg;
     type C = EmptyArg;
@@ -30,7 +29,7 @@ impl CommandTrait for CommandList {
 
     type Context = Arc<dyn StorageTrait>;
 
-    const NAME: &'static str = "list";
+    const NAME: &'static str = "select_period";
     const PLACEHOLDERS: &[&'static str] = &["period"];
 
     fn param1(&self) -> Option<&Self::A> {
@@ -48,7 +47,7 @@ impl CommandTrait for CommandList {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandList { period }
+        CommandSelectPeriod { period }
     }
 
     async fn run0(
@@ -66,10 +65,12 @@ impl CommandTrait for CommandList {
             ExpensePeriod::current().to_string()
         };
 
+        // Create inline command for new period with current period as default
+        let new_period_command = format!("/select_period {}", current_period_str);
+
         let prompt = markdown_format!(
-            "📋 *List expenses for period*\n\n\
-             Current period: *{}*\n\n\
-             Select a period to view its expenses:",
+            "📅 Current period: *{}*\n\n\
+             Select a period from the list below, use the ➕ button for a new period, or use `/select\\_period <YYYY\\-MM>` to enter manually\\.",
             current_period_str
         );
 
@@ -82,14 +83,14 @@ impl CommandTrait for CommandList {
             |period_str| {
                 // Parse the period string from the menu
                 match ExpensePeriod::from_string(period_str) {
-                    Ok(period) => CommandList {
+                    Ok(period) => CommandSelectPeriod {
                         period: Some(period),
                     },
-                    Err(_) => CommandList { period: None },
+                    Err(_) => CommandSelectPeriod { period: None },
                 }
             },
-            None::<CommandList>,
-            None, // No new period button for list, only existing periods
+            None::<CommandSelectPeriod>,
+            Some(new_period_command),
         )
         .await?;
 
@@ -104,31 +105,23 @@ impl CommandTrait for CommandList {
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
 
-        let chat_expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_expenses(chat_id, period.to_string())
-            .await;
+        // Store the selected period in VariableStorage
+        let var_storage = storage.clone().as_variable_storage();
+        var_storage.set(chat_id, *period).await;
 
-        match format_expenses_chronological(&chat_expenses) {
-            Ok(messages) => {
-                // List of expenses - send each message
-                for message in messages {
-                    target.send_markdown_message(message).await?;
-                }
-            }
-            Err(error_message) => {
-                // Error message (e.g., no expenses) - send as MarkdownString
-                target.send_markdown_message(error_message).await?;
-            }
-        }
-
+        target
+            .send_markdown_message(markdown_format!(
+                "📅 Period selected: *{}*\n\n\
+                 All expense operations will now use this period\\.",
+                period.to_string()
+            ))
+            .await?;
         Ok(())
     }
 }
 
-impl From<CommandList> for crate::commands::Command {
-    fn from(cmd: CommandList) -> Self {
-        crate::commands::Command::List(cmd)
+impl From<CommandSelectPeriod> for crate::commands::Command {
+    fn from(cmd: CommandSelectPeriod) -> Self {
+        crate::commands::Command::SelectPeriod(cmd)
     }
 }

@@ -1,73 +1,123 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
-use tokio::sync::Mutex;
+use yoroolbot::storage::DataStoreTrait;
+
+use super::{ExpensePeriod, StorageTrait};
+
+/// Type alias for expense data (list of expenses for a period)
+pub type ExpenseData = Vec<Expense>;
+
+/// Helper function to get the current period for a chat
+/// Returns the selected period from VariableStorage, or current month if not set
+pub async fn get_current_period(storage: &Arc<dyn StorageTrait>, chat_id: ChatId) -> ExpensePeriod {
+    let var_storage = storage.clone().as_variable_storage();
+    var_storage
+        .get::<ExpensePeriod>(chat_id)
+        .await
+        .unwrap_or_else(ExpensePeriod::current)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expense {
-    pub timestamp: i64,
+    pub date: NaiveDate,
     pub description: String,
     pub amount: f64,
+}
+
+impl Expense {
+    /// Convenient constructor for creating expense records
+    pub fn new(date: NaiveDate, description: String, amount: f64) -> Self {
+        Self {
+            date,
+            description,
+            amount,
+        }
+    }
+
+    /// Create expense from timestamp (for backward compatibility during migration)
+    pub fn from_timestamp(timestamp: i64, description: String, amount: f64) -> Self {
+        use chrono::{TimeZone, Utc};
+        let datetime = Utc.timestamp_opt(timestamp, 0).unwrap();
+        Self {
+            date: datetime.date_naive(),
+            description,
+            amount,
+        }
+    }
+
+    /// Get Unix timestamp for this expense (for backward compatibility)
+    pub fn timestamp(&self) -> i64 {
+        self.date
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc()
+            .timestamp()
+    }
 }
 
 /// Trait for expense storage operations
 #[async_trait::async_trait]
 pub trait ExpenseStorageTrait: Send + Sync {
-    /// Get expenses for a specific chat
-    async fn get_chat_expenses(&self, chat_id: ChatId) -> Vec<Expense>;
+    /// Get expenses for a specific chat for the named period
+    async fn get_expenses(&self, chat_id: ChatId, period: String) -> Vec<Expense>;
 
-    /// Add expenses to a specific chat's storage
-    async fn add_expenses(&self, chat_id: ChatId, expenses: Vec<(String, f64, i64)>);
+    /// Add expenses to a specific chat's storage for the named period
+    async fn add_expenses(&self, chat_id: ChatId, period: String, expenses: Vec<Expense>);
 
-    /// Add a single expense
-    async fn add_expense(&self, chat_id: ChatId, description: &str, amount: f64, timestamp: i64);
+    /// Clear all expenses for a specific chat for the named period
+    async fn clear_expenses(&self, chat_id: ChatId, period: String);
 
-    /// Clear all expenses for a specific chat
-    async fn clear_chat_expenses(&self, chat_id: ChatId);
+    /// Get all periods available for a chat.
+    async fn list_periods(&self, chat_id: ChatId) -> Vec<String>;
 }
 
-/// Per-chat storage for expenses - each chat has its own expense list
+/// Generic expense storage that works with any DataStore implementation
+/// Each period is stored as a separate key (period string) with its expenses as the value
 #[derive(Clone)]
-pub struct ExpenseStorage {
-    data: Arc<Mutex<HashMap<ChatId, Vec<Expense>>>>,
+pub struct ExpenseStorage<S>
+where
+    S: DataStoreTrait<ExpenseData>,
+{
+    store: S,
+    _phantom: PhantomData<ExpenseData>,
 }
 
-impl ExpenseStorage {
-    pub fn new() -> Self {
+impl<S> ExpenseStorage<S>
+where
+    S: DataStoreTrait<ExpenseData>,
+{
+    pub fn new(store: S) -> Self {
         Self {
-            data: Arc::new(Mutex::new(HashMap::new())),
+            store,
+            _phantom: PhantomData,
         }
     }
 }
 
 /// Implement ExpenseStorageTrait for ExpenseStorage
 #[async_trait::async_trait]
-impl ExpenseStorageTrait for ExpenseStorage {
-    async fn get_chat_expenses(&self, chat_id: ChatId) -> Vec<Expense> {
-        let storage_guard = self.data.lock().await;
-        storage_guard.get(&chat_id).cloned().unwrap_or_default()
+impl<S> ExpenseStorageTrait for ExpenseStorage<S>
+where
+    S: DataStoreTrait<ExpenseData>,
+{
+    async fn get_expenses(&self, chat_id: ChatId, period: String) -> Vec<Expense> {
+        self.store.get(chat_id, &period).await.unwrap_or_default()
     }
 
-    async fn add_expenses(&self, chat_id: ChatId, expenses: Vec<(String, f64, i64)>) {
-        let mut storage_guard = self.data.lock().await;
-        let chat_expenses = storage_guard.entry(chat_id).or_default();
-        for (description, amount, timestamp) in expenses {
-            chat_expenses.push(Expense {
-                description,
-                amount,
-                timestamp,
-            });
-        }
+    async fn add_expenses(&self, chat_id: ChatId, period: String, expenses: Vec<Expense>) {
+        let mut period_expenses = self.store.get(chat_id, &period).await.unwrap_or_default();
+        period_expenses.extend(expenses);
+        self.store.set(chat_id, &period, period_expenses).await;
     }
 
-    async fn add_expense(&self, chat_id: ChatId, description: &str, amount: f64, timestamp: i64) {
-        self.add_expenses(chat_id, vec![(description.to_string(), amount, timestamp)])
-            .await;
+    async fn clear_expenses(&self, chat_id: ChatId, period: String) {
+        self.store.remove(chat_id, &period).await;
     }
 
-    async fn clear_chat_expenses(&self, chat_id: ChatId) {
-        let mut storage_guard = self.data.lock().await;
-        storage_guard.remove(&chat_id);
+    async fn list_periods(&self, chat_id: ChatId) -> Vec<String> {
+        self.store.keys(chat_id).await
     }
 }

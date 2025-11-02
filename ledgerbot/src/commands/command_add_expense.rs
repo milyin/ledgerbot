@@ -7,7 +7,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::ExpenseStorageTrait;
+use crate::storages::{Expense, StorageTrait, get_current_period};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddExpense {
@@ -27,7 +27,7 @@ impl CommandTrait for CommandAddExpense {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn ExpenseStorageTrait>;
+    type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "add_expense";
     const PLACEHOLDERS: &[&'static str] = &["<date>", "<description>", "<amount>"];
@@ -147,12 +147,17 @@ impl CommandTrait for CommandAddExpense {
         description: &String,
         amount: &f64,
     ) -> ResponseResult<()> {
-        // Use provided date
-        let timestamp = date.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp();
+        // Create expense record
+        let expense = Expense::new(*date, description.clone(), *amount);
 
-        // Store the expense
+        // Get the current period for this chat
+        let period = get_current_period(&storage, target.chat.id).await;
+
+        // Store the expense in the selected period
         storage
-            .add_expense(target.chat.id, description, *amount, timestamp)
+            .clone()
+            .as_expense_storage()
+            .add_expenses(target.chat.id, period.to_string(), vec![expense])
             .await;
 
         if !target.batch {

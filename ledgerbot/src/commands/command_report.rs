@@ -1,26 +1,31 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_format,
+};
 
 use crate::{
     commands::report::{
         check_category_conflicts, filter_category_expenses, format_category_summary,
         format_single_category_report,
     },
-    storages::StorageTrait,
+    menus::select_period::select_period,
+    storages::{ExpensePeriod, StorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandReport {
+    pub period: Option<ExpensePeriod>,
     pub category: Option<String>,
     pub page: Option<usize>,
 }
 
 impl CommandTrait for CommandReport {
-    type A = String;
-    type B = usize;
-    type C = EmptyArg;
+    type A = ExpensePeriod;
+    type B = String;
+    type C = usize;
     type D = EmptyArg;
     type E = EmptyArg;
     type F = EmptyArg;
@@ -31,12 +36,12 @@ impl CommandTrait for CommandReport {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "report";
-    const PLACEHOLDERS: &[&'static str] = &["category", "page"];
+    const PLACEHOLDERS: &[&'static str] = &["period", "category", "page"];
 
     fn from_arguments(
-        category: Option<Self::A>,
-        page: Option<Self::B>,
-        _: Option<Self::C>,
+        period: Option<Self::A>,
+        category: Option<Self::B>,
+        page: Option<Self::C>,
         _: Option<Self::D>,
         _: Option<Self::E>,
         _: Option<Self::F>,
@@ -44,14 +49,22 @@ impl CommandTrait for CommandReport {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandReport { category, page }
+        CommandReport {
+            period,
+            category,
+            page,
+        }
     }
 
     fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
+        self.period.as_ref()
     }
 
     fn param2(&self) -> Option<&Self::B> {
+        self.category.as_ref()
+    }
+
+    fn param3(&self) -> Option<&Self::C> {
         self.page.as_ref()
     }
 
@@ -61,10 +74,63 @@ impl CommandTrait for CommandReport {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
+        let var_storage = storage.clone().as_variable_storage();
+        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
+
+        let current_period_str = if let Some(period) = current_period {
+            period.to_string()
+        } else {
+            ExpensePeriod::current().to_string()
+        };
+
+        let prompt = markdown_format!(
+            "📊 *Report for period*\n\n\
+             Current period: *{}*\n\n\
+             Select a period to view its report:",
+            current_period_str
+        );
+
+        // Show menu with available periods
+        let expense_storage = storage.clone().as_expense_storage();
+        select_period(
+            target,
+            &expense_storage,
+            prompt,
+            |period_str| {
+                // Parse the period string from the menu
+                match ExpensePeriod::from_string(period_str) {
+                    Ok(period) => CommandReport {
+                        period: Some(period),
+                        category: None,
+                        page: None,
+                    },
+                    Err(_) => CommandReport {
+                        period: None,
+                        category: None,
+                        page: None,
+                    },
+                }
+            },
+            None::<CommandReport>,
+            None, // No new period button for reports, only existing periods
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn run1(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        period: &ExpensePeriod,
+    ) -> ResponseResult<()> {
+        let chat_id = target.chat.id;
+
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_chat_expenses(chat_id)
+            .get_expenses(chat_id, period.to_string())
             .await;
         let chat_categories = storage
             .clone()
@@ -73,14 +139,38 @@ impl CommandTrait for CommandReport {
             .await
             .unwrap_or_default();
 
-        // Check for category conflicts before generating report
-        if let Some(conflict_message) = check_category_conflicts(&chat_expenses, &chat_categories) {
+        // Check for category conflicts across ALL periods, not just current
+        let expense_storage = storage.clone().as_expense_storage();
+        let all_periods = expense_storage.list_periods(chat_id).await;
+        let mut all_expenses = Vec::new();
+        for period_str in all_periods {
+            let period_expenses = expense_storage.get_expenses(chat_id, period_str).await;
+            all_expenses.extend(period_expenses);
+        }
+
+        if let Some(conflict_message) = check_category_conflicts(&all_expenses, &chat_categories) {
             target.markdown_message(conflict_message).await?;
             return Ok(());
         }
 
+        // Create back button to return to period selection
+        let back_button = Some(yoroolbot::storage::ButtonData::Callback(
+            "↩️ Back to Periods".to_string(),
+            CommandReport {
+                period: None,
+                category: None,
+                page: None,
+            }
+            .to_command_string(false),
+        ));
+
         // Show summary with category selection menu
-        let (message, buttons) = format_category_summary(&chat_expenses, &chat_categories);
+        let (message, buttons) = format_category_summary(
+            &chat_expenses,
+            &chat_categories,
+            &period.to_string(),
+            back_button,
+        );
 
         if buttons.is_empty() {
             // No categories, just send the message
@@ -93,30 +183,33 @@ impl CommandTrait for CommandReport {
         Ok(())
     }
 
-    async fn run1(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-        category: &Self::A,
-    ) -> ResponseResult<()> {
-        // Default to page 0 if not specified
-        self.run2(target, storage, category, &0).await
-    }
-
     async fn run2(
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &Self::A,
-        page: &Self::B,
+        period: &ExpensePeriod,
+        category: &Self::B,
+    ) -> ResponseResult<()> {
+        // Default to page 0 if not specified
+        self.run3(target, storage, period, category, &0).await
+    }
+
+    async fn run3(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        period: &ExpensePeriod,
+        category: &Self::B,
+        page: &Self::C,
     ) -> ResponseResult<()> {
         const RECORDS_PER_PAGE: usize = 25;
 
         let chat_id = target.chat.id;
+
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_chat_expenses(chat_id)
+            .get_expenses(chat_id, period.to_string())
             .await;
         let chat_categories = storage
             .clone()
@@ -142,13 +235,18 @@ impl CommandTrait for CommandReport {
         let report_text =
             format_single_category_report(&filtered_expenses, *page_number, RECORDS_PER_PAGE);
 
-        // Build header with category name, page info, and total
+        // Build header with category name, period, page info, and total
         let message = if filtered_expenses.is_empty() {
-            yoroolbot::markdown_format!("*{}*: No expenses in this category\\.", category)
+            yoroolbot::markdown_format!(
+                "*{}* \\(period: *{}*\\): No expenses in this category\\.",
+                category,
+                &period.to_string()
+            )
         } else if total_pages > 1 {
             yoroolbot::markdown_format!(
-                "*{}*, total `{}`,  page {}/{}\n{}",
+                "*{}* \\(period: *{}*\\), total `{}`,  page {}/{}\n{}",
                 category,
+                &period.to_string(),
                 total_amount,
                 page_number + 1,
                 total_pages,
@@ -156,8 +254,9 @@ impl CommandTrait for CommandReport {
             )
         } else {
             yoroolbot::markdown_format!(
-                "*{}*, total `{}`\n{}",
+                "*{}* \\(period: *{}*\\), total `{}`\n{}",
                 category,
+                &period.to_string(),
                 total_amount,
                 @code report_text
             )
@@ -173,6 +272,7 @@ impl CommandTrait for CommandReport {
             page_nav_row.push(yoroolbot::storage::ButtonData::Callback(
                 "◀️ Prev".to_string(),
                 CommandReport {
+                    period: Some(*period),
                     category: Some(category.clone()),
                     page: Some(page_number - 1),
                 }
@@ -191,6 +291,7 @@ impl CommandTrait for CommandReport {
             page_nav_row.push(yoroolbot::storage::ButtonData::Callback(
                 "Next ▶️".to_string(),
                 CommandReport {
+                    period: Some(*period),
                     category: Some(category.clone()),
                     page: Some(page_number + 1),
                 }
@@ -210,6 +311,7 @@ impl CommandTrait for CommandReport {
         let back_button_row = vec![yoroolbot::storage::ButtonData::Callback(
             "↩️ Back to Summary".to_string(),
             CommandReport {
+                period: Some(*period),
                 category: None,
                 page: None,
             }

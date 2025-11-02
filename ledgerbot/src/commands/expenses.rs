@@ -1,13 +1,6 @@
-use chrono::{DateTime, TimeZone, Utc};
 use yoroolbot::{markdown::MarkdownString, markdown_format};
 
 use crate::storages::Expense;
-
-/// Format timestamp as YYYY-MM-DD string
-fn format_timestamp(timestamp: i64) -> String {
-    let datetime: DateTime<Utc> = Utc.timestamp_opt(timestamp, 0).unwrap();
-    datetime.format("%Y-%m-%d").to_string()
-}
 
 /// Format expenses as a chronological list without category grouping
 /// Returns Ok(Vec<MarkdownString>) with one or more messages (split if needed to avoid overflow),
@@ -21,15 +14,15 @@ pub fn format_expenses_chronological(
         ));
     }
 
-    // Sort by timestamp (chronological order)
+    // Sort by date (chronological order)
     let mut sorted_expenses = expenses.to_vec();
-    sorted_expenses.sort_by_key(|e| e.timestamp);
+    sorted_expenses.sort_by_key(|e| e.date);
 
     let mut messages = Vec::new();
     let mut current_message = MarkdownString::new();
 
     for expense in sorted_expenses {
-        let date_str = format_timestamp(expense.timestamp);
+        let date_str = expense.date.format("%Y-%m-%d").to_string();
         let expense_line = markdown_format!(
             "{} {} {}\n",
             &date_str,
@@ -66,31 +59,21 @@ pub fn format_expenses_chronological(
 
 #[cfg(test)]
 mod tests {
+    use chrono::NaiveDate;
+
     use crate::{commands::expenses::format_expenses_chronological, storages::Expense};
 
     #[test]
     fn test_format_expenses_chronological() {
-        // Create test expenses with different timestamps
-        let timestamp1 = 1609459200; // 2021-01-01 00:00:00 UTC
-        let timestamp2 = 1609545600; // 2021-01-02 00:00:00 UTC
-        let timestamp3 = 1609632000; // 2021-01-03 00:00:00 UTC
+        // Create test expenses with different dates
+        let date1 = NaiveDate::from_ymd_opt(2021, 1, 1).unwrap();
+        let date2 = NaiveDate::from_ymd_opt(2021, 1, 2).unwrap();
+        let date3 = NaiveDate::from_ymd_opt(2021, 1, 3).unwrap();
 
         let expenses = vec![
-            Expense {
-                description: "Lunch".to_string(),
-                amount: 12.00,
-                timestamp: timestamp2,
-            },
-            Expense {
-                description: "Coffee".to_string(),
-                amount: 5.50,
-                timestamp: timestamp1,
-            },
-            Expense {
-                description: "Dinner".to_string(),
-                amount: 25.00,
-                timestamp: timestamp3,
-            },
+            Expense::new(date2, "Lunch".to_string(), 12.00),
+            Expense::new(date1, "Coffee".to_string(), 5.50),
+            Expense::new(date3, "Dinner".to_string(), 25.00),
         ];
 
         let result = format_expenses_chronological(&expenses);
@@ -129,15 +112,16 @@ mod tests {
         // Create a large list of expenses that should trigger message splitting
         // Each expense line is approximately 40-50 characters
         // Telegram limit is 4096 characters, so we need ~100+ expenses
-        let base_timestamp = 1609459200; // 2021-01-01 00:00:00 UTC
+        let base_date = NaiveDate::from_ymd_opt(2021, 1, 1).unwrap();
         let mut expenses = Vec::new();
 
         for i in 0..150 {
-            expenses.push(Expense {
-                description: format!("Expense number {}", i),
-                amount: 10.50 + (i as f64),
-                timestamp: base_timestamp + (i * 86400), // One day apart
-            });
+            let date = base_date + chrono::Days::new(i);
+            expenses.push(Expense::new(
+                date,
+                format!("Expense number {}", i),
+                10.50 + (i as f64),
+            ));
         }
 
         let result = format_expenses_chronological(&expenses);

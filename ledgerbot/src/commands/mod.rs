@@ -13,6 +13,7 @@ pub mod command_remove_category;
 pub mod command_remove_filter;
 pub mod command_rename_category;
 pub mod command_report;
+pub mod command_select_period;
 pub mod command_start;
 pub mod expenses;
 pub mod report;
@@ -35,7 +36,8 @@ use crate::{
         command_edit_words_filter::CommandEditWordsFilter, command_help::CommandHelp,
         command_list::CommandList, command_remove_category::CommandRemoveCategory,
         command_remove_filter::CommandRemoveFilter, command_rename_category::CommandRenameCategory,
-        command_report::CommandReport, command_start::CommandStart,
+        command_report::CommandReport, command_select_period::CommandSelectPeriod,
+        command_start::CommandStart,
     },
     storages::StorageTrait,
 };
@@ -138,6 +140,12 @@ pub enum Command {
         parse_with = CommandEditWordsFilter::parse_arguments
     )]
     EditWordsFilter(CommandEditWordsFilter),
+    #[command(
+        description = "select period for expense tracking",
+        rename = "select_period",
+        parse_with = CommandSelectPeriod::parse_arguments
+    )]
+    SelectPeriod(CommandSelectPeriod),
 }
 
 // Command constants as string representations
@@ -166,6 +174,7 @@ impl From<Command> for String {
             Command::EditWordsFilter(edit_words_filter) => {
                 edit_words_filter.to_command_string(true)
             }
+            Command::SelectPeriod(select_period) => select_period.to_command_string(true),
         }
     }
 }
@@ -200,16 +209,13 @@ pub async fn execute_command(
             help.run(&target, ()).await?;
         }
         Command::List(list) => {
-            list.run(&target, storage.clone().as_expense_storage())
-                .await?;
+            list.run(&target, storage.clone()).await?;
         }
         Command::Report(report) => {
             report.run(&target, storage.clone()).await?;
         }
         Command::ClearExpenses(clear_expenses) => {
-            clear_expenses
-                .run(&target, storage.clone().as_expense_storage())
-                .await?;
+            clear_expenses.run(&target, storage.clone()).await?;
         }
         Command::ClearCategories(clear_categories) => {
             clear_categories
@@ -250,15 +256,16 @@ pub async fn execute_command(
                 .await?;
         }
         Command::AddExpense(add_expense) => {
-            add_expense
-                .run(&target, storage.clone().as_expense_storage())
-                .await?;
+            add_expense.run(&target, storage.clone()).await?;
         }
         Command::AddWordsFilter(add_words_filter) => {
             add_words_filter.run(&target, storage.clone()).await?;
         }
         Command::EditWordsFilter(edit_words_filter) => {
             edit_words_filter.run(&target, storage.clone()).await?;
+        }
+        Command::SelectPeriod(select_period) => {
+            select_period.run(&target, storage.clone()).await?;
         }
     }
     Ok(())
