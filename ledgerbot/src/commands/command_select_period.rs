@@ -6,7 +6,10 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::{ExpensePeriod, StorageTrait};
+use crate::{
+    menus::select_period::select_period,
+    storages::{ExpensePeriod, StorageTrait},
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandSelectPeriod {
@@ -56,24 +59,31 @@ impl CommandTrait for CommandSelectPeriod {
         let var_storage = storage.clone().as_variable_storage();
         let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
-        let message = if let Some(period) = current_period {
-            markdown_format!(
-                "📅 Current period: *{}*\n\n\
-                 Use `/select\\_period <YYYY\\-MM>` to switch periods\\.\n\
-                 Example: `/select\\_period 2024\\-03`",
-                period.to_string()
-            )
+        let current_period_str = if let Some(period) = current_period {
+            period.to_string()
         } else {
-            let current = ExpensePeriod::current();
-            markdown_format!(
-                "📅 No period selected \\(using current month: *{}*\\)\\.\n\n\
-                 Use `/select\\_period <YYYY\\-MM>` to select a period\\.\n\
-                 Example: `/select\\_period 2024\\-03`",
-                current.to_string()
-            )
+            ExpensePeriod::current().to_string()
         };
 
-        target.send_markdown_message(message).await?;
+        let prompt = markdown_format!(
+            "📅 Current period: *{}*\n\n\
+             Select a period from the list below or use `/select\\_period <YYYY\\-MM>` to enter manually\\.",
+            current_period_str
+        );
+
+        // Show menu with available periods
+        let expense_storage = storage.clone().as_expense_storage();
+        select_period(
+            target,
+            &expense_storage,
+            prompt,
+            |period| CommandSelectPeriod {
+                period: Some(period.to_string()),
+            },
+            None::<CommandSelectPeriod>,
+        )
+        .await?;
+
         Ok(())
     }
 
