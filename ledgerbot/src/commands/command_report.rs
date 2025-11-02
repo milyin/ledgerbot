@@ -139,8 +139,17 @@ impl CommandTrait for CommandReport {
             .await
             .unwrap_or_default();
 
-        // Check for category conflicts before generating report
-        let all_expenses = chat_expenses.clone();
+        // Check for category conflicts across ALL periods, not just current
+        let expense_storage = storage.clone().as_expense_storage();
+        let all_periods = expense_storage.list_periods(chat_id).await;
+        let mut all_expenses = Vec::new();
+        for period_str in all_periods {
+            let period_expenses = expense_storage
+                .get_expenses(chat_id, period_str)
+                .await;
+            all_expenses.extend(period_expenses);
+        }
+
         if let Some(conflict_message) = check_category_conflicts(&all_expenses, &chat_categories) {
             target.markdown_message(conflict_message).await?;
             return Ok(());
