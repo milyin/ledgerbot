@@ -1,38 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
 use chrono::NaiveDate;
-// use serde::{Deserialize, Serialize}; // Commented out - serialization not supported yet
+use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
-use tokio::sync::Mutex;
+use yoroolbot::storage::DataStoreTrait;
 
 use super::{ExpensePeriod, StorageTrait};
 
-#[derive(Clone, Default)]
-pub struct ExpenseData(Vec<Expense>);
-
-impl AsRef<Vec<Expense>> for ExpenseData {
-    fn as_ref(&self) -> &Vec<Expense> {
-        &self.0
-    }
-}
-
-impl AsMut<Vec<Expense>> for ExpenseData {
-    fn as_mut(&mut self) -> &mut Vec<Expense> {
-        &mut self.0
-    }
-}
-
-impl From<Vec<Expense>> for ExpenseData {
-    fn from(expenses: Vec<Expense>) -> Self {
-        ExpenseData(expenses)
-    }
-}
-
-impl From<ExpenseData> for Vec<Expense> {
-    fn from(data: ExpenseData) -> Self {
-        data.0
-    }
-}
+/// Type alias for expense data (list of expenses for a period)
+pub type ExpenseData = Vec<Expense>;
 
 /// Helper function to get the current period for a chat
 /// Returns the selected period from VariableStorage, or current month if not set
@@ -44,8 +20,7 @@ pub async fn get_current_period(storage: &Arc<dyn StorageTrait>, chat_id: ChatId
         .unwrap_or_else(ExpensePeriod::current)
 }
 
-// #[derive(Debug, Clone, Serialize, Deserialize)] // Commented out - serialization not supported yet
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expense {
     pub date: NaiveDate,
     pub description: String,
@@ -99,52 +74,50 @@ pub trait ExpenseStorageTrait: Send + Sync {
     async fn list_periods(&self, chat_id: ChatId) -> Vec<String>;
 }
 
-/// Per-chat storage for expenses - each chat has its own expense list
+/// Generic expense storage that works with any DataStore implementation
+/// Each period is stored as a separate key (period string) with its expenses as the value
 #[derive(Clone)]
-pub struct ExpenseStorage {
-    data: Arc<Mutex<HashMap<ChatId, HashMap<String, ExpenseData>>>>
+pub struct ExpenseStorage<S>
+where
+    S: DataStoreTrait<ExpenseData>,
+{
+    store: S,
+    _phantom: PhantomData<ExpenseData>,
 }
 
-impl ExpenseStorage {
-    pub fn new() -> Self {
+impl<S> ExpenseStorage<S>
+where
+    S: DataStoreTrait<ExpenseData>,
+{
+    pub fn new(store: S) -> Self {
         Self {
-            data: Arc::new(Mutex::new(HashMap::new())),
+            store,
+            _phantom: PhantomData,
         }
     }
 }
 
 /// Implement ExpenseStorageTrait for ExpenseStorage
 #[async_trait::async_trait]
-impl ExpenseStorageTrait for ExpenseStorage {
+impl<S> ExpenseStorageTrait for ExpenseStorage<S>
+where
+    S: DataStoreTrait<ExpenseData>,
+{
     async fn get_expenses(&self, chat_id: ChatId, period: String) -> Vec<Expense> {
-        let storage_guard = self.data.lock().await;
-        storage_guard
-            .get(&chat_id)
-            .and_then(|periods| periods.get(&period))
-            .cloned()
-            .unwrap_or_default()
-            .into()
+        self.store.get(chat_id, &period).await.unwrap_or_default()
     }
 
     async fn add_expenses(&self, chat_id: ChatId, period: String, expenses: Vec<Expense>) {
-        let mut storage_guard = self.data.lock().await;
-        let chat_data = storage_guard.entry(chat_id).or_default();
-        let period_expenses = chat_data.entry(period).or_default();
-        period_expenses.as_mut().extend(expenses);
+        let mut period_expenses = self.store.get(chat_id, &period).await.unwrap_or_default();
+        period_expenses.extend(expenses);
+        self.store.set(chat_id, &period, period_expenses).await;
     }
 
     async fn clear_expenses(&self, chat_id: ChatId, period: String) {
-        let mut storage_guard = self.data.lock().await;
-        if let Some(chat_data) = storage_guard.get_mut(&chat_id) {
-            chat_data.remove(&period);
-        }
+        self.store.remove(chat_id, &period).await;
     }
 
     async fn list_periods(&self, chat_id: ChatId) -> Vec<String> {
-        let storage_guard = self.data.lock().await;
-        storage_guard
-            .get(&chat_id)
-            .map(|periods| periods.keys().cloned().collect())
-            .unwrap_or_default()
+        self.store.keys(chat_id).await
     }
 }

@@ -4,7 +4,7 @@ use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait, InMemSto
 
 use crate::storages::{
     BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait,
-    ExpenseStorage, ExpenseStorageTrait, VariableStorage,
+    ExpenseData, ExpenseStorage, ExpenseStorageTrait, VariableStorage,
 };
 
 /// Combined storage trait that provides all storage operations
@@ -41,12 +41,19 @@ impl Storage {
     /// Create a new storage with all storage types initialized (in-memory)
     pub fn new() -> Self {
         Self {
-            expenses: Arc::new(ExpenseStorage::new()),
+            expenses: Arc::new(ExpenseStorage::new(InMemStore::<ExpenseData>::new())),
             categories: Arc::new(CategoryStorage::new(InMemStore::<CategoryData>::new())),
             batch: Arc::new(BatchStorage::new()),
             callback_data: Arc::new(CallbackDataStorage::new()),
             variables: Arc::new(VariableStorage::new()),
         }
+    }
+
+    /// Builder-like method to configure expense storage
+    /// Replaces the expense storage with the provided implementation
+    pub fn expenses_storage(mut self, storage: impl ExpenseStorageTrait + 'static) -> Self {
+        self.expenses = Arc::new(storage);
+        self
     }
 
     /// Builder-like method to configure category storage

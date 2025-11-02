@@ -15,7 +15,7 @@ use storages::StorageTrait;
 use teloxide::prelude::*;
 use yoroolbot::storage::FilesystemYamlStore;
 
-use crate::storages::{CategoryData, CategoryStorage, Storage};
+use crate::storages::{CategoryData, CategoryStorage, ExpenseData, ExpenseStorage, Storage};
 
 #[tokio::main]
 async fn main() {
@@ -30,16 +30,25 @@ async fn main() {
     // Initialize main storage based on CLI arguments
     let storage = if let Some(storage_path) = args.persistent_storage {
         // Use persistent storage with provided path or default
-        let storage_dir = storage_path.unwrap_or_else(|| PathBuf::from("categories"));
+        let base_dir = storage_path.unwrap_or_else(|| PathBuf::from("storage"));
         log::info!(
-            "Using persistent category storage in directory: {:?}",
-            storage_dir
+            "Using persistent storage in directory: {:?}",
+            base_dir
         );
-        let fs_store = FilesystemYamlStore::<CategoryData>::new(storage_dir);
-        Storage::new().categories_storage(CategoryStorage::new(fs_store))
+
+        // Create subdirectories for different data types
+        let categories_dir = base_dir.join("categories");
+        let expenses_dir = base_dir.join("expenses");
+
+        let category_store = FilesystemYamlStore::<CategoryData>::new(categories_dir);
+        let expense_store = FilesystemYamlStore::<ExpenseData>::new(expenses_dir);
+
+        Storage::new()
+            .categories_storage(CategoryStorage::new(category_store))
+            .expenses_storage(ExpenseStorage::new(expense_store))
     } else {
         // Use in-memory storage
-        log::info!("Using in-memory category storage");
+        log::info!("Using in-memory storage");
         Storage::new()
     };
 

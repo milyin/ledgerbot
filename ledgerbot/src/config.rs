@@ -27,7 +27,7 @@ pub struct Args {
 
     #[arg(
         long,
-        help = "Enable persistent category storage with optional path (default: ./categories)"
+        help = "Enable persistent storage (categories & expenses) with optional path (default: ./storage)"
     )]
     pub persistent_storage: Option<Option<PathBuf>>,
 }
