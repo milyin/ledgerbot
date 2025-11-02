@@ -61,17 +61,30 @@ impl Expense {
 /// Trait for expense storage operations
 #[async_trait::async_trait]
 pub trait ExpenseStorageTrait: Send + Sync {
+    /// Get all available expenses for a specific chat
+    async fn get_all_expenses(&self, chat_id: ChatId) -> Vec<(ExpensePeriod, Expense)> {
+        let periods = self.list_periods(chat_id).await;
+        let mut all_expenses = Vec::new();
+        for period in periods {
+            let expenses = self.get_expenses(chat_id, period).await;
+            for expense in expenses {
+                all_expenses.push((period, expense));
+            }
+        }
+        all_expenses
+    }
+
     /// Get expenses for a specific chat for the named period
-    async fn get_expenses(&self, chat_id: ChatId, period: String) -> Vec<Expense>;
+    async fn get_expenses(&self, chat_id: ChatId, period: ExpensePeriod) -> Vec<Expense>;
 
     /// Add expenses to a specific chat's storage for the named period
-    async fn add_expenses(&self, chat_id: ChatId, period: String, expenses: Vec<Expense>);
+    async fn add_expenses(&self, chat_id: ChatId, period: ExpensePeriod, expenses: Vec<Expense>);
 
     /// Clear all expenses for a specific chat for the named period
-    async fn clear_expenses(&self, chat_id: ChatId, period: String);
+    async fn clear_expenses(&self, chat_id: ChatId, period: ExpensePeriod);
 
     /// Get all periods available for a chat.
-    async fn list_periods(&self, chat_id: ChatId) -> Vec<String>;
+    async fn list_periods(&self, chat_id: ChatId) -> Vec<ExpensePeriod>;
 }
 
 /// Generic expense storage that works with any DataStore implementation
@@ -103,21 +116,29 @@ impl<S> ExpenseStorageTrait for ExpenseStorage<S>
 where
     S: DataStoreTrait<ExpenseData>,
 {
-    async fn get_expenses(&self, chat_id: ChatId, period: String) -> Vec<Expense> {
+    async fn get_expenses(&self, chat_id: ChatId, period: ExpensePeriod) -> Vec<Expense> {
+        let period = period.to_string();
         self.store.get(chat_id, &period).await.unwrap_or_default()
     }
 
-    async fn add_expenses(&self, chat_id: ChatId, period: String, expenses: Vec<Expense>) {
+    async fn add_expenses(&self, chat_id: ChatId, period: ExpensePeriod, expenses: Vec<Expense>) {
+        let period = period.to_string();
         let mut period_expenses = self.store.get(chat_id, &period).await.unwrap_or_default();
         period_expenses.extend(expenses);
         self.store.set(chat_id, &period, period_expenses).await;
     }
 
-    async fn clear_expenses(&self, chat_id: ChatId, period: String) {
+    async fn clear_expenses(&self, chat_id: ChatId, period: ExpensePeriod) {
+        let period = period.to_string();
         self.store.remove(chat_id, &period).await;
     }
 
-    async fn list_periods(&self, chat_id: ChatId) -> Vec<String> {
-        self.store.keys(chat_id).await
+    async fn list_periods(&self, chat_id: ChatId) -> Vec<ExpensePeriod> {
+        self.store
+            .keys(chat_id)
+            .await
+            .into_iter()
+            .filter_map(|key| ExpensePeriod::from_string(&key).ok())
+            .collect()
     }
 }

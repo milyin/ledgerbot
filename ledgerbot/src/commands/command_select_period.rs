@@ -82,13 +82,10 @@ impl CommandTrait for CommandSelectPeriod {
             target,
             &expense_storage,
             prompt,
-            |period_str| {
+            |period| {
                 // Parse the period string from the menu
-                match ExpensePeriod::from_string(period_str) {
-                    Ok(period) => CommandSelectPeriod {
-                        period: Some(period),
-                    },
-                    Err(_) => CommandSelectPeriod { period: None },
+                CommandSelectPeriod {
+                    period: Some(*period),
                 }
             },
             None::<CommandSelectPeriod>,

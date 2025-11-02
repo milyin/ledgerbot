@@ -96,20 +96,10 @@ impl CommandTrait for CommandReport {
             target,
             &expense_storage,
             prompt,
-            |period_str| {
-                // Parse the period string from the menu
-                match ExpensePeriod::from_string(period_str) {
-                    Ok(period) => CommandReport {
-                        period: Some(period),
-                        category: None,
-                        page: None,
-                    },
-                    Err(_) => CommandReport {
-                        period: None,
-                        category: None,
-                        page: None,
-                    },
-                }
+            |period| CommandReport {
+                period: Some(*period),
+                category: None,
+                page: None,
             },
             None::<CommandReport>,
             None::<NoopCommand>, // No new period button for reports, only existing periods
@@ -130,7 +120,7 @@ impl CommandTrait for CommandReport {
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_expenses(chat_id, period.to_string())
+            .get_expenses(chat_id, *period)
             .await;
         let chat_categories = storage
             .clone()
@@ -209,7 +199,7 @@ impl CommandTrait for CommandReport {
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_expenses(chat_id, period.to_string())
+            .get_expenses(chat_id, *period)
             .await;
         let chat_categories = storage
             .clone()

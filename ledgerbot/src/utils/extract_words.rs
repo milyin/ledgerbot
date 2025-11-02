@@ -85,7 +85,7 @@ pub async fn extract_and_merge_words(
     let expenses = storage
         .clone()
         .as_expense_storage()
-        .get_expenses(chat_id, period.to_string())
+        .get_expenses(chat_id, period)
         .await;
     let categories = storage
         .clone()

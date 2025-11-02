@@ -157,7 +157,7 @@ impl CommandTrait for CommandAddExpense {
         storage
             .clone()
             .as_expense_storage()
-            .add_expenses(target.chat.id, period.to_string(), vec![expense])
+            .add_expenses(target.chat.id, period, vec![expense])
             .await;
 
         if !target.batch {

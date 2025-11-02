@@ -125,7 +125,7 @@ impl CommandTrait for CommandAddWordsFilter {
         let expenses = storage
             .clone()
             .as_expense_storage()
-            .get_expenses(target.chat.id, period.to_string())
+            .get_expenses(target.chat.id, period)
             .await;
         let categories = storage
             .clone()

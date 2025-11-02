@@ -84,18 +84,9 @@ impl CommandTrait for CommandClearExpenses {
             target,
             &expense_storage,
             prompt,
-            |period_str| {
-                // Parse the period string from the menu
-                match ExpensePeriod::from_string(period_str) {
-                    Ok(period) => CommandClearExpenses {
-                        period: Some(period),
-                        confirm: None,
-                    },
-                    Err(_) => CommandClearExpenses {
-                        period: None,
-                        confirm: None,
-                    },
-                }
+            |period| CommandClearExpenses {
+                period: Some(*period),
+                confirm: None,
             },
             None::<CommandClearExpenses>,
             None::<NoopCommand>, // No new period button
@@ -149,7 +140,7 @@ impl CommandTrait for CommandClearExpenses {
         storage
             .clone()
             .as_expense_storage()
-            .clear_expenses(chat_id, period.to_string())
+            .clear_expenses(chat_id, *period)
             .await;
 
         target

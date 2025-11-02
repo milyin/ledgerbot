@@ -79,13 +79,10 @@ impl CommandTrait for CommandList {
             target,
             &expense_storage,
             prompt,
-            |period_str| {
+            |period| {
                 // Parse the period string from the menu
-                match ExpensePeriod::from_string(period_str) {
-                    Ok(period) => CommandList {
-                        period: Some(period),
-                    },
-                    Err(_) => CommandList { period: None },
+                CommandList {
+                    period: Some(*period),
                 }
             },
             None::<CommandList>,
@@ -107,7 +104,7 @@ impl CommandTrait for CommandList {
         let chat_expenses = storage
             .clone()
             .as_expense_storage()
-            .get_expenses(chat_id, period.to_string())
+            .get_expenses(chat_id, *period)
             .await;
 
         match format_expenses_chronological(&chat_expenses) {

@@ -11,13 +11,13 @@ use yoroolbot::{
     markdown_string,
 };
 
-use crate::storages::ExpenseStorageTrait;
+use crate::storages::{ExpensePeriod, ExpenseStorageTrait};
 
 pub async fn select_period<NEXT: CommandTrait, BACK: CommandTrait, NEWPERIOD: CommandTrait>(
     target: &CommandReplyTarget,
     storage: &Arc<dyn ExpenseStorageTrait>,
     prompt: MarkdownString,
-    next_command: impl Fn(&str) -> NEXT,
+    next_command: impl Fn(&ExpensePeriod) -> NEXT,
     back_command: Option<BACK>,
     new_period_command: Option<NEWPERIOD>,
 ) -> ResponseResult<()> {
@@ -47,8 +47,8 @@ pub async fn select_period<NEXT: CommandTrait, BACK: CommandTrait, NEWPERIOD: Co
 }
 
 fn create_periods_menu(
-    periods: &[String],
-    operation: impl Fn(&str) -> String,
+    periods: &[ExpensePeriod],
+    operation: impl Fn(&ExpensePeriod) -> String,
     back_command: Option<impl CommandTrait>,
     new_period_command: Option<String>,
     inline: bool,
@@ -59,7 +59,7 @@ fn create_periods_menu(
         .collect::<Vec<_>>();
     let values = periods
         .iter()
-        .map(|period| operation(period))
+        .map(operation)
         .collect::<Vec<_>>();
 
     // Create the basic menu with period buttons
