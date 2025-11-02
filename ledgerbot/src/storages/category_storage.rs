@@ -1,6 +1,5 @@
 use std::{collections::HashMap, marker::PhantomData};
 
-use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use yoroolbot::{
     command_trait::CommandTrait, markdown::MarkdownString, markdown_format, storage::DataStore,
@@ -65,37 +64,11 @@ pub trait CategoryStorageTrait: Send + Sync {
     ) -> Result<(), MarkdownString>;
 }
 
-/// Serializable structure for category data that can be saved/loaded as YAML
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct CategoryData {
-    /// Maps category name to a list of regex patterns
-    pub categories: HashMap<String, Vec<String>>,
-}
-
-impl CategoryData {
-    pub fn new() -> Self {
-        Self {
-            categories: HashMap::new(),
-        }
-    }
-
-    pub fn from_hashmap(categories: HashMap<String, Vec<String>>) -> Self {
-        Self { categories }
-    }
-
-    pub fn into_hashmap(self) -> HashMap<String, Vec<String>> {
-        self.categories
-    }
-}
-
-impl Default for CategoryData {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+/// Type alias for category filter patterns (list of regex strings)
+pub type CategoryData = Vec<String>;
 
 /// Generic category storage that works with any DataStore implementation
-/// Maps category name to a list of regex patterns per chat
+/// Each category is stored as a separate key (category name) with its filters as the value
 #[derive(Clone)]
 pub struct CategoryStorage<S>
 where
@@ -115,11 +88,6 @@ where
             _phantom: PhantomData,
         }
     }
-
-    /// Convert ChatId to string key for datastore
-    fn chat_key(chat_id: ChatId) -> String {
-        chat_id.0.to_string()
-    }
 }
 
 /// Implement CategoryStorageTrait for CategoryStorage
@@ -132,13 +100,17 @@ where
         &self,
         chat_id: ChatId,
     ) -> Result<HashMap<String, Vec<String>>, MarkdownString> {
-        let key = Self::chat_key(chat_id);
-        Ok(self
-            .store
-            .get(&key)
-            .await
-            .map(|data| data.into_hashmap())
-            .unwrap_or_default())
+        // Get all keys (category names) for this chat
+        let category_names = self.store.keys(chat_id).await;
+        let mut categories = HashMap::new();
+
+        for category_name in category_names {
+            if let Some(filters) = self.store.get(chat_id, &category_name).await {
+                categories.insert(category_name, filters);
+            }
+        }
+
+        Ok(categories)
     }
 
     async fn add_category(
@@ -146,15 +118,8 @@ where
         chat_id: ChatId,
         category_name: String,
     ) -> Result<(), MarkdownString> {
-        let key = Self::chat_key(chat_id);
-        let mut data = self
-            .store
-            .get(&key)
-            .await
-            .unwrap_or_else(CategoryData::new);
-
         // Check if category already exists
-        if data.categories.contains_key(&category_name) {
+        if self.store.get(chat_id, &category_name).await.is_some() {
             return Err(markdown_format!(
                 "ℹ️ Category `{}` already exists\\. Use {} to add more patterns or {} to view all\\.",
                 category_name,
@@ -163,9 +128,8 @@ where
             ));
         }
 
-        // Add the new category
-        data.categories.insert(category_name.clone(), Vec::new());
-        self.store.set(&key, data).await;
+        // Add the new category with empty filters list
+        self.store.set(chat_id, &category_name, Vec::new()).await;
 
         Ok(())
     }
@@ -176,16 +140,12 @@ where
         category_name: String,
         regex_pattern: String,
     ) -> Result<(), MarkdownString> {
-        let key = Self::chat_key(chat_id);
-        let mut data = self
+        // Get existing filters for this category
+        let mut patterns = self
             .store
-            .get(&key)
+            .get(chat_id, &category_name)
             .await
-            .unwrap_or_else(CategoryData::new);
-
-        let Some(patterns) = data.categories.get_mut(&category_name) else {
-            return Err(markdown_format!("Category {} not exists", category_name));
-        };
+            .ok_or_else(|| markdown_format!("Category {} not exists", &category_name))?;
 
         if patterns.contains(&regex_pattern) {
             return Err(markdown_format!(
@@ -196,7 +156,7 @@ where
         }
 
         patterns.push(regex_pattern);
-        self.store.set(&key, data).await;
+        self.store.set(chat_id, &category_name, patterns).await;
         Ok(())
     }
 
@@ -206,16 +166,12 @@ where
         category_name: &str,
         regex_pattern: &str,
     ) -> Result<(), MarkdownString> {
-        let key = Self::chat_key(chat_id);
-        let mut data = self
+        // Get existing filters for this category
+        let mut patterns = self
             .store
-            .get(&key)
+            .get(chat_id, category_name)
             .await
             .ok_or_else(|| markdown_format!("Category {} not exists", category_name))?;
-
-        let Some(patterns) = data.categories.get_mut(category_name) else {
-            return Err(markdown_format!("Category {} not exists", category_name));
-        };
 
         if !patterns.contains(&regex_pattern.to_string()) {
             return Err(markdown_format!(
@@ -226,7 +182,7 @@ where
         }
 
         patterns.retain(|p| p != regex_pattern);
-        self.store.set(&key, data).await;
+        self.store.set(chat_id, category_name, patterns).await;
         Ok(())
     }
 
@@ -235,18 +191,12 @@ where
         chat_id: ChatId,
         category_name: &str,
     ) -> Result<(), MarkdownString> {
-        let key = Self::chat_key(chat_id);
-        let mut data = self
-            .store
-            .get(&key)
-            .await
-            .ok_or_else(|| markdown_format!("Category {} not exists", category_name))?;
-
-        if data.categories.remove(category_name).is_none() {
+        // Check if category exists
+        if self.store.get(chat_id, category_name).await.is_none() {
             return Err(markdown_format!("Category {} not exists", category_name));
         }
 
-        self.store.set(&key, data).await;
+        self.store.remove(chat_id, category_name).await;
         Ok(())
     }
 
@@ -256,23 +206,22 @@ where
         old_name: &str,
         new_name: &str,
     ) -> Result<(), MarkdownString> {
-        let key = Self::chat_key(chat_id);
-        let mut data = self
+        // Get existing filters for old category
+        let patterns = self
             .store
-            .get(&key)
+            .get(chat_id, old_name)
             .await
             .ok_or_else(|| markdown_format!("Category {} not exists", old_name))?;
 
-        if !data.categories.contains_key(old_name) {
-            return Err(markdown_format!("Category {} not exists", old_name));
-        }
-        if data.categories.contains_key(new_name) {
+        // Check if new name already exists
+        if self.store.get(chat_id, new_name).await.is_some() {
             return Err(markdown_format!("Category {} already exists", new_name));
         }
 
-        let patterns = data.categories.remove(old_name).unwrap();
-        data.categories.insert(new_name.to_string(), patterns);
-        self.store.set(&key, data).await;
+        // Create new category with same patterns
+        self.store.set(chat_id, new_name, patterns).await;
+        // Remove old category
+        self.store.remove(chat_id, old_name).await;
         Ok(())
     }
 
@@ -281,65 +230,56 @@ where
         chat_id: ChatId,
         categories: HashMap<String, Vec<String>>,
     ) -> Result<(), MarkdownString> {
-        let key = Self::chat_key(chat_id);
-        let data = CategoryData::from_hashmap(categories);
-        self.store.set(&key, data).await;
+        // Remove all existing categories for this chat
+        let existing_categories = self.store.keys(chat_id).await;
+        for category_name in existing_categories {
+            self.store.remove(chat_id, &category_name).await;
+        }
+
+        // Add all new categories
+        for (category_name, filters) in categories {
+            self.store.set(chat_id, &category_name, filters).await;
+        }
+
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
 
     #[test]
     fn test_category_data_yaml_serialization() {
-        let mut categories = HashMap::new();
-        categories.insert(
-            "food".to_string(),
-            vec!["restaurant".to_string(), "grocery".to_string()],
-        );
-        categories.insert(
-            "transport".to_string(),
-            vec!["uber".to_string(), "taxi".to_string(), "bus".to_string()],
-        );
-
-        let category_data = CategoryData::from_hashmap(categories.clone());
+        let filters = vec!["restaurant".to_string(), "grocery".to_string()];
 
         // Test serialization to YAML
-        let yaml_str = serde_yaml::to_string(&category_data).expect("Failed to serialize to YAML");
+        let yaml_str = serde_yaml::to_string(&filters).expect("Failed to serialize to YAML");
 
         // Verify YAML contains expected content
-        assert!(yaml_str.contains("categories:"));
-        assert!(yaml_str.contains("food:"));
-        assert!(yaml_str.contains("transport:"));
         assert!(yaml_str.contains("- restaurant"));
         assert!(yaml_str.contains("- grocery"));
-        assert!(yaml_str.contains("- uber"));
 
         // Test deserialization from YAML
         let deserialized: CategoryData =
             serde_yaml::from_str(&yaml_str).expect("Failed to deserialize from YAML");
-        let deserialized_map = deserialized.into_hashmap();
 
         // Verify the deserialized data matches original
-        assert_eq!(deserialized_map, categories);
+        assert_eq!(deserialized, filters);
     }
 
     #[test]
     fn test_category_data_empty() {
-        let category_data = CategoryData::new();
+        let category_data: CategoryData = Vec::new();
 
         // Test serialization of empty data
         let yaml_str =
             serde_yaml::to_string(&category_data).expect("Failed to serialize empty data");
-        assert!(yaml_str.contains("categories: {}"));
+        assert!(yaml_str.contains("[]"));
 
         // Test deserialization of empty data
         let deserialized: CategoryData =
             serde_yaml::from_str(&yaml_str).expect("Failed to deserialize empty data");
-        assert!(deserialized.into_hashmap().is_empty());
+        assert!(deserialized.is_empty());
     }
 }
