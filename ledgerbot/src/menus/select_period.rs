@@ -57,10 +57,7 @@ fn create_periods_menu(
         .iter()
         .map(|period| format!("📅 {}", period))
         .collect::<Vec<_>>();
-    let values = periods
-        .iter()
-        .map(operation)
-        .collect::<Vec<_>>();
+    let values = periods.iter().map(operation).collect::<Vec<_>>();
 
     // Create the basic menu with period buttons
     let mut buttons: Vec<Vec<InlineKeyboardButton>> = texts

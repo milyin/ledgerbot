@@ -87,7 +87,10 @@ pub async fn extract_and_merge_words(
         .await;
 
     // Extract just the Expense objects (ignore period information)
-    let expenses: Vec<Expense> = all_expenses.into_iter().map(|(_, expense)| expense).collect();
+    let expenses: Vec<Expense> = all_expenses
+        .into_iter()
+        .map(|(_, expense)| expense)
+        .collect();
 
     let categories = storage
         .clone()
