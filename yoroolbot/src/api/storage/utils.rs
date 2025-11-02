@@ -227,8 +227,6 @@ mod tests {
         }
     }
 
-
-
     #[test]
     fn test_encode_percent_sequences() {
         // Test that keys containing percent-encoded sequences are handled correctly

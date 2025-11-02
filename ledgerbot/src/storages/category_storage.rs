@@ -105,9 +105,12 @@ where
         let mut categories = HashMap::new();
 
         for category_name in category_names {
-            if let Some(filters) = self.store.get(chat_id, &category_name).await {
-                categories.insert(category_name, filters);
-            }
+            let filters = self
+                .store
+                .get(chat_id, &category_name)
+                .await
+                .unwrap_or_default();
+            categories.insert(category_name, filters);
         }
 
         Ok(categories)
