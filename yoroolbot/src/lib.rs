@@ -28,7 +28,7 @@ pub mod storage {
             pack_callback_data, unpack_callback_data, ButtonData, CallbackDataStorage,
             CallbackDataStorageTrait,
         },
-        datastore::{DataStore, FilesystemYamlStore, InMemStore},
+        datastore::{DataStoreTrait, FilesystemYamlStore, InMemStore},
         utils::{decode_filename_to_key, encode_key_to_filename},
     };
 }

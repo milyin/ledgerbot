@@ -8,7 +8,7 @@ use crate::api::storage::utils::{decode_filename_to_key, encode_key_to_filename}
 /// Trait for key-value data storage with serializable values
 /// Storage is organized per-chat, with each chat having its own key-value namespace
 #[async_trait::async_trait]
-pub trait DataStore<V>: Send + Sync + Clone
+pub trait DataStoreTrait<V>: Send + Sync + Clone
 where
     V: Serialize + for<'de> Deserialize<'de> + Send + Sync,
 {
@@ -57,7 +57,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<V> DataStore<V> for InMemStore<V>
+impl<V> DataStoreTrait<V> for InMemStore<V>
 where
     V: Serialize + for<'de> Deserialize<'de> + Send + Sync + Clone,
 {
@@ -199,7 +199,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<V> DataStore<V> for FilesystemYamlStore<V>
+impl<V> DataStoreTrait<V> for FilesystemYamlStore<V>
 where
     V: Serialize + for<'de> Deserialize<'de> + Send + Sync + Clone,
 {

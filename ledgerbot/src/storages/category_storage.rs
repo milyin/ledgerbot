@@ -2,7 +2,7 @@ use std::{collections::HashMap, marker::PhantomData};
 
 use teloxide::types::ChatId;
 use yoroolbot::{
-    command_trait::CommandTrait, markdown::MarkdownString, markdown_format, storage::DataStore,
+    command_trait::CommandTrait, markdown::MarkdownString, markdown_format, storage::DataStoreTrait,
 };
 
 use crate::commands::{
@@ -72,7 +72,7 @@ pub type CategoryData = Vec<String>;
 #[derive(Clone)]
 pub struct CategoryStorage<S>
 where
-    S: DataStore<CategoryData>,
+    S: DataStoreTrait<CategoryData>,
 {
     store: S,
     _phantom: PhantomData<CategoryData>,
@@ -80,7 +80,7 @@ where
 
 impl<S> CategoryStorage<S>
 where
-    S: DataStore<CategoryData>,
+    S: DataStoreTrait<CategoryData>,
 {
     pub fn new(store: S) -> Self {
         Self {
@@ -94,7 +94,7 @@ where
 #[async_trait::async_trait]
 impl<S> CategoryStorageTrait for CategoryStorage<S>
 where
-    S: DataStore<CategoryData>,
+    S: DataStoreTrait<CategoryData>,
 {
     async fn get_chat_categories(
         &self,
