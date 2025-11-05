@@ -1,17 +1,13 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::report::{
         check_category_conflicts, filter_category_expenses, format_category_summary,
         format_single_category_report,
     },
-    menus::select_period::select_period,
     storages::{Category, ExpensePeriod, StorageTrait},
 };
 
@@ -77,36 +73,11 @@ impl CommandTrait for CommandReport {
         let var_storage = storage.clone().as_variable_storage();
         let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
-        let current_period_str = if let Some(period) = current_period {
-            period.to_string()
-        } else {
-            ExpensePeriod::current().to_string()
-        };
+        // Get the current period (from storage or current month)
+        let period = current_period.unwrap_or_else(ExpensePeriod::current);
 
-        let prompt = markdown_format!(
-            "📊 *Report for period*\n\n\
-             Current period: *{}*\n\n\
-             Select a period to view its report:",
-            current_period_str
-        );
-
-        // Show menu with available periods
-        let expense_storage = storage.clone().as_expense_storage();
-        select_period(
-            target,
-            &expense_storage,
-            prompt,
-            |period| CommandReport {
-                period: Some(*period),
-                category: None,
-                page: None,
-            },
-            None::<CommandReport>,
-            None::<NoopCommand>, // No new period button for reports, only existing periods
-        )
-        .await?;
-
-        Ok(())
+        // Forward to run1 to show summary for current period
+        self.run1(target, storage, &period).await
     }
 
     async fn run1(
