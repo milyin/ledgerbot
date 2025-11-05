@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
 use yoroolbot::{
-    command_trait::CommandTrait, markdown::MarkdownString, markdown_format, markdown_string,
-    storage::ButtonData,
+    markdown::MarkdownString, markdown_format, markdown_string,
 };
 
 use crate::{
-    storages::{Category, Expense},
+    storages::{Category, Expense, ExpensePeriod},
     utils::format_timestamp,
 };
 
@@ -273,18 +272,22 @@ pub fn format_single_category_report(
 }
 
 /// Format category comparison showing two periods side by side
+/// Returns a tuple of (formatted message, list of categories found)
 pub fn format_category_comparison(
     reference_expenses: &[Expense],
     current_expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
-    reference_period: &str,
-    current_period: &str,
-) -> MarkdownString {
+    reference_period: &ExpensePeriod,
+    current_period: &ExpensePeriod,
+) -> (MarkdownString, Vec<Category>) {
     if current_expenses.is_empty() && reference_expenses.is_empty() {
-        return markdown_format!(
-            "No expenses recorded for periods *{}* and *{}*\\.",
-            reference_period,
-            current_period
+        return (
+            markdown_format!(
+                "No expenses recorded for periods *{}* and *{}*\\.",
+                reference_period.to_string(),
+                current_period.to_string()
+            ),
+            Vec::new(),
         );
     }
 
@@ -406,166 +409,19 @@ pub fn format_category_comparison(
 
     // Join all lines and use @code modifier to wrap in code block
     let table_content = table_lines.join("\n");
-    markdown_format!(
-        "📊 Expense summary for period *{}*\\.\nReference period is {}\n\
-         {}\n\
-         _You may select another period\\.\nThe current {} will be reference to it\\._",
-        current_period,
-        reference_period,
+    let message = markdown_format!(
+        "📊 Expense summary for period *{}* with reference period {}\n\
+         {}",
+        current_period.to_string(),
+        reference_period.to_string(),
         @code table_content,
-        current_period
-    )
-}
-
-/// Format category summary with interactive menu for category selection
-pub fn format_category_summary(
-    expenses: &[Expense],
-    categories: &HashMap<String, Vec<String>>,
-    period: &str,
-    back_button: Option<ButtonData>,
-) -> (MarkdownString, Vec<Vec<ButtonData>>) {
-    if expenses.is_empty() {
-        let mut buttons = vec![];
-        // Add back button even if no expenses
-        if let Some(back) = back_button {
-            buttons.push(vec![back]);
-        }
-        return (
-            markdown_format!("No expenses recorded yet for period *{}*\\.", period),
-            buttons,
-        );
-    }
-
-    // Build regex matchers for each category
-    let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
-        .iter()
-        .map(|(name, patterns)| {
-            let regexes: Vec<regex::Regex> = patterns
-                .iter()
-                .filter_map(|pattern| regex::Regex::new(pattern).ok())
-                .collect();
-            (name.clone(), regexes)
-        })
-        .collect();
-
-    // Group expenses by category
-    let mut categorized: HashMap<String, Vec<Expense>> = HashMap::new();
-    let mut uncategorized: Vec<Expense> = Vec::new();
-
-    for expense in expenses.iter() {
-        let mut matched = false;
-
-        // Try to match against each category
-        for (category_name, regexes) in &category_matchers {
-            // Check if description matches any of the patterns in this category
-            if regexes.iter().any(|re| re.is_match(&expense.description)) {
-                categorized
-                    .entry(category_name.clone())
-                    .or_default()
-                    .push(expense.clone());
-                matched = true;
-                break; // Each expense goes into first matching category
-            }
-        }
-
-        if !matched {
-            uncategorized.push(expense.clone());
-        }
-    }
-
-    // Sort category names for consistent output
-    let mut category_names: Vec<String> = categorized.keys().cloned().collect();
-    category_names.sort();
-
-    // Calculate totals
-    let mut category_subtotals: Vec<(Category, f64)> = Vec::new();
-    let mut total = 0.0;
-
-    for category_name in &category_names {
-        if let Some(items) = categorized.get(category_name) {
-            let category_total: f64 = items.iter().map(|e| e.amount).sum();
-            if let Ok(category) = Category::from_string(category_name) {
-                category_subtotals.push((category, category_total));
-                total += category_total;
-            }
-        }
-    }
-
-    if !uncategorized.is_empty() {
-        let category_total: f64 = uncategorized.iter().map(|e| e.amount).sum();
-        category_subtotals.push((Category::Other, category_total));
-        total += category_total;
-    }
-
-    // Build summary table
-    let max_name_len = category_subtotals
-        .iter()
-        .map(|(category, _)| category.as_str().len())
-        .max()
-        .unwrap_or(0)
-        .max(5); // At least as wide as "Total"
-
-    let mut table_lines = Vec::new();
-
-    // Add each category row
-    for (category, subtotal) in &category_subtotals {
-        let padded_name = format!("{:<width$}", category.as_str(), width = max_name_len);
-        let amount_str = format!("{:>10.2}", subtotal);
-        table_lines.push(format!("{} {}", padded_name, amount_str));
-    }
-
-    // Add separator line
-    table_lines.push("-".repeat(max_name_len + 11));
-
-    // Add total row
-    let total_label = format!("{:<width$}", "Total", width = max_name_len);
-    let total_amount = format!("{:>10.2}", total);
-    table_lines.push(format!("{} {}", total_label, total_amount));
-
-    // Join all lines and use @code modifier to wrap in code block
-    let table_content = table_lines.join("\n");
-    let summary_message = markdown_format!(
-        "📊 *Expense Summary* \\(period: *{}*\\)\n\n{}\n\n",
-        period,
-        @code table_content
     );
 
-    // Create inline keyboard button data using Callback
-    // Callback buttons execute commands directly when clicked
-    // Arrange buttons in 4 columns
-    let mut buttons: Vec<Vec<ButtonData>> = Vec::new();
-    let mut current_row: Vec<ButtonData> = Vec::new();
+    // Extract categories from subtotals
+    let found_categories: Vec<Category> = category_subtotals
+        .into_iter()
+        .map(|(category, _, _)| category)
+        .collect();
 
-    for (category, _) in &category_subtotals {
-        // Parse the period string to ExpensePeriod for the command
-        let period_obj = crate::storages::ExpensePeriod::from_string(period).ok();
-        let command = crate::commands::command_report::CommandReport {
-            period: period_obj,
-            reference_period: None,
-            category: Some(category.clone()),
-            page: None,
-        };
-        current_row.push(ButtonData::Callback(
-            category.as_str().to_string(),
-            command.to_command_string(false),
-        ));
-
-        // Start a new row after 4 buttons
-        if current_row.len() == 4 {
-            buttons.push(current_row.clone());
-            current_row.clear();
-        }
-    }
-
-    // Add remaining buttons if any
-    if !current_row.is_empty() {
-        buttons.push(current_row);
-    }
-
-    // Add back button if provided
-    if let Some(back) = back_button {
-        buttons.push(vec![back]);
-    }
-
-    (summary_message, buttons)
+    (message, found_categories)
 }

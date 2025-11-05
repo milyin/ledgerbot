@@ -59,7 +59,7 @@ pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(
     Ok(())
 }
 
-fn create_categories_menu(
+pub fn create_categories_menu(
     categories: &[Category],
     operation: impl Fn(&Category) -> String,
     back_command: Option<impl CommandTrait>,

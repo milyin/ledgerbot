@@ -121,7 +121,11 @@ impl CommandTrait for CommandReport {
         let chat_id = target.chat.id;
 
         // Get all available periods
-        let periods = storage.clone().as_expense_storage().list_periods(chat_id).await;
+        let periods = storage
+            .clone()
+            .as_expense_storage()
+            .list_periods(chat_id)
+            .await;
 
         // Find the previous period (one before the selected period)
         let reference_period = periods
@@ -148,7 +152,9 @@ impl CommandTrait for CommandReport {
         // Get expenses for both periods
         let expense_storage = storage.clone().as_expense_storage();
         let current_expenses = expense_storage.get_expenses(chat_id, *period).await;
-        let reference_expenses = expense_storage.get_expenses(chat_id, *reference_period).await;
+        let reference_expenses = expense_storage
+            .get_expenses(chat_id, *reference_period)
+            .await;
 
         let chat_categories = storage
             .clone()
@@ -172,25 +178,15 @@ impl CommandTrait for CommandReport {
         }
 
         // Build summary message (will show comparison if periods differ)
-        let summary_message = if period == reference_period {
+        let (summary_message, _) =
             // Same period - show single column
             format_category_comparison(
                 &current_expenses,
-                &current_expenses,
-                &chat_categories,
-                &period.to_string(),
-                &period.to_string(),
-            )
-        } else {
-            // Different periods - show comparison
-            format_category_comparison(
                 &reference_expenses,
-                &current_expenses,
                 &chat_categories,
-                &reference_period.to_string(),
-                &period.to_string(),
-            )
-        };
+                reference_period,
+                period,
+            );
 
         // Get available periods for buttons
         let periods = expense_storage.list_periods(chat_id).await;
@@ -231,7 +227,9 @@ impl CommandTrait for CommandReport {
         )]);
 
         // Send message with period selection menu
-        target.markdown_message_with_menu(summary_message, buttons).await?;
+        target
+            .markdown_message_with_menu(summary_message, buttons)
+            .await?;
 
         Ok(())
     }
@@ -274,22 +272,52 @@ impl CommandTrait for CommandReport {
                 .map(|(_, expense)| expense)
                 .collect::<Vec<_>>();
 
-            if let Some(conflict_message) = check_category_conflicts(&all_expenses, &chat_categories) {
+            if let Some(conflict_message) =
+                check_category_conflicts(&all_expenses, &chat_categories)
+            {
                 target.markdown_message(conflict_message).await?;
                 return Ok(());
             }
 
-            // Show comparison summary
-            let message = format_category_comparison(
+            // Show comparison summary and get list of categories
+            let (message, found_categories) = format_category_comparison(
                 &reference_expenses,
                 &chat_expenses,
                 &chat_categories,
-                &reference_period.to_string(),
-                &period.to_string(),
+                &reference_period,
+                &period,
             );
 
-            // Create back button to return to summary view
-            let back_button = vec![vec![yoroolbot::storage::ButtonData::Callback(
+            // Create category buttons (4 per row)
+            let mut buttons: Vec<Vec<yoroolbot::storage::ButtonData>> = Vec::new();
+            let mut current_row: Vec<yoroolbot::storage::ButtonData> = Vec::new();
+
+            for category in &found_categories {
+                current_row.push(yoroolbot::storage::ButtonData::Callback(
+                    format!("📁 {}", category.as_str()),
+                    CommandReport {
+                        period: Some(*period),
+                        reference_period: Some(*reference_period),
+                        category: Some(category.clone()),
+                        page: None,
+                    }
+                    .to_command_string(false),
+                ));
+
+                // Start a new row after 4 buttons
+                if current_row.len() == 4 {
+                    buttons.push(current_row.clone());
+                    current_row.clear();
+                }
+            }
+
+            // Add remaining buttons if any
+            if !current_row.is_empty() {
+                buttons.push(current_row);
+            }
+
+            // Add back button
+            buttons.push(vec![yoroolbot::storage::ButtonData::Callback(
                 "↩️ Back to Summary".to_string(),
                 CommandReport {
                     period: Some(*period),
@@ -298,16 +326,17 @@ impl CommandTrait for CommandReport {
                     page: None,
                 }
                 .to_command_string(false),
-            )]];
+            )]);
 
-            // Send message with back button
-            target.markdown_message_with_menu(message, back_button).await?;
+            // Send message with category menu
+            target.markdown_message_with_menu(message, buttons).await?;
 
             return Ok(());
         }
 
         // Otherwise, show detailed category report (default to page 0)
-        self.run4(target, storage, period, reference_period, category, &0).await
+        self.run4(target, storage, period, reference_period, category, &0)
+            .await
     }
 
     async fn run4(
