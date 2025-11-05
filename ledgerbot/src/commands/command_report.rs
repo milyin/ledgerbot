@@ -6,7 +6,7 @@ use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 use crate::{
     commands::report::{
         check_category_conflicts, filter_category_expenses, format_category_comparison,
-        format_category_summary, format_single_category_report,
+        format_single_category_report,
     },
     storages::{Category, ExpensePeriod, StorageTrait},
 };
@@ -174,13 +174,13 @@ impl CommandTrait for CommandReport {
         // Build summary message (will show comparison if periods differ)
         let summary_message = if period == reference_period {
             // Same period - show single column
-            let (msg, _) = format_category_summary(
+            format_category_comparison(
+                &current_expenses,
                 &current_expenses,
                 &chat_categories,
                 &period.to_string(),
-                None,
-            );
-            msg
+                &period.to_string(),
+            )
         } else {
             // Different periods - show comparison
             format_category_comparison(
@@ -253,6 +253,11 @@ impl CommandTrait for CommandReport {
                 .as_expense_storage()
                 .get_expenses(chat_id, *period)
                 .await;
+            let reference_expenses = storage
+                .clone()
+                .as_expense_storage()
+                .get_expenses(chat_id, *reference_period)
+                .await;
             let chat_categories = storage
                 .clone()
                 .as_category_storage()
@@ -274,8 +279,17 @@ impl CommandTrait for CommandReport {
                 return Ok(());
             }
 
+            // Show comparison summary
+            let message = format_category_comparison(
+                &reference_expenses,
+                &chat_expenses,
+                &chat_categories,
+                &reference_period.to_string(),
+                &period.to_string(),
+            );
+
             // Create back button to return to summary view
-            let back_button = Some(yoroolbot::storage::ButtonData::Callback(
+            let back_button = vec![vec![yoroolbot::storage::ButtonData::Callback(
                 "↩️ Back to Summary".to_string(),
                 CommandReport {
                     period: Some(*period),
@@ -284,23 +298,10 @@ impl CommandTrait for CommandReport {
                     page: None,
                 }
                 .to_command_string(false),
-            ));
+            )]];
 
-            // Show summary with category selection menu
-            let (message, buttons) = format_category_summary(
-                &chat_expenses,
-                &chat_categories,
-                &period.to_string(),
-                back_button,
-            );
-
-            if buttons.is_empty() {
-                // No categories, just send the message
-                target.markdown_message(message).await?;
-            } else {
-                // Send message with category selection menu
-                target.markdown_message_with_menu(message, buttons).await?;
-            }
+            // Send message with back button
+            target.markdown_message_with_menu(message, back_button).await?;
 
             return Ok(());
         }
