@@ -12,19 +12,19 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::{Expense, StorageTrait},
+    storages::{Category, Expense, StorageTrait},
     utils::extract_words::extract_words,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddWordsFilter {
-    pub category: Option<String>,
+    pub category: Option<Category>,
     pub page: Option<usize>,
     pub words: Option<Words>,
 }
 
 impl CommandTrait for CommandAddWordsFilter {
-    type A = String;
+    type A = Category;
     type B = usize;
     type C = Words;
     type D = EmptyArg;
@@ -79,7 +79,7 @@ impl CommandTrait for CommandAddWordsFilter {
             &storage.as_category_storage(),
             markdown_string!("➕ Select Category to add filter"),
             |name| CommandAddWordsFilter {
-                category: Some(name.to_string()),
+                category: Category::from_string(name).ok(),
                 page: Some(0),
                 words: None,
             },
@@ -92,7 +92,7 @@ impl CommandTrait for CommandAddWordsFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
     ) -> ResponseResult<()> {
         // Default to page 0 when no page specified
         self.run3(target, storage, category, &0, &Words::default())
@@ -103,7 +103,7 @@ impl CommandTrait for CommandAddWordsFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
         page: &usize,
     ) -> ResponseResult<()> {
         self.run3(target, storage, category, page, &Words::default())
@@ -114,7 +114,7 @@ impl CommandTrait for CommandAddWordsFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
         page: &usize,
         selected_words: &Words,
     ) -> ResponseResult<()> {
@@ -156,7 +156,7 @@ impl CommandTrait for CommandAddWordsFilter {
         let prompt = |current_page: usize, total_pages: usize, total_words: usize| {
             markdown_format!(
                 "💡 Select word\\(s\\) for filter in category `{}`\n\n{}\n\nPage {}/{} \\({} words total\\)",
-                &category,
+                category.as_str(),
                 @raw if selected_words.as_ref().is_empty() { markdown_format!("_no words selected_") } else { markdown_format!("`{}`", selected_words.to_string()) },
                 current_page,
                 total_pages,

@@ -12,19 +12,19 @@ use crate::{
         format_single_category_report,
     },
     menus::select_period::select_period,
-    storages::{ExpensePeriod, StorageTrait},
+    storages::{Category, ExpensePeriod, StorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandReport {
     pub period: Option<ExpensePeriod>,
-    pub category: Option<String>,
+    pub category: Option<Category>,
     pub page: Option<usize>,
 }
 
 impl CommandTrait for CommandReport {
     type A = ExpensePeriod;
-    type B = String;
+    type B = Category;
     type C = usize;
     type D = EmptyArg;
     type E = EmptyArg;
@@ -178,7 +178,7 @@ impl CommandTrait for CommandReport {
         target: &CommandReplyTarget,
         storage: Self::Context,
         period: &ExpensePeriod,
-        category: &Self::B,
+        category: &Category,
     ) -> ResponseResult<()> {
         // Default to page 0 if not specified
         self.run3(target, storage, period, category, &0).await
@@ -189,8 +189,8 @@ impl CommandTrait for CommandReport {
         target: &CommandReplyTarget,
         storage: Self::Context,
         period: &ExpensePeriod,
-        category: &Self::B,
-        page: &Self::C,
+        category: &Category,
+        page: &usize,
     ) -> ResponseResult<()> {
         const RECORDS_PER_PAGE: usize = 25;
 
@@ -210,7 +210,7 @@ impl CommandTrait for CommandReport {
 
         // Filter expenses for the category
         let filtered_expenses =
-            filter_category_expenses(category, &chat_expenses, &chat_categories);
+            filter_category_expenses(&category.to_string(), &chat_expenses, &chat_categories);
 
         // Calculate pagination
         let total_expenses = filtered_expenses.len();
@@ -229,13 +229,13 @@ impl CommandTrait for CommandReport {
         let message = if filtered_expenses.is_empty() {
             yoroolbot::markdown_format!(
                 "*{}* \\(period: *{}*\\): No expenses in this category\\.",
-                category,
+                category.as_str(),
                 &period.to_string()
             )
         } else if total_pages > 1 {
             yoroolbot::markdown_format!(
                 "*{}* \\(period: *{}*\\), total `{}`,  page {}/{}\n{}",
-                category,
+                category.as_str(),
                 &period.to_string(),
                 total_amount,
                 page_number + 1,
@@ -245,7 +245,7 @@ impl CommandTrait for CommandReport {
         } else {
             yoroolbot::markdown_format!(
                 "*{}* \\(period: *{}*\\), total `{}`\n{}",
-                category,
+                category.as_str(),
                 &period.to_string(),
                 total_amount,
                 @code report_text

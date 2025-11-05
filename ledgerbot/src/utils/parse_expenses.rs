@@ -400,7 +400,7 @@ mod tests {
 
         assert!(
             matches!(&results[8], Ok(Command::AddFilter(CommandAddFilter { category, pattern }))
-            if category == &Some("Food".to_string())
+            if category.as_ref().map(|c| c.as_str()) == Some("Food")
             && pattern == &Some("(?i)lunch".to_string()))
         );
 
@@ -409,7 +409,7 @@ mod tests {
 
         assert!(
             matches!(&results[10], Ok(Command::RemoveFilter(remove_filter))
-            if remove_filter.category == Some("Food".to_string())
+            if remove_filter.category.as_ref().map(|c| c.as_str()) == Some("Food")
             && remove_filter.position == Some(0))
         );
 

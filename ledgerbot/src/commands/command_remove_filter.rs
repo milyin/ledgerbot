@@ -12,18 +12,18 @@ use crate::{
         select_category_filter::select_category_filter,
         update_category_filter::update_category_filter,
     },
-    storages::CategoryStorageTrait,
+    storages::{Category, CategoryStorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandRemoveFilter {
-    pub category: Option<String>,
+    pub category: Option<Category>,
     pub position: Option<usize>,
     pub confirm: Option<bool>,
 }
 
 impl CommandRemoveFilter {
-    pub fn new(category: Option<String>, position: Option<usize>) -> Self {
+    pub fn new(category: Option<Category>, position: Option<usize>) -> Self {
         Self {
             category,
             position,
@@ -33,7 +33,7 @@ impl CommandRemoveFilter {
 }
 
 impl CommandTrait for CommandRemoveFilter {
-    type A = String;
+    type A = Category;
     type B = usize;
     type C = bool;
     type D = EmptyArg;
@@ -86,7 +86,7 @@ impl CommandTrait for CommandRemoveFilter {
             &storage,
             markdown_string!("🗑️ Select Category for removing filter"),
             |name| CommandRemoveFilter {
-                category: Some(name.to_string()),
+                category: Category::from_string(name).ok(),
                 position: None,
                 confirm: None,
             },
@@ -99,13 +99,13 @@ impl CommandTrait for CommandRemoveFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        name: &String,
+        name: &Category,
     ) -> ResponseResult<()> {
         select_category_filter(
             target,
             &storage,
-            name,
-            markdown_format!("🗑️ Select Filter to remove from category `{}`", name),
+            name.as_str(),
+            markdown_format!("🗑️ Select Filter to remove from category `{}`", name.as_str()),
             |idx, _pattern| {
                 Some(CommandRemoveFilter {
                     category: Some(name.clone()),
@@ -122,20 +122,20 @@ impl CommandTrait for CommandRemoveFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        name: &String,
+        name: &Category,
         idx: &usize,
     ) -> ResponseResult<()> {
         update_category_filter(
             target,
             &storage,
-            name,
+            name.as_str(),
             *idx,
             |pattern| {
                 markdown_format!(
                     "🗑️ Confirm Filter **\\#{}** \\(`{}`\\) Removal from category `{}`",
                     *idx,
                     pattern,
-                    name
+                    name.as_str()
                 )
             },
             "🗑️ Remove",
@@ -157,7 +157,7 @@ impl CommandTrait for CommandRemoveFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        name: &String,
+        name: &Category,
         idx: &usize,
         confirm: &bool,
     ) -> ResponseResult<()> {
@@ -165,7 +165,7 @@ impl CommandTrait for CommandRemoveFilter {
             target
                 .send_markdown_message(markdown_format!(
                     "❌ Filter removal from category `{}` cancelled\\.",
-                    name
+                    name.as_str()
                 ))
                 .await?;
             return Ok(());
@@ -174,7 +174,7 @@ impl CommandTrait for CommandRemoveFilter {
         let Some(pattern) = read_category_filter_by_index(
             target,
             &storage,
-            name,
+            name.as_str(),
             *idx,
             Some(CommandRemoveFilter {
                 category: Some(name.clone()),
@@ -189,7 +189,7 @@ impl CommandTrait for CommandRemoveFilter {
 
         // Remove the filter
         if let Err(e) = storage
-            .remove_category_filter(target.chat.id, name, &pattern)
+            .remove_category_filter(target.chat.id, &name.to_string(), &pattern)
             .await
         {
             target
@@ -202,7 +202,7 @@ impl CommandTrait for CommandRemoveFilter {
                 "✅ Filter **\\#{}** \\(`{}`\\) removed from category `{}`\\.",
                 *idx,
                 pattern,
-                name
+                name.as_str()
             ))
             .await?;
 

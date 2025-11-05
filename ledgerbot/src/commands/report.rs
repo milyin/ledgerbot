@@ -5,7 +5,7 @@ use yoroolbot::{
     storage::ButtonData,
 };
 
-use crate::{storages::Expense, utils::format_timestamp};
+use crate::{storages::{Category, Expense}, utils::format_timestamp};
 
 /// Represents a conflict where an expense matches multiple categories
 #[derive(Debug, Clone)]
@@ -392,7 +392,7 @@ pub fn format_category_summary(
         let period_obj = crate::storages::ExpensePeriod::from_string(period).ok();
         let command = crate::commands::command_report::CommandReport {
             period: period_obj,
-            category: Some(category_name.clone()),
+            category: Category::from_string(category_name).ok(),
             page: None,
         };
         current_row.push(ButtonData::Callback(

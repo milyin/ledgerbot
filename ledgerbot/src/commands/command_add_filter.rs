@@ -6,16 +6,16 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::{commands::command_add_words_filter::CommandAddWordsFilter, storages::StorageTrait};
+use crate::{commands::command_add_words_filter::CommandAddWordsFilter, storages::{Category, StorageTrait}};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddFilter {
-    pub category: Option<String>,
+    pub category: Option<Category>,
     pub pattern: Option<String>,
 }
 
 impl CommandTrait for CommandAddFilter {
-    type A = String;
+    type A = Category;
     type B = String;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -65,7 +65,7 @@ impl CommandTrait for CommandAddFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
     ) -> ResponseResult<()> {
         CommandAddWordsFilter {
             category: Some(category.clone()),
@@ -80,13 +80,13 @@ impl CommandTrait for CommandAddFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
         pattern: &String,
     ) -> ResponseResult<()> {
         let storage = storage.as_category_storage();
 
         if let Err(msg) = storage
-            .add_category_filter(target.chat.id, category.clone(), pattern.clone())
+            .add_category_filter(target.chat.id, category.to_string(), pattern.clone())
             .await
         {
             target.send_markdown_message(msg).await?;
@@ -96,7 +96,7 @@ impl CommandTrait for CommandAddFilter {
             .send_markdown_message(markdown_format!(
                 "✅ Filter `{}` added to category `{}`\\.",
                 pattern,
-                category
+                category.as_str()
             ))
             .await?;
         Ok(())
