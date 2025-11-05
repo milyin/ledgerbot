@@ -15,11 +15,15 @@ impl fmt::Display for ParseCategoryError {
 impl Error for ParseCategoryError {}
 
 /// Represents a category for expense classification
-/// Categories can be user-defined names or the special "Other" category for uncategorized expenses
+/// Categories can be user-defined names or special categories:
+/// - None: Used in reports to show summary with category buttons
+/// - Other: Uncategorized expenses
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default)]
 pub enum Category {
     /// User-defined category with a name
     Category(String),
+    /// Special category for showing summary with category selection
+    None,
     /// Special category for uncategorized expenses
     #[default]
     Other,
@@ -28,8 +32,13 @@ pub enum Category {
 impl Category {
     /// Parse category from string
     /// Only allows single word without spaces and special syntax characters
-    /// The special string "<other>" maps to Category::Other
+    /// Special strings: "<none>" maps to Category::None, "<other>" maps to Category::Other
     pub fn from_string(s: &str) -> Result<Self, String> {
+        // Special case for <none>
+        if s == "<none>" {
+            return Ok(Category::None);
+        }
+
         // Special case for <other>
         if s == "<other>" {
             return Ok(Category::Other);
@@ -64,16 +73,22 @@ impl Category {
         Ok(Category::Category(s.to_string()))
     }
 
+    /// Check if this is the None category
+    pub fn is_none(&self) -> bool {
+        matches!(self, Category::None)
+    }
+
     /// Check if this is the Other category
     pub fn is_other(&self) -> bool {
         matches!(self, Category::Other)
     }
 
     /// Get the category name as a string slice
-    /// Returns "<other>" for the Other variant
+    /// Returns "<none>" for None variant, "<other>" for Other variant
     pub fn as_str(&self) -> &str {
         match self {
             Category::Category(name) => name.as_str(),
+            Category::None => "<none>",
             Category::Other => "<other>",
         }
     }
@@ -107,6 +122,12 @@ mod tests {
     }
 
     #[test]
+    fn test_from_string_none() {
+        let cat = Category::from_string("<none>").unwrap();
+        assert_eq!(cat, Category::None);
+    }
+
+    #[test]
     fn test_from_string_other() {
         let cat = Category::from_string("<other>").unwrap();
         assert_eq!(cat, Category::Other);
@@ -136,6 +157,9 @@ mod tests {
         let cat = Category::Category("Food".to_string());
         assert_eq!(format!("{}", cat), "Food");
 
+        let none = Category::None;
+        assert_eq!(format!("{}", none), "<none>");
+
         let other = Category::Other;
         assert_eq!(format!("{}", other), "<other>");
     }
@@ -145,14 +169,32 @@ mod tests {
         let cat = Category::Category("Food".to_string());
         assert_eq!(cat.as_str(), "Food");
 
+        let none = Category::None;
+        assert_eq!(none.as_str(), "<none>");
+
         let other = Category::Other;
         assert_eq!(other.as_str(), "<other>");
+    }
+
+    #[test]
+    fn test_is_none() {
+        let cat = Category::Category("Food".to_string());
+        assert!(!cat.is_none());
+
+        let none = Category::None;
+        assert!(none.is_none());
+
+        let other = Category::Other;
+        assert!(!other.is_none());
     }
 
     #[test]
     fn test_is_other() {
         let cat = Category::Category("Food".to_string());
         assert!(!cat.is_other());
+
+        let none = Category::None;
+        assert!(!none.is_other());
 
         let other = Category::Other;
         assert!(other.is_other());
@@ -162,6 +204,9 @@ mod tests {
     fn test_fromstr_trait() {
         let cat: Category = "Food".parse().unwrap();
         assert_eq!(cat, Category::Category("Food".to_string()));
+
+        let none: Category = "<none>".parse().unwrap();
+        assert_eq!(none, Category::None);
 
         let other: Category = "<other>".parse().unwrap();
         assert_eq!(other, Category::Other);
@@ -177,10 +222,12 @@ mod tests {
     fn test_ordering() {
         let cat1 = Category::Category("A".to_string());
         let cat2 = Category::Category("B".to_string());
+        let none = Category::None;
         let other = Category::Other;
 
         assert!(cat1 < cat2);
-        assert!(cat1 < other); // Category variant comes before Other in enum order
+        assert!(cat1 < none); // Category variant comes first in enum order
+        assert!(none < other); // None comes before Other in enum order
         assert!(other > cat1);
     }
 }

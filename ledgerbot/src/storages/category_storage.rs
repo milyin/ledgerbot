@@ -130,7 +130,7 @@ where
         // Only accept Category::Category variant with a name
         let Category::Category(category_name) = category else {
             return Err(markdown_format!(
-                "❌ Cannot add category `{}`\\. Only named categories can be stored\\.",
+                "❌ Cannot add category `{}`\\. This is a special category\\. Only named categories can be stored\\.",
                 category.as_str()
             ));
         };

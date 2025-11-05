@@ -143,32 +143,52 @@ impl CommandTrait for CommandReport {
             return Ok(());
         }
 
-        // Create back button to return to period selection
-        let back_button = Some(yoroolbot::storage::ButtonData::Callback(
-            "↩️ Back to Periods".to_string(),
-            CommandReport {
-                period: None,
-                category: None,
-                page: None,
-            }
-            .to_command_string(false),
-        ));
-
-        // Show summary with category selection menu
-        let (message, buttons) = format_category_summary(
+        // Show summary with period selection buttons (for quick period switching)
+        // Build summary message
+        let (summary_message, _) = format_category_summary(
             &chat_expenses,
             &chat_categories,
             &period.to_string(),
-            back_button,
+            None, // Don't include back button in the summary itself
         );
 
-        if buttons.is_empty() {
-            // No categories, just send the message
-            target.markdown_message(message).await?;
-        } else {
-            // Send message with category selection menu
-            target.markdown_message_with_menu(message, buttons).await?;
-        }
+        // Get available periods for buttons
+        let periods = storage.clone().as_expense_storage().list_periods(chat_id).await;
+
+        // Create period buttons (4 per row)
+        let period_buttons: Vec<yoroolbot::storage::ButtonData> = periods
+            .iter()
+            .map(|p| {
+                yoroolbot::storage::ButtonData::Callback(
+                    format!("📅 {}", p),
+                    CommandReport {
+                        period: Some(*p),
+                        category: None,
+                        page: None,
+                    }
+                    .to_command_string(false),
+                )
+            })
+            .collect();
+
+        let mut buttons: Vec<Vec<yoroolbot::storage::ButtonData>> = period_buttons
+            .chunks(4)
+            .map(|chunk| chunk.to_vec())
+            .collect();
+
+        // Add "View Categories" button
+        buttons.push(vec![yoroolbot::storage::ButtonData::Callback(
+            "📁 View Categories".to_string(),
+            CommandReport {
+                period: Some(*period),
+                category: Some(Category::None),
+                page: None,
+            }
+            .to_command_string(false),
+        )]);
+
+        // Send message with period selection menu
+        target.markdown_message_with_menu(summary_message, buttons).await?;
 
         Ok(())
     }
@@ -180,7 +200,67 @@ impl CommandTrait for CommandReport {
         period: &ExpensePeriod,
         category: &Category,
     ) -> ResponseResult<()> {
-        // Default to page 0 if not specified
+        // If category is None, show summary with category buttons
+        if category.is_none() {
+            let chat_id = target.chat.id;
+
+            let chat_expenses = storage
+                .clone()
+                .as_expense_storage()
+                .get_expenses(chat_id, *period)
+                .await;
+            let chat_categories = storage
+                .clone()
+                .as_category_storage()
+                .get_chat_categories(chat_id)
+                .await
+                .unwrap_or_default();
+
+            let all_expenses = storage
+                .clone()
+                .as_expense_storage()
+                .get_all_expenses(chat_id)
+                .await
+                .into_iter()
+                .map(|(_, expense)| expense)
+                .collect::<Vec<_>>();
+
+            if let Some(conflict_message) = check_category_conflicts(&all_expenses, &chat_categories) {
+                target.markdown_message(conflict_message).await?;
+                return Ok(());
+            }
+
+            // Create back button to return to period view
+            let back_button = Some(yoroolbot::storage::ButtonData::Callback(
+                "↩️ Back to Periods".to_string(),
+                CommandReport {
+                    period: Some(*period),
+                    category: None,
+                    page: None,
+                }
+                .to_command_string(false),
+            ));
+
+            // Show summary with category selection menu
+            let (message, buttons) = format_category_summary(
+                &chat_expenses,
+                &chat_categories,
+                &period.to_string(),
+                back_button,
+            );
+
+            if buttons.is_empty() {
+                // No categories, just send the message
+                target.markdown_message(message).await?;
+            } else {
+                // Send message with category selection menu
+                target.markdown_message_with_menu(message, buttons).await?;
+            }
+
+            return Ok(());
+        }
+
+        // Otherwise, show detailed category report (default to page 0)
         self.run3(target, storage, period, category, &0).await
     }
 
