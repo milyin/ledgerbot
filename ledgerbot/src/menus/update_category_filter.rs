@@ -24,7 +24,7 @@ pub async fn update_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let Some(pattern) =
-        read_category_filter_by_index(target, storage, category.as_str(), idx, back_command.clone()).await?
+        read_category_filter_by_index(target, storage, category, idx, back_command.clone()).await?
     else {
         return Ok(());
     };

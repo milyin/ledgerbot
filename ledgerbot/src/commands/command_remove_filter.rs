@@ -174,7 +174,7 @@ impl CommandTrait for CommandRemoveFilter {
         let Some(pattern) = read_category_filter_by_index(
             target,
             &storage,
-            name.as_str(),
+            name,
             *idx,
             Some(CommandRemoveFilter {
                 category: Some(name.clone()),

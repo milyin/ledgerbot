@@ -10,7 +10,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::CategoryStorageTrait;
+use crate::storages::{Category, CategoryStorageTrait};
 
 pub fn create_buttons_menu(
     titles: &[String],
@@ -44,16 +44,16 @@ pub fn create_buttons_menu(
 pub async fn read_category_filters_list(
     target: &CommandReplyTarget,
     storage: &Arc<dyn CategoryStorageTrait>,
-    name: &str,
+    category: &Category,
     back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Vec<String>> {
     let categories = storage
         .get_chat_categories(target.chat.id)
         .await
         .unwrap_or_default();
-    let Some(filters) = categories.get(name) else {
+    let Some(filters) = categories.get(category.as_str()) else {
         let msg = target
-            .markdown_message(markdown_format!("❌ Category `{}` does not exist", name))
+            .markdown_message(markdown_format!("❌ Category `{}` does not exist", category.as_str()))
             .await?;
         if let Some(back) = back_command {
             let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
@@ -72,7 +72,7 @@ pub async fn read_category_filters_list(
         let msg = target
             .markdown_message(markdown_format!(
                 "📂 Category `{}` has no filters defined yet\\.",
-                name
+                category.as_str()
             ))
             .await?;
         if let Some(back) = back_command {
@@ -94,11 +94,11 @@ pub async fn read_category_filters_list(
 pub async fn read_category_filter_by_index(
     target: &CommandReplyTarget,
     storage: &Arc<dyn CategoryStorageTrait>,
-    name: &str,
+    category: &Category,
     idx: usize,
     back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Option<String>> {
-    let filters = read_category_filters_list(target, storage, name, back_command.clone()).await?;
+    let filters = read_category_filters_list(target, storage, category, back_command.clone()).await?;
     if filters.is_empty() {
         return Ok(None);
     };

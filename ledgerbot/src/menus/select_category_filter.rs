@@ -24,7 +24,7 @@ pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let filters =
-        read_category_filters_list(target, storage, category.as_str(), back_command.clone()).await?;
+        read_category_filters_list(target, storage, category, back_command.clone()).await?;
     if filters.is_empty() {
         return Ok(());
     }

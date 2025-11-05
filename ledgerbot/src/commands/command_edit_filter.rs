@@ -154,7 +154,7 @@ impl CommandTrait for CommandEditFilter {
         let Some(old_pattern) = read_category_filter_by_index(
             target,
             &storage,
-            name.as_str(),
+            name,
             *idx,
             Some(CommandEditFilter {
                 category: Some(name.clone()),

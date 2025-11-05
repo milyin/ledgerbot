@@ -138,7 +138,7 @@ impl CommandTrait for CommandEditWordsFilter {
         let Some(current_pattern) = read_category_filter_by_index(
             target,
             &storage.clone().as_category_storage(),
-            category.as_str(),
+            category,
             *position,
             Some(CommandEditWordsFilter {
                 category: Some(category.clone()),
@@ -189,7 +189,7 @@ impl CommandTrait for CommandEditWordsFilter {
         let Some(current_pattern) = read_category_filter_by_index(
             target,
             &storage.clone().as_category_storage(),
-            category.as_str(),
+            &category,
             position,
             Some(CommandEditWordsFilter {
                 category: Some(category.clone()),
