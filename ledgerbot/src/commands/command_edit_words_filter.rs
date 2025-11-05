@@ -14,20 +14,20 @@ use crate::{
         select_category_filter::select_category_filter,
         select_word::{Words, select_word},
     },
-    storages::StorageTrait,
+    storages::{Category, StorageTrait},
     utils::extract_words::extract_and_merge_words,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandEditWordsFilter {
-    pub category: Option<String>,
+    pub category: Option<Category>,
     pub position: Option<usize>,
     pub page: Option<usize>,
     pub words: Option<Words>,
 }
 
 impl CommandTrait for CommandEditWordsFilter {
-    type A = String;
+    type A = Category;
     type B = usize;
     type C = usize;
     type D = Words;
@@ -86,8 +86,8 @@ impl CommandTrait for CommandEditWordsFilter {
             target,
             &storage.as_category_storage(),
             markdown_string!("✏️ Select Category to edit word filter"),
-            |name| CommandEditWordsFilter {
-                category: Some(name.to_string()),
+            |category| CommandEditWordsFilter {
+                category: Some(category.clone()),
                 position: None,
                 page: None,
                 words: None,
@@ -101,7 +101,7 @@ impl CommandTrait for CommandEditWordsFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
     ) -> ResponseResult<()> {
         select_category_filter(
             target,
@@ -109,7 +109,7 @@ impl CommandTrait for CommandEditWordsFilter {
             category,
             markdown_format!(
                 "✏️ Select word\\-based filter to edit in category `{}`",
-                category
+                category.as_str()
             ),
             |idx, pattern| {
                 // Only show word-based filters (those that can be parsed by Words::read_pattern)
@@ -129,7 +129,7 @@ impl CommandTrait for CommandEditWordsFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
         position: &usize,
     ) -> ResponseResult<()> {
         //
@@ -163,7 +163,7 @@ impl CommandTrait for CommandEditWordsFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
         position: &usize,
         page: &usize,
     ) -> ResponseResult<()> {
@@ -178,7 +178,7 @@ impl CommandTrait for CommandEditWordsFilter {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &String,
+        category: &Category,
         position: &usize,
         page: &usize,
         selected_words: &Words,
@@ -189,7 +189,7 @@ impl CommandTrait for CommandEditWordsFilter {
         let Some(current_pattern) = read_category_filter_by_index(
             target,
             &storage.clone().as_category_storage(),
-            category.as_str(),
+            &category,
             position,
             Some(CommandEditWordsFilter {
                 category: Some(category.clone()),
@@ -214,7 +214,7 @@ impl CommandTrait for CommandEditWordsFilter {
             markdown_format!(
                 "✏️ Edit word filter **\\#{}** in category `{}`\n\n{}\n\nPage {}/{} \\({} words total\\)",
                 position,
-                &category,
+                category.as_str(),
                 @raw if selected_words.as_ref().is_empty() { markdown_format!("_no words selected_") } else { markdown_format!("`{}`", selected_words.to_string()) },
                 current_page,
                 total_pages,

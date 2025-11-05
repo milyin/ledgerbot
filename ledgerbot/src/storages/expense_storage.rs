@@ -83,7 +83,7 @@ pub trait ExpenseStorageTrait: Send + Sync {
     /// Clear all expenses for a specific chat for the named period
     async fn clear_expenses(&self, chat_id: ChatId, period: ExpensePeriod);
 
-    /// Get all periods available for a chat.
+    /// Get all periods available for a chat in chronological order
     async fn list_periods(&self, chat_id: ChatId) -> Vec<ExpensePeriod>;
 }
 
@@ -134,11 +134,13 @@ where
     }
 
     async fn list_periods(&self, chat_id: ChatId) -> Vec<ExpensePeriod> {
-        self.store
+        let mut periods = self.store
             .keys(chat_id)
             .await
             .into_iter()
             .filter_map(|key| ExpensePeriod::from_string(&key).ok())
-            .collect()
+            .collect::<Vec<_>>();
+        periods.sort();
+        periods
     }
 }

@@ -12,15 +12,16 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::command_add_category::CommandAddCategory, menus::common::create_buttons_menu,
-    storages::CategoryStorageTrait,
+    commands::command_add_category::CommandAddCategory,
+    menus::common::create_buttons_menu,
+    storages::{Category, CategoryStorageTrait},
 };
 
 pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     storage: &Arc<dyn CategoryStorageTrait>,
     prompt: MarkdownString,
-    next_command: impl Fn(&str) -> NEXT,
+    next_command: impl Fn(&Category) -> NEXT,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let categories = storage
@@ -36,10 +37,17 @@ pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(
             .await?;
         return Ok(());
     }
+
+    // Parse category names to Category type
+    let category_list: Vec<Category> = categories
+        .keys()
+        .filter_map(|name| Category::from_string(name).ok())
+        .collect();
+
     let msg = target.markdown_message(prompt).await?;
     let menu = create_categories_menu(
-        &categories.keys().cloned().collect::<Vec<_>>(),
-        |name| next_command(name).to_command_string(false),
+        &category_list,
+        |category| next_command(category).to_command_string(false),
         back_command,
         false,
     );
@@ -51,19 +59,16 @@ pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(
     Ok(())
 }
 
-fn create_categories_menu(
-    categories: &[String],
-    operation: impl Fn(&str) -> String,
+pub fn create_categories_menu(
+    categories: &[Category],
+    operation: impl Fn(&Category) -> String,
     back_command: Option<impl CommandTrait>,
     inline: bool,
 ) -> InlineKeyboardMarkup {
     let texts = categories
         .iter()
-        .map(|name| format!("📁 {}", name))
+        .map(|category| format!("📁 {}", category.as_str()))
         .collect::<Vec<_>>();
-    let values = categories
-        .iter()
-        .map(|name| operation(name))
-        .collect::<Vec<_>>();
+    let values = categories.iter().map(operation).collect::<Vec<_>>();
     create_buttons_menu(&texts, &values, back_command, inline)
 }

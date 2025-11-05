@@ -10,23 +10,23 @@ use yoroolbot::{
     markdown_format, markdown_string,
 };
 
-use crate::{commands::Command, storages::CategoryStorageTrait};
+use crate::{commands::Command, storages::{Category, CategoryStorageTrait}};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddCategory {
-    pub name: Option<String>,
+    pub category: Option<Category>,
 }
 
 impl CommandAddCategory {
     pub fn new(name: impl Into<String>) -> Self {
         CommandAddCategory {
-            name: Some(name.into()),
+            category: Category::from_string(&name.into()).ok(),
         }
     }
 }
 
 impl CommandTrait for CommandAddCategory {
-    type A = String;
+    type A = Category;
     type B = EmptyArg;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -52,11 +52,11 @@ impl CommandTrait for CommandAddCategory {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandAddCategory { name: a }
+        CommandAddCategory { category: a }
     }
 
     fn param1(&self) -> Option<&Self::A> {
-        self.name.as_ref()
+        self.category.as_ref()
     }
 
     async fn run0(
@@ -75,14 +75,14 @@ impl CommandTrait for CommandAddCategory {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        name: &String,
+        category: &Category,
     ) -> teloxide::prelude::ResponseResult<()> {
-        match storage.add_category(target.chat.id, name.clone()).await {
+        match storage.add_category(target.chat.id, category).await {
             Ok(()) => {
                 target
                     .send_markdown_message(markdown_format!(
                         "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
-                        name,
+                        category.as_str(),
                         Command::ADD_FILTER
                     ))
                     .await?;

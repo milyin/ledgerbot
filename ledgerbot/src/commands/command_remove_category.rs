@@ -8,17 +8,17 @@ use yoroolbot::{
 
 use crate::{
     menus::{select_category::select_category, update_category::update_category},
-    storages::CategoryStorageTrait,
+    storages::{Category, CategoryStorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandRemoveCategory {
-    pub name: Option<String>,
+    pub category: Option<Category>,
     pub confirm: Option<bool>,
 }
 
 impl CommandTrait for CommandRemoveCategory {
-    type A = String;
+    type A = Category;
     type B = bool;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -34,7 +34,7 @@ impl CommandTrait for CommandRemoveCategory {
     const PLACEHOLDERS: &[&'static str] = &["<name>", "<confirm>"];
 
     fn param1(&self) -> Option<&Self::A> {
-        self.name.as_ref()
+        self.category.as_ref()
     }
 
     fn param2(&self) -> Option<&Self::B> {
@@ -42,7 +42,7 @@ impl CommandTrait for CommandRemoveCategory {
     }
 
     fn from_arguments(
-        name: Option<Self::A>,
+        category: Option<Self::A>,
         confirm: Option<Self::B>,
         _: Option<Self::C>,
         _: Option<Self::D>,
@@ -52,7 +52,7 @@ impl CommandTrait for CommandRemoveCategory {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandRemoveCategory { name, confirm }
+        CommandRemoveCategory { category, confirm }
     }
 
     async fn run0(
@@ -64,8 +64,8 @@ impl CommandTrait for CommandRemoveCategory {
             target,
             &storage,
             markdown_string!("✏️ Select Category to remove"),
-            |name| CommandRemoveCategory {
-                name: Some(name.to_string()),
+            |category| CommandRemoveCategory {
+                category: Some(category.clone()),
                 confirm: None,
             },
             None::<NoopCommand>,
@@ -77,20 +77,20 @@ impl CommandTrait for CommandRemoveCategory {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        name: &String,
+        category: &Category,
     ) -> ResponseResult<()> {
         update_category(
             target,
             &storage,
-            name,
-            markdown_format!("🗑️ Confirm Category `{}` Removal", name),
+            category,
+            markdown_format!("🗑️ Confirm Category `{}` Removal", category.as_str()),
             "🗑️ Remove",
             CommandRemoveCategory {
-                name: Some(name.to_string()),
+                category: Some(category.clone()),
                 confirm: Some(true),
             },
             Some(CommandRemoveCategory {
-                name: None,
+                category: None,
                 confirm: None,
             }),
         )
@@ -101,23 +101,24 @@ impl CommandTrait for CommandRemoveCategory {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        name: &String,
+        category: &Category,
         confirm: &bool,
     ) -> ResponseResult<()> {
         if !*confirm {
             target
                 .send_markdown_message(markdown_format!(
                     "❌ Category `{}` removal cancelled\\.",
-                    name
+                    category.as_str()
                 ))
                 .await?;
             return Ok(());
         }
-        if let Err(e) = storage.remove_category(target.chat.id, name).await {
+
+        if let Err(e) = storage.remove_category(target.chat.id, category).await {
             target.send_markdown_message(e).await?;
         }
         target
-            .send_markdown_message(markdown_format!("✅ Category `{}` removed\\.", name))
+            .send_markdown_message(markdown_format!("✅ Category `{}` removed\\.", category.as_str()))
             .await?;
         Ok(())
     }

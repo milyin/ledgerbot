@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     commands::{command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter},
-    storages::CategoryStorageTrait,
+    storages::{Category, CategoryStorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -78,7 +78,7 @@ impl CommandTrait for CommandCategories {
                 for pattern in patterns {
                     result.push_str(
                         CommandAddFilter {
-                            category: Some(name.clone()),
+                            category: Category::from_string(name).ok(),
                             pattern: Some(pattern.clone()),
                         }
                         .to_command_string(true)

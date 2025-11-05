@@ -1,4 +1,5 @@
 mod batch_storage;
+mod category;
 mod category_storage;
 mod expense_period;
 mod expense_storage;
@@ -6,6 +7,7 @@ mod storage;
 mod variable_storage;
 
 pub use batch_storage::{BatchStorage, BatchStorageTrait};
+pub use category::Category;
 pub use category_storage::{CategoryData, CategoryStorage, CategoryStorageTrait};
 pub use expense_period::ExpensePeriod;
 pub use expense_storage::{

@@ -5,8 +5,9 @@ use yoroolbot::{
     command_trait::CommandTrait, markdown::MarkdownString, markdown_format, storage::DataStoreTrait,
 };
 
-use crate::commands::{
-    command_add_filter::CommandAddFilter, command_categories::CommandCategories,
+use crate::{
+    commands::{command_add_filter::CommandAddFilter, command_categories::CommandCategories},
+    storages::Category,
 };
 
 /// Trait for category storage operations
@@ -19,41 +20,46 @@ pub trait CategoryStorageTrait: Send + Sync {
     ) -> Result<HashMap<String, Vec<String>>, MarkdownString>;
 
     /// Add a category for a specific chat
+    /// Returns error if Category::Other variant is used
     async fn add_category(
         &self,
         chat_id: ChatId,
-        category_name: String,
+        category: &Category,
     ) -> Result<(), MarkdownString>;
 
     /// Add a regex filter to an existing category
+    /// Returns error if Category::Other variant is used
     async fn add_category_filter(
         &self,
         chat_id: ChatId,
-        category_name: String,
+        category: &Category,
         regex_pattern: String,
     ) -> Result<(), MarkdownString>;
 
     /// Remove a regex filter from a category
+    /// Returns error if Category::Other variant is used
     async fn remove_category_filter(
         &self,
         chat_id: ChatId,
-        category_name: &str,
+        category: &Category,
         regex_pattern: &str,
     ) -> Result<(), MarkdownString>;
 
     /// Remove a category from a specific chat
+    /// Returns error if Category::Other variant is used
     async fn remove_category(
         &self,
         chat_id: ChatId,
-        category_name: &str,
+        category: &Category,
     ) -> Result<(), MarkdownString>;
 
     /// Rename a category for a specific chat
+    /// Returns error if Category::Other variant is used for either old or new name
     async fn rename_category(
         &self,
         chat_id: ChatId,
-        old_name: &str,
-        new_name: &str,
+        old_category: &Category,
+        new_category: &Category,
     ) -> Result<(), MarkdownString>;
 
     /// Replace all categories for a specific chat
@@ -119,10 +125,18 @@ where
     async fn add_category(
         &self,
         chat_id: ChatId,
-        category_name: String,
+        category: &Category,
     ) -> Result<(), MarkdownString> {
+        // Only accept Category::Category variant with a name
+        let Category::Category(category_name) = category else {
+            return Err(markdown_format!(
+                "❌ Cannot add category `{}`\\. This is a special category\\. Only named categories can be stored\\.",
+                category.as_str()
+            ));
+        };
+
         // Check if category already exists
-        if self.store.get(chat_id, &category_name).await.is_some() {
+        if self.store.get(chat_id, category_name).await.is_some() {
             return Err(markdown_format!(
                 "ℹ️ Category `{}` already exists\\. Use {} to add more patterns or {} to view all\\.",
                 category_name,
@@ -132,7 +146,7 @@ where
         }
 
         // Add the new category with empty filters list
-        self.store.set(chat_id, &category_name, Vec::new()).await;
+        self.store.set(chat_id, category_name, Vec::new()).await;
 
         Ok(())
     }
@@ -140,15 +154,23 @@ where
     async fn add_category_filter(
         &self,
         chat_id: ChatId,
-        category_name: String,
+        category: &Category,
         regex_pattern: String,
     ) -> Result<(), MarkdownString> {
+        // Only accept Category::Category variant with a name
+        let Category::Category(category_name) = category else {
+            return Err(markdown_format!(
+                "❌ Cannot add filters to category `{}`\\. Only named categories can be stored\\.",
+                category.as_str()
+            ));
+        };
+
         // Get existing filters for this category
         let mut patterns = self
             .store
-            .get(chat_id, &category_name)
+            .get(chat_id, category_name)
             .await
-            .ok_or_else(|| markdown_format!("Category {} not exists", &category_name))?;
+            .ok_or_else(|| markdown_format!("Category {} not exists", category_name))?;
 
         if patterns.contains(&regex_pattern) {
             return Err(markdown_format!(
@@ -159,16 +181,24 @@ where
         }
 
         patterns.push(regex_pattern);
-        self.store.set(chat_id, &category_name, patterns).await;
+        self.store.set(chat_id, category_name, patterns).await;
         Ok(())
     }
 
     async fn remove_category_filter(
         &self,
         chat_id: ChatId,
-        category_name: &str,
+        category: &Category,
         regex_pattern: &str,
     ) -> Result<(), MarkdownString> {
+        // Only accept Category::Category variant with a name
+        let Category::Category(category_name) = category else {
+            return Err(markdown_format!(
+                "❌ Cannot remove filters from category `{}`\\. Only named categories can be stored\\.",
+                category.as_str()
+            ));
+        };
+
         // Get existing filters for this category
         let mut patterns = self
             .store
@@ -192,8 +222,16 @@ where
     async fn remove_category(
         &self,
         chat_id: ChatId,
-        category_name: &str,
+        category: &Category,
     ) -> Result<(), MarkdownString> {
+        // Only accept Category::Category variant with a name
+        let Category::Category(category_name) = category else {
+            return Err(markdown_format!(
+                "❌ Cannot remove category `{}`\\. Only named categories can be stored\\.",
+                category.as_str()
+            ));
+        };
+
         // Check if category exists
         if self.store.get(chat_id, category_name).await.is_none() {
             return Err(markdown_format!("Category {} not exists", category_name));
@@ -206,9 +244,25 @@ where
     async fn rename_category(
         &self,
         chat_id: ChatId,
-        old_name: &str,
-        new_name: &str,
+        old_category: &Category,
+        new_category: &Category,
     ) -> Result<(), MarkdownString> {
+        // Only accept Category::Category variant with a name for old category
+        let Category::Category(old_name) = old_category else {
+            return Err(markdown_format!(
+                "❌ Cannot rename category `{}`\\. Only named categories can be stored\\.",
+                old_category.as_str()
+            ));
+        };
+
+        // Only accept Category::Category variant with a name for new category
+        let Category::Category(new_name) = new_category else {
+            return Err(markdown_format!(
+                "❌ Cannot rename to category `{}`\\. Only named categories can be stored\\.",
+                new_category.as_str()
+            ));
+        };
+
         // Get existing filters for old category
         let patterns = self
             .store
