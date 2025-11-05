@@ -85,8 +85,8 @@ impl CommandTrait for CommandRemoveFilter {
             target,
             &storage,
             markdown_string!("🗑️ Select Category for removing filter"),
-            |name| CommandRemoveFilter {
-                category: Category::from_string(name).ok(),
+            |category| CommandRemoveFilter {
+                category: Some(category.clone()),
                 position: None,
                 confirm: None,
             },
@@ -104,7 +104,7 @@ impl CommandTrait for CommandRemoveFilter {
         select_category_filter(
             target,
             &storage,
-            name.as_str(),
+            name,
             markdown_format!("🗑️ Select Filter to remove from category `{}`", name.as_str()),
             |idx, _pattern| {
                 Some(CommandRemoveFilter {
@@ -128,7 +128,7 @@ impl CommandTrait for CommandRemoveFilter {
         update_category_filter(
             target,
             &storage,
-            name.as_str(),
+            name,
             *idx,
             |pattern| {
                 markdown_format!(

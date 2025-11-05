@@ -75,8 +75,8 @@ impl CommandTrait for CommandEditFilter {
             target,
             &storage,
             markdown_string!("✏️ Select Category for editing filter"),
-            |name| CommandEditFilter {
-                category: Category::from_string(name).ok(),
+            |category| CommandEditFilter {
+                category: Some(category.clone()),
                 position: None,
                 pattern: None,
             },
@@ -94,7 +94,7 @@ impl CommandTrait for CommandEditFilter {
         select_category_filter(
             target,
             &storage,
-            name.as_str(),
+            name,
             markdown_format!("✏️ Select Filter to edit in category `{}`", name.as_str()),
             |idx, _pattern| {
                 Some(CommandEditFilter {
@@ -118,7 +118,7 @@ impl CommandTrait for CommandEditFilter {
         update_category_filter(
             target,
             &storage,
-            name.as_str(),
+            name,
             *idx,
             |pattern| {
                 markdown_format!(

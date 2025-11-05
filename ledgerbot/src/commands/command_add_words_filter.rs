@@ -78,8 +78,8 @@ impl CommandTrait for CommandAddWordsFilter {
             target,
             &storage.as_category_storage(),
             markdown_string!("➕ Select Category to add filter"),
-            |name| CommandAddWordsFilter {
-                category: Category::from_string(name).ok(),
+            |category| CommandAddWordsFilter {
+                category: Some(category.clone()),
                 page: Some(0),
                 words: None,
             },

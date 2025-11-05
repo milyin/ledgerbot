@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     menus::{select_category::select_category, update_category::update_category},
-    storages::CategoryStorageTrait,
+    storages::{Category, CategoryStorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -64,8 +64,8 @@ impl CommandTrait for CommandRemoveCategory {
             target,
             &storage,
             markdown_string!("✏️ Select Category to remove"),
-            |name| CommandRemoveCategory {
-                name: Some(name.to_string()),
+            |category| CommandRemoveCategory {
+                name: Some(category.as_str().to_string()),
                 confirm: None,
             },
             None::<NoopCommand>,
@@ -79,10 +79,11 @@ impl CommandTrait for CommandRemoveCategory {
         storage: Self::Context,
         name: &String,
     ) -> ResponseResult<()> {
+        let category = Category::from_string(name).unwrap_or_default();
         update_category(
             target,
             &storage,
-            name,
+            &category,
             markdown_format!("🗑️ Confirm Category `{}` Removal", name),
             "🗑️ Remove",
             CommandRemoveCategory {

@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     menus::{select_category::select_category, update_category::update_category},
-    storages::CategoryStorageTrait,
+    storages::{Category, CategoryStorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -64,8 +64,8 @@ impl CommandTrait for CommandRenameCategory {
             target,
             &storage,
             markdown_string!("✏️ Select Category to rename"),
-            |name| CommandRenameCategory {
-                old_name: Some(name.to_string()),
+            |category| CommandRenameCategory {
+                old_name: Some(category.as_str().to_string()),
                 new_name: None,
             },
             None::<NoopCommand>,
@@ -81,10 +81,11 @@ impl CommandTrait for CommandRenameCategory {
         storage: Self::Context,
         old_name: &String,
     ) -> ResponseResult<()> {
+        let category = Category::from_string(old_name).unwrap_or_default();
         update_category(
             target,
             &storage,
-            old_name,
+            &category,
             markdown_format!("✏️ Renaming category `{}`", old_name),
             "✏️ Rename",
             CommandRenameCategory {

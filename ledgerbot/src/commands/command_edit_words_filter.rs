@@ -86,8 +86,8 @@ impl CommandTrait for CommandEditWordsFilter {
             target,
             &storage.as_category_storage(),
             markdown_string!("✏️ Select Category to edit word filter"),
-            |name| CommandEditWordsFilter {
-                category: Category::from_string(name).ok(),
+            |category| CommandEditWordsFilter {
+                category: Some(category.clone()),
                 position: None,
                 page: None,
                 words: None,
@@ -106,7 +106,7 @@ impl CommandTrait for CommandEditWordsFilter {
         select_category_filter(
             target,
             &storage.as_category_storage(),
-            category.as_str(),
+            category,
             markdown_format!(
                 "✏️ Select word\\-based filter to edit in category `{}`",
                 category.as_str()

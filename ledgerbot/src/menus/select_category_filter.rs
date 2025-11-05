@@ -12,19 +12,19 @@ use yoroolbot::{
 
 use crate::{
     menus::common::{create_buttons_menu, read_category_filters_list},
-    storages::CategoryStorageTrait,
+    storages::{Category, CategoryStorageTrait},
 };
 
 pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     storage: &Arc<dyn CategoryStorageTrait>,
-    category_name: &str,
+    category: &Category,
     prompt: MarkdownString,
     next_command: impl Fn(usize, &str) -> Option<NEXT>,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let filters =
-        read_category_filters_list(target, storage, category_name, back_command.clone()).await?;
+        read_category_filters_list(target, storage, category.as_str(), back_command.clone()).await?;
     if filters.is_empty() {
         return Ok(());
     }

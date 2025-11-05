@@ -11,12 +11,12 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::CategoryStorageTrait;
+use crate::storages::{Category, CategoryStorageTrait};
 
 pub async fn update_category<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     storage: &Arc<dyn CategoryStorageTrait>,
-    name: &str,
+    category: &Category,
     prompt: MarkdownString,
     button_text: &str,
     update_command: NEXT,
@@ -26,9 +26,9 @@ pub async fn update_category<NEXT: CommandTrait, BACK: CommandTrait>(
         .get_chat_categories(target.chat.id)
         .await
         .unwrap_or_default();
-    if !categories.contains_key(name) {
+    if !categories.contains_key(category.as_str()) {
         let msg = target
-            .markdown_message(markdown_format!("❌ Category `{}` does not exist", name))
+            .markdown_message(markdown_format!("❌ Category `{}` does not exist", category.as_str()))
             .await?;
         if let Some(back) = back_command {
             let menu = vec![vec![InlineKeyboardButton::callback(

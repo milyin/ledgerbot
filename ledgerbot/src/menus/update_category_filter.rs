@@ -10,13 +10,13 @@ use yoroolbot::{
     markdown::MarkdownString,
 };
 
-use crate::{menus::common::read_category_filter_by_index, storages::CategoryStorageTrait};
+use crate::{menus::common::read_category_filter_by_index, storages::{Category, CategoryStorageTrait}};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn update_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
     storage: &Arc<dyn CategoryStorageTrait>,
-    name: &str,
+    category: &Category,
     idx: usize,
     prompt: impl Fn(&str) -> MarkdownString,
     button_text: &str,
@@ -24,7 +24,7 @@ pub async fn update_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let Some(pattern) =
-        read_category_filter_by_index(target, storage, name, idx, back_command.clone()).await?
+        read_category_filter_by_index(target, storage, category.as_str(), idx, back_command.clone()).await?
     else {
         return Ok(());
     };
