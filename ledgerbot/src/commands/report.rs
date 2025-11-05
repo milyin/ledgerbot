@@ -368,39 +368,52 @@ pub fn format_category_comparison(
     // Build comparison table
     let max_name_len = category_subtotals
         .iter()
-        .map(|(category, _, _)| category.as_str().len())
+        .map(|(category, _, _)| category.as_str().chars().count())
         .max()
         .unwrap_or(0)
         .max(5);
 
     let mut table_lines = Vec::new();
 
+    // Add column headers
+    let header_label = format!("{:<width$}", "", width = max_name_len);
+    let ref_header = format!("{:>7}", reference_period);
+    let cur_header = format!("{:>7}", current_period);
+    let header_line = format!("{}  {}  {}", header_label, ref_header, cur_header);
+    let separation_line = "-".repeat(header_line.len());
+    table_lines.push(header_line);
+    table_lines.push(separation_line.clone());
+
     // Add each category row with both amounts
     for (category, ref_amount, cur_amount) in &category_subtotals {
         let padded_name = format!("{:<width$}", category.as_str(), width = max_name_len);
-        let ref_str = format!("{:>10.2}", ref_amount);
-        let cur_str = format!("{:>10.2}", cur_amount);
+        let ref_str = format!("{:>7.2}", ref_amount);
+        let cur_str = format!("{:>7.2}", cur_amount);
         table_lines.push(format!("{}  {}  {}", padded_name, ref_str, cur_str));
     }
 
     // Add separator line
-    table_lines.push("-".repeat(max_name_len + 24));
+    table_lines.push(separation_line.clone());
 
     // Add total row
     let total_label = format!("{:<width$}", "Total", width = max_name_len);
-    let ref_total_str = format!("{:>10.2}", ref_total);
-    let cur_total_str = format!("{:>10.2}", cur_total);
-    table_lines.push(format!("{}  {}  {}", total_label, ref_total_str, cur_total_str));
+    let ref_total_str = format!("{:>7.2}", ref_total);
+    let cur_total_str = format!("{:>7.2}", cur_total);
+    table_lines.push(format!(
+        "{}  {}  {}",
+        total_label, ref_total_str, cur_total_str
+    ));
 
     // Join all lines and use @code modifier to wrap in code block
     let table_content = table_lines.join("\n");
     markdown_format!(
-        "📊 *Expense Comparison*\n\n\
-         Reference: *{}*  │  Current: *{}*\n\n\
-         {}",
-        reference_period,
+        "📊 Expense summary for period *{}*\\.\nReference period is {}\n\
+         {}\n\
+         _You may select another period\\.\nThe current {} will be reference to it\\._",
         current_period,
-        @code table_content
+        reference_period,
+        @code table_content,
+        current_period
     )
 }
 
