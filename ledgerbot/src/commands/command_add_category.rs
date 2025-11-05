@@ -10,7 +10,7 @@ use yoroolbot::{
     markdown_format, markdown_string,
 };
 
-use crate::{commands::Command, storages::CategoryStorageTrait};
+use crate::{commands::Command, storages::{Category, CategoryStorageTrait}};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddCategory {
@@ -77,7 +77,18 @@ impl CommandTrait for CommandAddCategory {
         storage: Self::Context,
         name: &String,
     ) -> teloxide::prelude::ResponseResult<()> {
-        match storage.add_category(target.chat.id, name.clone()).await {
+        // Parse the name string to Category
+        let category = match Category::from_string(name) {
+            Ok(cat) => cat,
+            Err(e) => {
+                target
+                    .send_markdown_message(markdown_format!("❌ Invalid category name: {}", e))
+                    .await?;
+                return Ok(());
+            }
+        };
+
+        match storage.add_category(target.chat.id, &category).await {
             Ok(()) => {
                 target
                     .send_markdown_message(markdown_format!(

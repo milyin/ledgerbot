@@ -89,7 +89,7 @@ impl CommandTrait for CommandAddFilter {
         let storage = storage.as_category_storage();
 
         if let Err(msg) = storage
-            .add_category_filter(target.chat.id, category.to_string(), pattern.clone())
+            .add_category_filter(target.chat.id, category, pattern.clone())
             .await
         {
             target.send_markdown_message(msg).await?;

@@ -109,8 +109,30 @@ impl CommandTrait for CommandRenameCategory {
         old_name: &String,
         new_name: &String,
     ) -> ResponseResult<()> {
+        // Parse old_name to Category
+        let old_category = match Category::from_string(old_name) {
+            Ok(cat) => cat,
+            Err(e) => {
+                target
+                    .send_markdown_message(markdown_format!("❌ Invalid old category name: {}", e))
+                    .await?;
+                return Ok(());
+            }
+        };
+
+        // Parse new_name to Category
+        let new_category = match Category::from_string(new_name) {
+            Ok(cat) => cat,
+            Err(e) => {
+                target
+                    .send_markdown_message(markdown_format!("❌ Invalid new category name: {}", e))
+                    .await?;
+                return Ok(());
+            }
+        };
+
         if let Err(e) = storage
-            .rename_category(target.chat.id, old_name, new_name)
+            .rename_category(target.chat.id, &old_category, &new_category)
             .await
         {
             target.send_markdown_message(e).await?;

@@ -114,7 +114,19 @@ impl CommandTrait for CommandRemoveCategory {
                 .await?;
             return Ok(());
         }
-        if let Err(e) = storage.remove_category(target.chat.id, name).await {
+
+        // Parse the name string to Category
+        let category = match Category::from_string(name) {
+            Ok(cat) => cat,
+            Err(e) => {
+                target
+                    .send_markdown_message(markdown_format!("❌ Invalid category name: {}", e))
+                    .await?;
+                return Ok(());
+            }
+        };
+
+        if let Err(e) = storage.remove_category(target.chat.id, &category).await {
             target.send_markdown_message(e).await?;
         }
         target

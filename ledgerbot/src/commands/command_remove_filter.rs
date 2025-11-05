@@ -192,7 +192,7 @@ impl CommandTrait for CommandRemoveFilter {
 
         // Remove the filter
         if let Err(e) = storage
-            .remove_category_filter(target.chat.id, &name.to_string(), &pattern)
+            .remove_category_filter(target.chat.id, name, &pattern)
             .await
         {
             target
