@@ -13,13 +13,13 @@ use crate::{
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandRenameCategory {
-    pub old_name: Option<String>,
-    pub new_name: Option<String>,
+    pub old_category: Option<Category>,
+    pub new_category: Option<Category>,
 }
 
 impl CommandTrait for CommandRenameCategory {
-    type A = String;
-    type B = String;
+    type A = Category;
+    type B = Category;
     type C = EmptyArg;
     type D = EmptyArg;
     type E = EmptyArg;
@@ -34,16 +34,16 @@ impl CommandTrait for CommandRenameCategory {
     const PLACEHOLDERS: &[&'static str] = &["<old_name>", "<new_name>"];
 
     fn param1(&self) -> Option<&Self::A> {
-        self.old_name.as_ref()
+        self.old_category.as_ref()
     }
 
     fn param2(&self) -> Option<&Self::B> {
-        self.new_name.as_ref()
+        self.new_category.as_ref()
     }
 
     fn from_arguments(
-        old_name: Option<Self::A>,
-        new_name: Option<Self::B>,
+        old_category: Option<Self::A>,
+        new_category: Option<Self::B>,
         _: Option<Self::C>,
         _: Option<Self::D>,
         _: Option<Self::E>,
@@ -52,7 +52,7 @@ impl CommandTrait for CommandRenameCategory {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandRenameCategory { old_name, new_name }
+        CommandRenameCategory { old_category, new_category }
     }
 
     async fn run0(
@@ -65,8 +65,8 @@ impl CommandTrait for CommandRenameCategory {
             &storage,
             markdown_string!("✏️ Select Category to rename"),
             |category| CommandRenameCategory {
-                old_name: Some(category.as_str().to_string()),
-                new_name: None,
+                old_category: Some(category.clone()),
+                new_category: None,
             },
             None::<NoopCommand>,
         )
@@ -79,22 +79,21 @@ impl CommandTrait for CommandRenameCategory {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        old_name: &String,
+        old_category: &Category,
     ) -> ResponseResult<()> {
-        let category = Category::from_string(old_name).unwrap_or_default();
         update_category(
             target,
             &storage,
-            &category,
-            markdown_format!("✏️ Renaming category `{}`", old_name),
+            old_category,
+            markdown_format!("✏️ Renaming category `{}`", old_category.as_str()),
             "✏️ Rename",
             CommandRenameCategory {
-                old_name: Some(old_name.to_string()),
-                new_name: None,
+                old_category: Some(old_category.clone()),
+                new_category: None,
             },
             Some(CommandRenameCategory {
-                old_name: None,
-                new_name: None,
+                old_category: None,
+                new_category: None,
             }),
         )
         .await?;
@@ -106,33 +105,11 @@ impl CommandTrait for CommandRenameCategory {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        old_name: &String,
-        new_name: &String,
+        old_category: &Category,
+        new_category: &Category,
     ) -> ResponseResult<()> {
-        // Parse old_name to Category
-        let old_category = match Category::from_string(old_name) {
-            Ok(cat) => cat,
-            Err(e) => {
-                target
-                    .send_markdown_message(markdown_format!("❌ Invalid old category name: {}", e))
-                    .await?;
-                return Ok(());
-            }
-        };
-
-        // Parse new_name to Category
-        let new_category = match Category::from_string(new_name) {
-            Ok(cat) => cat,
-            Err(e) => {
-                target
-                    .send_markdown_message(markdown_format!("❌ Invalid new category name: {}", e))
-                    .await?;
-                return Ok(());
-            }
-        };
-
         if let Err(e) = storage
-            .rename_category(target.chat.id, &old_category, &new_category)
+            .rename_category(target.chat.id, old_category, new_category)
             .await
         {
             target.send_markdown_message(e).await?;
@@ -140,8 +117,8 @@ impl CommandTrait for CommandRenameCategory {
         target
             .send_markdown_message(markdown_format!(
                 "✅ Category `{}` renamed to `{}`\\.",
-                old_name,
-                new_name
+                old_category.as_str(),
+                new_category.as_str()
             ))
             .await?;
         Ok(())

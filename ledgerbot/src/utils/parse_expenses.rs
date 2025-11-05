@@ -394,8 +394,8 @@ mod tests {
 
         // Commands with parameters (4 commands)
         assert!(
-            matches!(&results[7], Ok(Command::AddCategory(CommandAddCategory { name }))
-            if name == &Some("Food".to_string()))
+            matches!(&results[7], Ok(Command::AddCategory(CommandAddCategory { category }))
+            if category.as_ref().map(|c| c.as_str()) == Some("Food"))
         );
 
         assert!(
