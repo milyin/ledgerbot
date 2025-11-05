@@ -5,8 +5,8 @@ use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::report::{
-        check_category_conflicts, filter_category_expenses, format_category_summary,
-        format_single_category_report,
+        check_category_conflicts, filter_category_expenses, format_category_comparison,
+        format_category_summary, format_single_category_report,
     },
     storages::{Category, ExpensePeriod, StorageTrait},
 };
@@ -14,15 +14,16 @@ use crate::{
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandReport {
     pub period: Option<ExpensePeriod>,
+    pub reference_period: Option<ExpensePeriod>,
     pub category: Option<Category>,
     pub page: Option<usize>,
 }
 
 impl CommandTrait for CommandReport {
     type A = ExpensePeriod;
-    type B = Category;
-    type C = usize;
-    type D = EmptyArg;
+    type B = ExpensePeriod;
+    type C = Category;
+    type D = usize;
     type E = EmptyArg;
     type F = EmptyArg;
     type G = EmptyArg;
@@ -32,13 +33,13 @@ impl CommandTrait for CommandReport {
     type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "report";
-    const PLACEHOLDERS: &[&'static str] = &["period", "category", "page"];
+    const PLACEHOLDERS: &[&'static str] = &["period", "reference_period", "category", "page"];
 
     fn from_arguments(
         period: Option<Self::A>,
-        category: Option<Self::B>,
-        page: Option<Self::C>,
-        _: Option<Self::D>,
+        reference_period: Option<Self::B>,
+        category: Option<Self::C>,
+        page: Option<Self::D>,
         _: Option<Self::E>,
         _: Option<Self::F>,
         _: Option<Self::G>,
@@ -47,6 +48,7 @@ impl CommandTrait for CommandReport {
     ) -> Self {
         CommandReport {
             period,
+            reference_period,
             category,
             page,
         }
@@ -57,10 +59,14 @@ impl CommandTrait for CommandReport {
     }
 
     fn param2(&self) -> Option<&Self::B> {
-        self.category.as_ref()
+        self.reference_period.as_ref()
     }
 
     fn param3(&self) -> Option<&Self::C> {
+        self.category.as_ref()
+    }
+
+    fn param4(&self) -> Option<&Self::D> {
         self.page.as_ref()
     }
 
@@ -73,11 +79,37 @@ impl CommandTrait for CommandReport {
         let var_storage = storage.clone().as_variable_storage();
         let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
-        // Get the current period (from storage or current month)
-        let period = current_period.unwrap_or_else(ExpensePeriod::current);
+        let current_period_str = if let Some(period) = current_period {
+            period.to_string()
+        } else {
+            ExpensePeriod::current().to_string()
+        };
 
-        // Forward to run1 to show summary for current period
-        self.run1(target, storage, &period).await
+        let prompt = yoroolbot::markdown_format!(
+            "📊 *Report for period*\n\n\
+             Current period: *{}*\n\n\
+             Select a period to view its report:",
+            current_period_str
+        );
+
+        // Show menu with available periods
+        let expense_storage = storage.clone().as_expense_storage();
+        crate::menus::select_period::select_period(
+            target,
+            &expense_storage,
+            prompt,
+            |period| CommandReport {
+                period: Some(*period),
+                reference_period: None,
+                category: None,
+                page: None,
+            },
+            None::<CommandReport>,
+            None::<yoroolbot::command_trait::NoopCommand>,
+        )
+        .await?;
+
+        Ok(())
     }
 
     async fn run1(
@@ -88,11 +120,36 @@ impl CommandTrait for CommandReport {
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
 
-        let chat_expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_expenses(chat_id, *period)
-            .await;
+        // Get all available periods
+        let periods = storage.clone().as_expense_storage().list_periods(chat_id).await;
+
+        // Find the previous period (one before the selected period)
+        let reference_period = periods
+            .iter()
+            .rev() // Reverse to go from newest to oldest
+            .skip_while(|p| *p != period) // Skip until we find the selected period
+            .nth(1) // Get the next one (previous in time)
+            .copied()
+            .unwrap_or(*period); // If no previous period, use the same period
+
+        // Forward to run2 with reference period
+        self.run2(target, storage, period, &reference_period).await
+    }
+
+    async fn run2(
+        &self,
+        target: &CommandReplyTarget,
+        storage: Self::Context,
+        period: &ExpensePeriod,
+        reference_period: &ExpensePeriod,
+    ) -> ResponseResult<()> {
+        let chat_id = target.chat.id;
+
+        // Get expenses for both periods
+        let expense_storage = storage.clone().as_expense_storage();
+        let current_expenses = expense_storage.get_expenses(chat_id, *period).await;
+        let reference_expenses = expense_storage.get_expenses(chat_id, *reference_period).await;
+
         let chat_categories = storage
             .clone()
             .as_category_storage()
@@ -114,19 +171,32 @@ impl CommandTrait for CommandReport {
             return Ok(());
         }
 
-        // Show summary with period selection buttons (for quick period switching)
-        // Build summary message
-        let (summary_message, _) = format_category_summary(
-            &chat_expenses,
-            &chat_categories,
-            &period.to_string(),
-            None, // Don't include back button in the summary itself
-        );
+        // Build summary message (will show comparison if periods differ)
+        let summary_message = if period == reference_period {
+            // Same period - show single column
+            let (msg, _) = format_category_summary(
+                &current_expenses,
+                &chat_categories,
+                &period.to_string(),
+                None,
+            );
+            msg
+        } else {
+            // Different periods - show comparison
+            format_category_comparison(
+                &reference_expenses,
+                &current_expenses,
+                &chat_categories,
+                &reference_period.to_string(),
+                &period.to_string(),
+            )
+        };
 
         // Get available periods for buttons
-        let periods = storage.clone().as_expense_storage().list_periods(chat_id).await;
+        let periods = expense_storage.list_periods(chat_id).await;
 
         // Create period buttons (4 per row)
+        // When clicked, current period becomes reference, clicked period becomes current
         let period_buttons: Vec<yoroolbot::storage::ButtonData> = periods
             .iter()
             .map(|p| {
@@ -134,6 +204,7 @@ impl CommandTrait for CommandReport {
                     format!("📅 {}", p),
                     CommandReport {
                         period: Some(*p),
+                        reference_period: Some(*period), // Current becomes reference
                         category: None,
                         page: None,
                     }
@@ -147,10 +218,12 @@ impl CommandTrait for CommandReport {
             .map(|chunk| chunk.to_vec())
             .collect();
 
+        // Add "Report by categories" button
         buttons.push(vec![yoroolbot::storage::ButtonData::Callback(
             "📁 Report by categories".to_string(),
             CommandReport {
                 period: Some(*period),
+                reference_period: Some(*reference_period),
                 category: Some(Category::None),
                 page: None,
             }
@@ -163,11 +236,12 @@ impl CommandTrait for CommandReport {
         Ok(())
     }
 
-    async fn run2(
+    async fn run3(
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
         period: &ExpensePeriod,
+        reference_period: &ExpensePeriod,
         category: &Category,
     ) -> ResponseResult<()> {
         // If category is None, show summary with category buttons
@@ -200,11 +274,12 @@ impl CommandTrait for CommandReport {
                 return Ok(());
             }
 
-            // Create back button to return to period view
+            // Create back button to return to summary view
             let back_button = Some(yoroolbot::storage::ButtonData::Callback(
-                "↩️ Back to Periods".to_string(),
+                "↩️ Back to Summary".to_string(),
                 CommandReport {
                     period: Some(*period),
+                    reference_period: Some(*reference_period),
                     category: None,
                     page: None,
                 }
@@ -231,14 +306,15 @@ impl CommandTrait for CommandReport {
         }
 
         // Otherwise, show detailed category report (default to page 0)
-        self.run3(target, storage, period, category, &0).await
+        self.run4(target, storage, period, reference_period, category, &0).await
     }
 
-    async fn run3(
+    async fn run4(
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
         period: &ExpensePeriod,
+        reference_period: &ExpensePeriod,
         category: &Category,
         page: &usize,
     ) -> ResponseResult<()> {
@@ -313,6 +389,7 @@ impl CommandTrait for CommandReport {
                 "◀️ Prev".to_string(),
                 CommandReport {
                     period: Some(*period),
+                    reference_period: Some(*reference_period),
                     category: Some(category.clone()),
                     page: Some(page_number - 1),
                 }
@@ -332,6 +409,7 @@ impl CommandTrait for CommandReport {
                 "Next ▶️".to_string(),
                 CommandReport {
                     period: Some(*period),
+                    reference_period: Some(*reference_period),
                     category: Some(category.clone()),
                     page: Some(page_number + 1),
                 }
@@ -347,12 +425,13 @@ impl CommandTrait for CommandReport {
 
         nav_buttons.push(page_nav_row);
 
-        // Back button row
+        // Back button row - goes back to category selection with both periods
         let back_button_row = vec![yoroolbot::storage::ButtonData::Callback(
-            "↩️ Back to Summary".to_string(),
+            "↩️ Back to Categories".to_string(),
             CommandReport {
                 period: Some(*period),
-                category: None,
+                reference_period: Some(*reference_period),
+                category: Some(Category::None),
                 page: None,
             }
             .to_command_string(false),

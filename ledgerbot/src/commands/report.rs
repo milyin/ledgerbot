@@ -272,6 +272,138 @@ pub fn format_single_category_report(
     report_lines.join("\n")
 }
 
+/// Format category comparison showing two periods side by side
+pub fn format_category_comparison(
+    reference_expenses: &[Expense],
+    current_expenses: &[Expense],
+    categories: &HashMap<String, Vec<String>>,
+    reference_period: &str,
+    current_period: &str,
+) -> MarkdownString {
+    if current_expenses.is_empty() && reference_expenses.is_empty() {
+        return markdown_format!(
+            "No expenses recorded for periods *{}* and *{}*\\.",
+            reference_period,
+            current_period
+        );
+    }
+
+    // Build regex matchers for each category
+    let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
+        .iter()
+        .map(|(name, patterns)| {
+            let regexes: Vec<regex::Regex> = patterns
+                .iter()
+                .filter_map(|pattern| regex::Regex::new(pattern).ok())
+                .collect();
+            (name.clone(), regexes)
+        })
+        .collect();
+
+    // Helper function to group expenses by category
+    let group_expenses = |expenses: &[Expense]| -> (HashMap<String, Vec<Expense>>, Vec<Expense>) {
+        let mut categorized: HashMap<String, Vec<Expense>> = HashMap::new();
+        let mut uncategorized: Vec<Expense> = Vec::new();
+
+        for expense in expenses.iter() {
+            let mut matched = false;
+            for (category_name, regexes) in &category_matchers {
+                if regexes.iter().any(|re| re.is_match(&expense.description)) {
+                    categorized
+                        .entry(category_name.clone())
+                        .or_default()
+                        .push(expense.clone());
+                    matched = true;
+                    break;
+                }
+            }
+            if !matched {
+                uncategorized.push(expense.clone());
+            }
+        }
+        (categorized, uncategorized)
+    };
+
+    let (ref_categorized, ref_uncategorized) = group_expenses(reference_expenses);
+    let (cur_categorized, cur_uncategorized) = group_expenses(current_expenses);
+
+    // Collect all category names
+    let mut category_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+    category_names.extend(ref_categorized.keys().cloned());
+    category_names.extend(cur_categorized.keys().cloned());
+    let mut category_names: Vec<String> = category_names.into_iter().collect();
+    category_names.sort();
+
+    // Calculate totals for each category
+    let mut category_subtotals: Vec<(Category, f64, f64)> = Vec::new();
+    let mut ref_total = 0.0;
+    let mut cur_total = 0.0;
+
+    for category_name in &category_names {
+        let ref_amount: f64 = ref_categorized
+            .get(category_name)
+            .map(|items| items.iter().map(|e| e.amount).sum())
+            .unwrap_or(0.0);
+        let cur_amount: f64 = cur_categorized
+            .get(category_name)
+            .map(|items| items.iter().map(|e| e.amount).sum())
+            .unwrap_or(0.0);
+
+        if let Ok(category) = Category::from_string(category_name) {
+            category_subtotals.push((category, ref_amount, cur_amount));
+            ref_total += ref_amount;
+            cur_total += cur_amount;
+        }
+    }
+
+    // Add "Other" category if either period has uncategorized expenses
+    if !ref_uncategorized.is_empty() || !cur_uncategorized.is_empty() {
+        let ref_amount: f64 = ref_uncategorized.iter().map(|e| e.amount).sum();
+        let cur_amount: f64 = cur_uncategorized.iter().map(|e| e.amount).sum();
+        category_subtotals.push((Category::Other, ref_amount, cur_amount));
+        ref_total += ref_amount;
+        cur_total += cur_amount;
+    }
+
+    // Build comparison table
+    let max_name_len = category_subtotals
+        .iter()
+        .map(|(category, _, _)| category.as_str().len())
+        .max()
+        .unwrap_or(0)
+        .max(5);
+
+    let mut table_lines = Vec::new();
+
+    // Add each category row with both amounts
+    for (category, ref_amount, cur_amount) in &category_subtotals {
+        let padded_name = format!("{:<width$}", category.as_str(), width = max_name_len);
+        let ref_str = format!("{:>10.2}", ref_amount);
+        let cur_str = format!("{:>10.2}", cur_amount);
+        table_lines.push(format!("{}  {}  {}", padded_name, ref_str, cur_str));
+    }
+
+    // Add separator line
+    table_lines.push("-".repeat(max_name_len + 24));
+
+    // Add total row
+    let total_label = format!("{:<width$}", "Total", width = max_name_len);
+    let ref_total_str = format!("{:>10.2}", ref_total);
+    let cur_total_str = format!("{:>10.2}", cur_total);
+    table_lines.push(format!("{}  {}  {}", total_label, ref_total_str, cur_total_str));
+
+    // Join all lines and use @code modifier to wrap in code block
+    let table_content = table_lines.join("\n");
+    markdown_format!(
+        "📊 *Expense Comparison*\n\n\
+         Reference: *{}*  │  Current: *{}*\n\n\
+         {}",
+        reference_period,
+        current_period,
+        @code table_content
+    )
+}
+
 /// Format category summary with interactive menu for category selection
 pub fn format_category_summary(
     expenses: &[Expense],
@@ -396,6 +528,7 @@ pub fn format_category_summary(
         let period_obj = crate::storages::ExpensePeriod::from_string(period).ok();
         let command = crate::commands::command_report::CommandReport {
             period: period_obj,
+            reference_period: None,
             category: Some(category.clone()),
             page: None,
         };
