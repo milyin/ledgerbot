@@ -210,7 +210,7 @@ impl CommandTrait for CommandReport {
 
         // Filter expenses for the category
         let filtered_expenses =
-            filter_category_expenses(&category.to_string(), &chat_expenses, &chat_categories);
+            filter_category_expenses(category, &chat_expenses, &chat_categories);
 
         // Calculate pagination
         let total_expenses = filtered_expenses.len();

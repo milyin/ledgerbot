@@ -98,11 +98,11 @@ pub fn check_category_conflicts(
 
 /// Filter expenses for a specific category
 pub fn filter_category_expenses<'a>(
-    category_name: &str,
+    category: &Category,
     all_expenses: &'a [Expense],
     categories: &HashMap<String, Vec<String>>,
 ) -> Vec<&'a Expense> {
-    if category_name == "Other" {
+    if category.is_other() {
         // "Other" category: uncategorized expenses
         let category_matchers: Vec<(String, Vec<regex::Regex>)> = categories
             .iter()
@@ -126,7 +126,7 @@ pub fn filter_category_expenses<'a>(
             .collect()
     } else {
         // Specific category: expenses matching this category's filters
-        let patterns = categories.get(category_name);
+        let patterns = categories.get(category.as_str());
         if let Some(patterns) = patterns {
             let regexes: Vec<regex::Regex> = patterns
                 .iter()
