@@ -384,7 +384,6 @@ pub fn format_category_summary(
         period,
         @code table_content
     );
-    let summary_message = summary_message + markdown_string!("Select a category to view details:");
 
     // Create inline keyboard button data using Callback
     // Callback buttons execute commands directly when clicked

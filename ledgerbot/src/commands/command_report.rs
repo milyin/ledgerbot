@@ -147,9 +147,8 @@ impl CommandTrait for CommandReport {
             .map(|chunk| chunk.to_vec())
             .collect();
 
-        // Add "View Categories" button
         buttons.push(vec![yoroolbot::storage::ButtonData::Callback(
-            "📁 View Categories".to_string(),
+            "📁 Report by categories".to_string(),
             CommandReport {
                 period: Some(*period),
                 category: Some(Category::None),
