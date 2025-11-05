@@ -333,27 +333,29 @@ pub fn format_category_summary(
     category_names.sort();
 
     // Calculate totals
-    let mut category_subtotals: Vec<(String, f64)> = Vec::new();
+    let mut category_subtotals: Vec<(Category, f64)> = Vec::new();
     let mut total = 0.0;
 
     for category_name in &category_names {
         if let Some(items) = categorized.get(category_name) {
             let category_total: f64 = items.iter().map(|e| e.amount).sum();
-            category_subtotals.push((category_name.clone(), category_total));
-            total += category_total;
+            if let Ok(category) = Category::from_string(category_name) {
+                category_subtotals.push((category, category_total));
+                total += category_total;
+            }
         }
     }
 
     if !uncategorized.is_empty() {
         let category_total: f64 = uncategorized.iter().map(|e| e.amount).sum();
-        category_subtotals.push(("Other".to_string(), category_total));
+        category_subtotals.push((Category::Other, category_total));
         total += category_total;
     }
 
     // Build summary table
     let max_name_len = category_subtotals
         .iter()
-        .map(|(name, _)| name.len())
+        .map(|(category, _)| category.as_str().len())
         .max()
         .unwrap_or(0)
         .max(5); // At least as wide as "Total"
@@ -361,8 +363,8 @@ pub fn format_category_summary(
     let mut table_lines = Vec::new();
 
     // Add each category row
-    for (category_name, subtotal) in &category_subtotals {
-        let padded_name = format!("{:<width$}", category_name, width = max_name_len);
+    for (category, subtotal) in &category_subtotals {
+        let padded_name = format!("{:<width$}", category.as_str(), width = max_name_len);
         let amount_str = format!("{:>10.2}", subtotal);
         table_lines.push(format!("{} {}", padded_name, amount_str));
     }
@@ -390,16 +392,16 @@ pub fn format_category_summary(
     let mut buttons: Vec<Vec<ButtonData>> = Vec::new();
     let mut current_row: Vec<ButtonData> = Vec::new();
 
-    for (category_name, _) in &category_subtotals {
+    for (category, _) in &category_subtotals {
         // Parse the period string to ExpensePeriod for the command
         let period_obj = crate::storages::ExpensePeriod::from_string(period).ok();
         let command = crate::commands::command_report::CommandReport {
             period: period_obj,
-            category: Category::from_string(category_name).ok(),
+            category: Some(category.clone()),
             page: None,
         };
         current_row.push(ButtonData::Callback(
-            category_name.clone(),
+            category.as_str().to_string(),
             command.to_command_string(false),
         ));
 
