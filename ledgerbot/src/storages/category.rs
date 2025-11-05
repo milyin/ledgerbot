@@ -48,7 +48,10 @@ impl Category {
         }
 
         // Check for special syntax characters that might interfere with markdown or telegram
-        let forbidden_chars = ['*', '_', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!', '\\'];
+        let forbidden_chars = [
+            '*', '_', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.',
+            '!', '\\',
+        ];
         for ch in forbidden_chars {
             if s.contains(ch) {
                 return Err(format!(

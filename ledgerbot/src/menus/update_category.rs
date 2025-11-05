@@ -28,7 +28,10 @@ pub async fn update_category<NEXT: CommandTrait, BACK: CommandTrait>(
         .unwrap_or_default();
     if !categories.contains_key(category.as_str()) {
         let msg = target
-            .markdown_message(markdown_format!("❌ Category `{}` does not exist", category.as_str()))
+            .markdown_message(markdown_format!(
+                "❌ Category `{}` does not exist",
+                category.as_str()
+            ))
             .await?;
         if let Some(back) = back_command {
             let menu = vec![vec![InlineKeyboardButton::callback(

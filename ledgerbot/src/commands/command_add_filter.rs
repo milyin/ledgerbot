@@ -6,7 +6,10 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::{commands::command_add_words_filter::CommandAddWordsFilter, storages::{Category, StorageTrait}};
+use crate::{
+    commands::command_add_words_filter::CommandAddWordsFilter,
+    storages::{Category, StorageTrait},
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddFilter {

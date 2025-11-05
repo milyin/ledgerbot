@@ -53,7 +53,10 @@ pub async fn read_category_filters_list(
         .unwrap_or_default();
     let Some(filters) = categories.get(category.as_str()) else {
         let msg = target
-            .markdown_message(markdown_format!("❌ Category `{}` does not exist", category.as_str()))
+            .markdown_message(markdown_format!(
+                "❌ Category `{}` does not exist",
+                category.as_str()
+            ))
             .await?;
         if let Some(back) = back_command {
             let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
@@ -98,7 +101,8 @@ pub async fn read_category_filter_by_index(
     idx: usize,
     back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Option<String>> {
-    let filters = read_category_filters_list(target, storage, category, back_command.clone()).await?;
+    let filters =
+        read_category_filters_list(target, storage, category, back_command.clone()).await?;
     if filters.is_empty() {
         return Ok(None);
     };
