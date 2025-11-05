@@ -181,8 +181,8 @@ impl CommandTrait for CommandReport {
         let (summary_message, _) =
             // Same period - show single column
             format_category_comparison(
-                &current_expenses,
                 &reference_expenses,
+                &current_expenses,
                 &chat_categories,
                 reference_period,
                 period,
@@ -284,8 +284,8 @@ impl CommandTrait for CommandReport {
                 &reference_expenses,
                 &chat_expenses,
                 &chat_categories,
-                &reference_period,
-                &period,
+                reference_period,
+                period,
             );
 
             // Create category buttons (4 per row)
