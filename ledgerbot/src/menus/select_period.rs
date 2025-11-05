@@ -59,20 +59,23 @@ fn create_periods_menu(
         .collect::<Vec<_>>();
     let values = periods.iter().map(operation).collect::<Vec<_>>();
 
-    // Create the basic menu with period buttons
-    let mut buttons: Vec<Vec<InlineKeyboardButton>> = texts
+    // Create the basic menu with period buttons (4 per row)
+    let period_buttons: Vec<InlineKeyboardButton> = texts
         .iter()
         .zip(values.iter())
         .map(|(text, value)| {
             if inline {
-                vec![InlineKeyboardButton::switch_inline_query_current_chat(
-                    text,
-                    value.clone(),
-                )]
+                InlineKeyboardButton::switch_inline_query_current_chat(text, value.clone())
             } else {
-                vec![InlineKeyboardButton::callback(text, value.clone())]
+                InlineKeyboardButton::callback(text, value.clone())
             }
         })
+        .collect();
+
+    // Arrange buttons in rows of 4
+    let mut buttons: Vec<Vec<InlineKeyboardButton>> = period_buttons
+        .chunks(4)
+        .map(|chunk| chunk.to_vec())
         .collect();
 
     // Add new period button if command provided
