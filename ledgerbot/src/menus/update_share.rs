@@ -48,7 +48,10 @@ pub async fn update_share<NEXT: CommandTrait, BACK: CommandTrait>(
     }
     let msg = target.markdown_message(prompt).await?;
     let mut buttons = vec![vec![
-        InlineKeyboardButton::callback(button_text, update_command.to_command_string(false)),
+        InlineKeyboardButton::switch_inline_query_current_chat(
+            button_text,
+            update_command.to_command_string(false),
+        ),
     ]];
     if let Some(back) = back_command {
         buttons.push(vec![InlineKeyboardButton::callback(
