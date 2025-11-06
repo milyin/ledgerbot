@@ -57,8 +57,7 @@ impl CommandTrait for CommandListShares {
                 ))
                 .await?;
         } else {
-            let mut result = String::from("👥 **Share List:**\n\n");
-
+            let mut result = "".to_string();
             // Sort usernames for consistent output
             let mut sorted_shares = shares;
             sorted_shares.sort();

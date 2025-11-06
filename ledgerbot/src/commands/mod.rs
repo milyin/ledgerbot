@@ -8,6 +8,7 @@ pub mod command_clear_categories;
 pub mod command_clear_expenses;
 pub mod command_edit_filter;
 pub mod command_edit_words_filter;
+pub mod command_follow;
 pub mod command_help;
 pub mod command_list;
 pub mod command_list_shares;
@@ -18,6 +19,7 @@ pub mod command_rename_category;
 pub mod command_report;
 pub mod command_select_period;
 pub mod command_start;
+pub mod command_unfollow;
 pub mod expenses;
 pub mod report;
 
@@ -37,12 +39,13 @@ use crate::{
         command_add_words_filter::CommandAddWordsFilter, command_categories::CommandCategories,
         command_clear_categories::CommandClearCategories,
         command_clear_expenses::CommandClearExpenses, command_edit_filter::CommandEditFilter,
-        command_edit_words_filter::CommandEditWordsFilter, command_help::CommandHelp,
-        command_list::CommandList, command_list_shares::CommandListShares,
-        command_remove_category::CommandRemoveCategory, command_remove_filter::CommandRemoveFilter,
-        command_remove_share::CommandRemoveShare, command_rename_category::CommandRenameCategory,
-        command_report::CommandReport, command_select_period::CommandSelectPeriod,
-        command_start::CommandStart,
+        command_edit_words_filter::CommandEditWordsFilter, command_follow::CommandFollow,
+        command_help::CommandHelp, command_list::CommandList,
+        command_list_shares::CommandListShares, command_remove_category::CommandRemoveCategory,
+        command_remove_filter::CommandRemoveFilter, command_remove_share::CommandRemoveShare,
+        command_rename_category::CommandRenameCategory, command_report::CommandReport,
+        command_select_period::CommandSelectPeriod, command_start::CommandStart,
+        command_unfollow::CommandUnfollow,
     },
     storages::StorageTrait,
 };
@@ -169,6 +172,16 @@ pub enum Command {
         parse_with = CommandRemoveShare::parse_arguments
     )]
     RemoveShare(CommandRemoveShare),
+    #[command(
+        description = "follow expenses from another chat",
+        parse_with = CommandFollow::parse_arguments
+    )]
+    Follow(CommandFollow),
+    #[command(
+        description = "stop following another chat",
+        parse_with = CommandUnfollow::parse_arguments
+    )]
+    Unfollow(CommandUnfollow),
 }
 
 // Command constants as string representations
@@ -201,6 +214,8 @@ impl From<Command> for String {
             Command::AddShare(add_share) => add_share.to_command_string(true),
             Command::ListShares(list_shares) => list_shares.to_command_string(true),
             Command::RemoveShare(remove_share) => remove_share.to_command_string(true),
+            Command::Follow(follow) => follow.to_command_string(true),
+            Command::Unfollow(unfollow) => unfollow.to_command_string(true),
         }
     }
 }
@@ -307,6 +322,12 @@ pub async fn execute_command(
             remove_share
                 .run(&target, storage.clone().as_share_storage())
                 .await?;
+        }
+        Command::Follow(follow) => {
+            follow.run(&target, storage.clone()).await?;
+        }
+        Command::Unfollow(unfollow) => {
+            unfollow.run(&target, storage.clone()).await?;
         }
     }
     Ok(())
