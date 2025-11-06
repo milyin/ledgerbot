@@ -7,7 +7,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::{commands::command_add_share::CommandAddShare, storages::StorageTrait};
+use crate::{commands::command_add_share::CommandAddShare, storages::Storage};
 
 /// Result of follow access validation
 pub struct FollowAccess {
@@ -26,9 +26,9 @@ pub struct FollowAccess {
 /// 3. Returns the effective chat ID (followed or current) and a header note
 pub async fn validate_and_get_follow_access(
     target: &CommandReplyTarget,
-    storage: &Arc<dyn StorageTrait>,
+    storage: &Arc<Storage>,
 ) -> Result<FollowAccess, MarkdownString> {
-    let variable_storage = storage.clone().as_variable_storage();
+    let variable_storage = storage.clone().variable_storage();
 
     // Check if currently following any chat
     let followed_chat: Option<ChatId> = variable_storage.get(target.chat.id).await;
@@ -61,7 +61,7 @@ pub async fn validate_and_get_follow_access(
     };
 
     // Validate access by checking share list
-    let share_storage = storage.clone().as_share_storage();
+    let share_storage = storage.clone().share_storage();
     let shares = match share_storage.get_chat_shares(followed_chat).await {
         Ok(shares) => shares,
         Err(_) => {
@@ -108,7 +108,7 @@ pub async fn validate_and_get_follow_access(
 /// This is used by the /follow command when setting up a new follow relationship
 pub async fn validate_follow_access(
     target: &CommandReplyTarget,
-    storage: &Arc<dyn StorageTrait>,
+    storage: &Arc<Storage>,
     target_chat_id: ChatId,
 ) -> Result<(), MarkdownString> {
     // Get current user's username
@@ -122,7 +122,7 @@ pub async fn validate_follow_access(
     };
 
     // Get share list from target chat
-    let share_storage = storage.clone().as_share_storage();
+    let share_storage = storage.clone().share_storage();
     let shares = match share_storage.get_chat_shares(target_chat_id).await {
         Ok(shares) => shares,
         Err(e) => {

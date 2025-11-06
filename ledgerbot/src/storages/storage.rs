@@ -8,28 +8,6 @@ use crate::storages::{
     VariableStorage,
 };
 
-/// Combined storage trait that provides all storage operations
-/// This trait allows converting to specific trait objects for functions that only need subset of functionality
-pub trait StorageTrait: Send + Sync {
-    /// Convert to ExpenseStorageTrait trait object
-    fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait>;
-
-    /// Convert to CategoryStorageTrait trait object
-    fn as_category_storage(self: Arc<Self>) -> Arc<dyn CategoryStorageTrait>;
-
-    /// Convert to ShareStorageTrait trait object
-    fn as_share_storage(self: Arc<Self>) -> Arc<dyn ShareStorageTrait>;
-
-    /// Convert to BatchStorageTrait trait object
-    fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait>;
-
-    /// Convert to CallbackDataStorageTrait trait object
-    fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait>;
-
-    /// Get variable storage (concrete type, not trait object, because of generic methods)
-    fn as_variable_storage(self: Arc<Self>) -> Arc<VariableStorage>;
-}
-
 /// Main storage structure that holds all bot data
 /// This is the primary storage container for the application
 #[derive(Clone)]
@@ -75,37 +53,40 @@ impl Storage {
         self.shares = Arc::new(storage);
         self
     }
+
+    /// Get expense storage
+    pub fn expense_storage(self: &Arc<Self>) -> Arc<dyn ExpenseStorageTrait> {
+        self.expenses.clone()
+    }
+
+    /// Get category storage
+    pub fn category_storage(self: &Arc<Self>) -> Arc<dyn CategoryStorageTrait> {
+        self.categories.clone()
+    }
+
+    /// Get share storage
+    pub fn share_storage(self: &Arc<Self>) -> Arc<dyn ShareStorageTrait> {
+        self.shares.clone()
+    }
+
+    /// Get batch storage
+    pub fn batch_storage(self: &Arc<Self>) -> Arc<dyn BatchStorageTrait> {
+        self.batch.clone()
+    }
+
+    /// Get callback data storage
+    pub fn callback_data_storage(self: &Arc<Self>) -> Arc<dyn CallbackDataStorageTrait> {
+        self.callback_data.clone()
+    }
+
+    /// Get variable storage
+    pub fn variable_storage(self: &Arc<Self>) -> Arc<VariableStorage> {
+        self.variables.clone()
+    }
 }
 
 impl Default for Storage {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// Implement StorageTrait for Storage to enable conversion to specific trait objects
-impl StorageTrait for Storage {
-    fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait> {
-        self.expenses.clone()
-    }
-
-    fn as_category_storage(self: Arc<Self>) -> Arc<dyn CategoryStorageTrait> {
-        self.categories.clone()
-    }
-
-    fn as_share_storage(self: Arc<Self>) -> Arc<dyn ShareStorageTrait> {
-        self.shares.clone()
-    }
-
-    fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait> {
-        self.batch.clone()
-    }
-
-    fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait> {
-        self.callback_data.clone()
-    }
-
-    fn as_variable_storage(self: Arc<Self>) -> Arc<VariableStorage> {
-        self.variables.clone()
     }
 }

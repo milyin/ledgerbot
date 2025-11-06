@@ -17,5 +17,5 @@ pub use expense_storage::{
 };
 pub use share_storage::{ShareData, ShareStorage, ShareStorageTrait};
 pub use share_username::ShareUsername;
-pub use storage::{Storage, StorageTrait};
+pub use storage::Storage;
 pub use variable_storage::VariableStorage;

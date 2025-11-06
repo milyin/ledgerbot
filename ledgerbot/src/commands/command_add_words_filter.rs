@@ -12,7 +12,7 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::{Category, Expense, StorageTrait},
+    storages::{Category, Expense, Storage},
     utils::extract_words::extract_words,
 };
 
@@ -34,7 +34,7 @@ impl CommandTrait for CommandAddWordsFilter {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "add_words_filter";
     const PLACEHOLDERS: &[&'static str] = &["<category>", "<page>", "<words>"];
@@ -76,7 +76,7 @@ impl CommandTrait for CommandAddWordsFilter {
     ) -> ResponseResult<()> {
         select_category(
             target,
-            &storage.as_category_storage(),
+            &storage.category_storage(),
             markdown_string!("➕ Select Category to add filter"),
             |category| CommandAddWordsFilter {
                 category: Some(category.clone()),
@@ -121,7 +121,7 @@ impl CommandTrait for CommandAddWordsFilter {
         // Get all expenses across all periods for word extraction
         let all_expenses = storage
             .clone()
-            .as_expense_storage()
+            .expense_storage()
             .get_all_expenses(target.chat.id)
             .await;
 
@@ -133,7 +133,7 @@ impl CommandTrait for CommandAddWordsFilter {
 
         let categories = storage
             .clone()
-            .as_category_storage()
+            .category_storage()
             .get_chat_categories(target.chat.id)
             .await
             .unwrap_or_default();

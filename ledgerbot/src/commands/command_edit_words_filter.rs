@@ -14,7 +14,7 @@ use crate::{
         select_category_filter::select_category_filter,
         select_word::{Words, select_word},
     },
-    storages::{Category, StorageTrait},
+    storages::{Category, Storage},
     utils::extract_words::extract_and_merge_words,
 };
 
@@ -37,7 +37,7 @@ impl CommandTrait for CommandEditWordsFilter {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "edit_words_filter";
     const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<page>", "<words>"];
@@ -84,7 +84,7 @@ impl CommandTrait for CommandEditWordsFilter {
     ) -> ResponseResult<()> {
         select_category(
             target,
-            &storage.as_category_storage(),
+            &storage.category_storage(),
             markdown_string!("✏️ Select Category to edit word filter"),
             |category| CommandEditWordsFilter {
                 category: Some(category.clone()),
@@ -105,7 +105,7 @@ impl CommandTrait for CommandEditWordsFilter {
     ) -> ResponseResult<()> {
         select_category_filter(
             target,
-            &storage.as_category_storage(),
+            &storage.category_storage(),
             category,
             markdown_format!(
                 "✏️ Select word\\-based filter to edit in category `{}`",
@@ -137,7 +137,7 @@ impl CommandTrait for CommandEditWordsFilter {
         //
         let Some(current_pattern) = read_category_filter_by_index(
             target,
-            &storage.clone().as_category_storage(),
+            &storage.clone().category_storage(),
             category,
             *position,
             Some(CommandEditWordsFilter {
@@ -188,7 +188,7 @@ impl CommandTrait for CommandEditWordsFilter {
 
         let Some(current_pattern) = read_category_filter_by_index(
             target,
-            &storage.clone().as_category_storage(),
+            &storage.clone().category_storage(),
             &category,
             position,
             Some(CommandEditWordsFilter {

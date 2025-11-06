@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     menus::select_period::select_period,
-    storages::{ExpensePeriod, StorageTrait},
+    storages::{ExpensePeriod, Storage},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -27,7 +27,7 @@ impl CommandTrait for CommandSelectPeriod {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "select_period";
     const PLACEHOLDERS: &[&'static str] = &["YYYY-MM"];
@@ -56,7 +56,7 @@ impl CommandTrait for CommandSelectPeriod {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let var_storage = storage.clone().as_variable_storage();
+        let var_storage = storage.clone().variable_storage();
         let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
         let current_period_str = if let Some(period) = current_period {
@@ -77,7 +77,7 @@ impl CommandTrait for CommandSelectPeriod {
         );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().as_expense_storage();
+        let expense_storage = storage.clone().expense_storage();
         select_period(
             target,
             &expense_storage,
@@ -105,7 +105,7 @@ impl CommandTrait for CommandSelectPeriod {
         let chat_id = target.chat.id;
 
         // Store the selected period in VariableStorage
-        let var_storage = storage.clone().as_variable_storage();
+        let var_storage = storage.clone().variable_storage();
         var_storage.set(chat_id, *period).await;
 
         target

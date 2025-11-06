@@ -11,7 +11,7 @@ use crate::{
         command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter,
         follow_helper::validate_and_get_follow_access,
     },
-    storages::{Category, StorageTrait},
+    storages::{Category, Storage},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -28,7 +28,7 @@ impl CommandTrait for CommandCategories {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "categories";
     const PLACEHOLDERS: &[&'static str] = &[];
@@ -74,7 +74,7 @@ impl CommandTrait for CommandCategories {
 
         let categories = storage
             .clone()
-            .as_category_storage()
+            .category_storage()
             .get_chat_categories(chat_id)
             .await
             .unwrap_or_default();

@@ -6,7 +6,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::StorageTrait;
+use crate::storages::Storage;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandUnfollow;
@@ -22,7 +22,7 @@ impl CommandTrait for CommandUnfollow {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "unfollow";
     const PLACEHOLDERS: &[&'static str] = &[];
@@ -46,7 +46,7 @@ impl CommandTrait for CommandUnfollow {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let variable_storage = storage.clone().as_variable_storage();
+        let variable_storage = storage.clone().variable_storage();
 
         // Check if currently following any chat
         let followed_chat: Option<ChatId> = variable_storage.get(target.chat.id).await;

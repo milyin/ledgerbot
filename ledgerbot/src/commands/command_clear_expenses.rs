@@ -9,7 +9,7 @@ use yoroolbot::{
 
 use crate::{
     menus::select_period::select_period,
-    storages::{ExpensePeriod, StorageTrait},
+    storages::{ExpensePeriod, Storage},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -29,7 +29,7 @@ impl CommandTrait for CommandClearExpenses {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "clear_expenses";
     const PLACEHOLDERS: &[&'static str] = &["period", "confirm"];
@@ -62,7 +62,7 @@ impl CommandTrait for CommandClearExpenses {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let var_storage = storage.clone().as_variable_storage();
+        let var_storage = storage.clone().variable_storage();
         let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
         let current_period_str = if let Some(period) = current_period {
@@ -79,7 +79,7 @@ impl CommandTrait for CommandClearExpenses {
         );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().as_expense_storage();
+        let expense_storage = storage.clone().expense_storage();
         select_period(
             target,
             &expense_storage,
@@ -139,7 +139,7 @@ impl CommandTrait for CommandClearExpenses {
 
         storage
             .clone()
-            .as_expense_storage()
+            .expense_storage()
             .clear_expenses(chat_id, *period)
             .await;
 

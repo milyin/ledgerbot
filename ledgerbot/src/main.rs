@@ -11,7 +11,6 @@ use std::{path::PathBuf, sync::Arc};
 use clap::Parser;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storages::StorageTrait;
 use teloxide::prelude::*;
 use yoroolbot::storage::FilesystemYamlStore;
 
@@ -54,8 +53,8 @@ async fn main() {
         Storage::new()
     };
 
-    // Wrap storage in Arc<dyn StorageTrait> for use throughout the bot
-    let storage_trait: Arc<dyn StorageTrait> = Arc::new(storage);
+    // Wrap storage in Arc for use throughout the bot
+    let storage: Arc<Storage> = Arc::new(storage);
 
     // Create handler using modern teloxide patterns
     let handler = dptree::entry()
@@ -71,7 +70,7 @@ async fn main() {
         .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![storage_trait])
+        .dependencies(dptree::deps![storage])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

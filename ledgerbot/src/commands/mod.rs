@@ -48,7 +48,7 @@ use crate::{
         command_select_period::CommandSelectPeriod, command_start::CommandStart,
         command_unfollow::CommandUnfollow,
     },
-    storages::StorageTrait,
+    storages::Storage,
 };
 
 /// Bot commands
@@ -232,7 +232,7 @@ pub async fn execute_command(
     bot: Bot,
     chat: Chat,
     msg_id: Option<MessageId>,
-    storage: Arc<dyn StorageTrait>,
+    storage: Arc<Storage>,
     cmd: Command,
     batch: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -241,7 +241,7 @@ pub async fn execute_command(
         chat: chat.clone(),
         msg_id,
         batch,
-        callback_data_storage: storage.clone().as_callback_data_storage(),
+        callback_data_storage: storage.clone().callback_data_storage(),
     };
     match cmd {
         Command::Start(start) => {
@@ -261,12 +261,12 @@ pub async fn execute_command(
         }
         Command::ClearCategories(clear_categories) => {
             clear_categories
-                .run(&target, storage.clone().as_category_storage())
+                .run(&target, storage.clone().category_storage())
                 .await?;
         }
         Command::AddCategory(add_category) => {
             add_category
-                .run(&target, storage.clone().as_category_storage())
+                .run(&target, storage.clone().category_storage())
                 .await?;
         }
         Command::Categories(categories) => {
@@ -277,22 +277,22 @@ pub async fn execute_command(
         }
         Command::RemoveCategory(remove_category) => {
             remove_category
-                .run(&target, storage.clone().as_category_storage())
+                .run(&target, storage.clone().category_storage())
                 .await?;
         }
         Command::RenameCategory(rename_category) => {
             rename_category
-                .run(&target, storage.clone().as_category_storage())
+                .run(&target, storage.clone().category_storage())
                 .await?;
         }
         Command::RemoveFilter(remove_filter) => {
             remove_filter
-                .run(&target, storage.clone().as_category_storage())
+                .run(&target, storage.clone().category_storage())
                 .await?;
         }
         Command::EditFilter(edit_filter) => {
             edit_filter
-                .run(&target, storage.clone().as_category_storage())
+                .run(&target, storage.clone().category_storage())
                 .await?;
         }
         Command::AddExpense(add_expense) => {
@@ -309,17 +309,17 @@ pub async fn execute_command(
         }
         Command::AddShare(add_share) => {
             add_share
-                .run(&target, storage.clone().as_share_storage())
+                .run(&target, storage.clone().share_storage())
                 .await?;
         }
         Command::ListShares(list_shares) => {
             list_shares
-                .run(&target, storage.clone().as_share_storage())
+                .run(&target, storage.clone().share_storage())
                 .await?;
         }
         Command::RemoveShare(remove_share) => {
             remove_share
-                .run(&target, storage.clone().as_share_storage())
+                .run(&target, storage.clone().share_storage())
                 .await?;
         }
         Command::Follow(follow) => {

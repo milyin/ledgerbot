@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     commands::{command_unfollow::CommandUnfollow, follow_helper},
-    storages::StorageTrait,
+    storages::Storage,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -35,7 +35,7 @@ impl CommandTrait for CommandFollow {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "follow";
     const PLACEHOLDERS: &[&'static str] = &["<chat_id>"];
@@ -63,7 +63,7 @@ impl CommandTrait for CommandFollow {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let variable_storage = storage.clone().as_variable_storage();
+        let variable_storage = storage.clone().variable_storage();
 
         // Check if currently following any chat
         let followed_chat: Option<ChatId> = variable_storage.get(target.chat.id).await;
@@ -124,7 +124,7 @@ impl CommandTrait for CommandFollow {
         }
 
         // User is authorized - store the follow relationship
-        let variable_storage = storage.clone().as_variable_storage();
+        let variable_storage = storage.clone().variable_storage();
         variable_storage.set(target.chat.id, target_chat_id).await;
 
         let q = variable_storage.get::<ChatId>(target.chat.id).await;

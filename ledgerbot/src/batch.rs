@@ -10,7 +10,7 @@ use crate::{
         command_report::CommandReport, execute_command,
     },
     config::BATCH_TIMEOUT_SECONDS,
-    storages::{BatchStorageTrait, ExpensePeriod, StorageTrait},
+    storages::{BatchStorageTrait, ExpensePeriod, Storage},
 };
 
 /// Add expense data to batch and return whether this is the first message in the batch
@@ -27,7 +27,7 @@ pub async fn execute_batch(
     bot: Bot,
     batch_storage: Arc<dyn BatchStorageTrait>,
     chat: Chat,
-    storage: Arc<dyn StorageTrait>,
+    storage: Arc<Storage>,
 ) {
     // Wait for the timeout period
     tokio::time::sleep(tokio::time::Duration::from_secs(BATCH_TIMEOUT_SECONDS)).await;
@@ -77,7 +77,7 @@ pub async fn execute_batch(
         }
 
         let current_period = storage
-            .as_variable_storage()
+            .variable_storage()
             .get(chat.id)
             .await
             .unwrap_or(ExpensePeriod::current());

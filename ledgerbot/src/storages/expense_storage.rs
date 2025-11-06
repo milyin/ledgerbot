@@ -6,15 +6,17 @@ use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use yoroolbot::storage::DataStoreTrait;
 
-use super::{ExpensePeriod, StorageTrait};
+use crate::storages::Storage;
+
+use super::ExpensePeriod;
 
 /// Type alias for expense data (list of expenses for a period)
 pub type ExpenseData = Vec<Expense>;
 
 /// Helper function to get the current period for a chat
 /// Returns the selected period from VariableStorage, or current month if not set
-pub async fn get_current_period(storage: &Arc<dyn StorageTrait>, chat_id: ChatId) -> ExpensePeriod {
-    let var_storage = storage.clone().as_variable_storage();
+pub async fn get_current_period(storage: &Arc<Storage>, chat_id: ChatId) -> ExpensePeriod {
+    let var_storage = storage.clone().variable_storage();
     var_storage
         .get::<ExpensePeriod>(chat_id)
         .await

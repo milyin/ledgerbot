@@ -16,7 +16,7 @@ use crate::{
             format_single_category_report,
         },
     },
-    storages::{Category, ExpensePeriod, StorageTrait},
+    storages::{Category, ExpensePeriod, Storage},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -38,7 +38,7 @@ impl CommandTrait for CommandReport {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "report";
     const PLACEHOLDERS: &[&'static str] = &["period", "reference_period", "category", "page"];
@@ -97,7 +97,7 @@ impl CommandTrait for CommandReport {
         };
 
         let chat_id = follow_access.effective_chat_id;
-        let var_storage = storage.clone().as_variable_storage();
+        let var_storage = storage.clone().variable_storage();
         let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
         let current_period_str = if let Some(period) = current_period {
@@ -118,7 +118,7 @@ impl CommandTrait for CommandReport {
             );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().as_expense_storage();
+        let expense_storage = storage.clone().expense_storage();
         crate::menus::select_period::select_period(
             target,
             &expense_storage,
@@ -170,7 +170,7 @@ impl CommandTrait for CommandReport {
         let chat_id = follow_access.effective_chat_id;
 
         // Get expenses for both periods
-        let expense_storage = storage.clone().as_expense_storage();
+        let expense_storage = storage.clone().expense_storage();
         let current_expenses = expense_storage.get_expenses(chat_id, *period).await;
         let reference_expenses = expense_storage
             .get_expenses(chat_id, *reference_period)
@@ -185,14 +185,14 @@ impl CommandTrait for CommandReport {
 
         let chat_categories = storage
             .clone()
-            .as_category_storage()
+            .category_storage()
             .get_chat_categories(chat_id)
             .await
             .unwrap_or_default();
 
         let all_expenses = storage
             .clone()
-            .as_expense_storage()
+            .expense_storage()
             .get_all_expenses(chat_id)
             .await
             .into_iter()
@@ -313,12 +313,12 @@ impl CommandTrait for CommandReport {
         if category.is_none() {
             let chat_expenses = storage
                 .clone()
-                .as_expense_storage()
+                .expense_storage()
                 .get_expenses(chat_id, *period)
                 .await;
             let reference_expenses = storage
                 .clone()
-                .as_expense_storage()
+                .expense_storage()
                 .get_expenses(chat_id, *reference_period)
                 .await;
 
@@ -331,14 +331,14 @@ impl CommandTrait for CommandReport {
 
             let chat_categories = storage
                 .clone()
-                .as_category_storage()
+                .category_storage()
                 .get_chat_categories(chat_id)
                 .await
                 .unwrap_or_default();
 
             let all_expenses = storage
                 .clone()
-                .as_expense_storage()
+                .expense_storage()
                 .get_all_expenses(chat_id)
                 .await
                 .into_iter()
@@ -465,12 +465,12 @@ impl CommandTrait for CommandReport {
 
         let chat_expenses = storage
             .clone()
-            .as_expense_storage()
+            .expense_storage()
             .get_expenses(chat_id, *period)
             .await;
         let chat_categories = storage
             .clone()
-            .as_category_storage()
+            .category_storage()
             .get_chat_categories(chat_id)
             .await
             .unwrap_or_default();

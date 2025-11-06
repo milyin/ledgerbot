@@ -11,7 +11,7 @@ use crate::{
         expenses::format_expenses_chronological, follow_helper::validate_and_get_follow_access,
     },
     menus::select_period::select_period,
-    storages::{ExpensePeriod, StorageTrait},
+    storages::{ExpensePeriod, Storage},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -30,7 +30,7 @@ impl CommandTrait for CommandList {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "list";
     const PLACEHOLDERS: &[&'static str] = &["period"];
@@ -78,7 +78,7 @@ impl CommandTrait for CommandList {
             target.send_markdown_message(header).await?;
         }
 
-        let var_storage = storage.clone().as_variable_storage();
+        let var_storage = storage.clone().variable_storage();
         let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
         let current_period_str = if let Some(period) = current_period {
@@ -95,7 +95,7 @@ impl CommandTrait for CommandList {
         );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().as_expense_storage();
+        let expense_storage = storage.clone().expense_storage();
         select_period(
             target,
             &expense_storage,
@@ -142,7 +142,7 @@ impl CommandTrait for CommandList {
 
         let chat_expenses = storage
             .clone()
-            .as_expense_storage()
+            .expense_storage()
             .get_expenses(chat_id, *period)
             .await;
 
