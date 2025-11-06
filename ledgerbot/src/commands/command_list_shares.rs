@@ -6,7 +6,10 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::{commands::command_add_share::CommandAddShare, storages::ShareStorageTrait};
+use crate::{
+    commands::{command_add_share::CommandAddShare, command_follow::CommandFollow},
+    storages::ShareStorageTrait,
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandListShares;
@@ -57,6 +60,13 @@ impl CommandTrait for CommandListShares {
                 ))
                 .await?;
         } else {
+            target
+                .send_markdown_message(markdown_format!(
+                    "👥 The users below can use command `{}` to follow expenses from this chat",
+                    CommandFollow::new(chat_id).to_command_string(true),
+                ))
+                .await?;
+
             let mut result = "".to_string();
             // Sort usernames for consistent output
             let mut sorted_shares = shares;

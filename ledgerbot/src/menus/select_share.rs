@@ -12,7 +12,8 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::command_add_share::CommandAddShare, menus::common::create_buttons_menu,
+    commands::command_add_share::CommandAddShare,
+    menus::common::create_buttons_menu,
     storages::{ShareStorageTrait, ShareUsername},
 };
 

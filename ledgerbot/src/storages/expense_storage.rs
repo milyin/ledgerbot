@@ -135,7 +135,8 @@ where
     }
 
     async fn list_periods(&self, chat_id: ChatId) -> Vec<ExpensePeriod> {
-        let mut periods = self.store
+        let mut periods = self
+            .store
             .keys(chat_id)
             .await
             .into_iter()

@@ -98,7 +98,7 @@ pub async fn validate_and_get_follow_access(
     Ok(FollowAccess {
         effective_chat_id: followed_chat,
         header_note: Some(markdown_format!(
-            "👁️ _Following data from chat `{}`_\n\n",
+            "👁️ **Following expenses from chat `{}`**\n\n",
             followed_chat.0
         )),
     })

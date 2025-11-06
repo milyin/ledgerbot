@@ -3,7 +3,9 @@ use std::sync::Arc;
 use rust_decimal::Decimal;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg}, markdown_format, markdown_string, storage::ButtonData
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_format, markdown_string,
+    storage::ButtonData,
 };
 
 use crate::{

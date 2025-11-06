@@ -10,7 +10,10 @@ use yoroolbot::{
     markdown_format, markdown_string,
 };
 
-use crate::{commands::command_follow::CommandFollow, storages::{ShareStorageTrait, ShareUsername}};
+use crate::{
+    commands::command_follow::CommandFollow,
+    storages::{ShareStorageTrait, ShareUsername},
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddShare {

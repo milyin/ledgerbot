@@ -118,7 +118,10 @@ impl CommandTrait for CommandRemoveCategory {
             target.send_markdown_message(e).await?;
         }
         target
-            .send_markdown_message(markdown_format!("✅ Category `{}` removed\\.", category.as_str()))
+            .send_markdown_message(markdown_format!(
+                "✅ Category `{}` removed\\.",
+                category.as_str()
+            ))
             .await?;
         Ok(())
     }

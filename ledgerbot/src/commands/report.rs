@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
 use rust_decimal::Decimal;
-use yoroolbot::{
-    markdown::MarkdownString, markdown_format, markdown_string,
-};
+use yoroolbot::{markdown::MarkdownString, markdown_format, markdown_string};
 
 use crate::{
     storages::{Category, Expense, ExpensePeriod},
@@ -441,10 +439,7 @@ pub fn format_category_comparison(
         // Add total row
         let total_label = format!("{:<width$}", "Total", width = max_name_len);
         let cur_total_str = format!("{:>7.2}", cur_total);
-        table_lines.push(format!(
-            "{}  {}",
-            total_label, cur_total_str
-        ));
+        table_lines.push(format!("{}  {}", total_label, cur_total_str));
     }
 
     // Join all lines and use @code modifier to wrap in code block

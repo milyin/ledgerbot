@@ -52,7 +52,10 @@ impl CommandTrait for CommandRenameCategory {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandRenameCategory { old_category, new_category }
+        CommandRenameCategory {
+            old_category,
+            new_category,
+        }
     }
 
     async fn run0(

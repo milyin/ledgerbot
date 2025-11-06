@@ -65,7 +65,8 @@ impl ShareUsername {
             if !ch.is_ascii_alphanumeric() && ch != '_' {
                 return Err(markdown_format!(
                     "Username `{}` contains invalid character `{}`\\. Only letters, digits, and underscores are allowed\\.",
-                    s, ch.to_string()
+                    s,
+                    ch.to_string()
                 ));
             }
         }

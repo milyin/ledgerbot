@@ -75,21 +75,21 @@ impl CommandTrait for CommandAddExpense {
         let example1 = CommandAddExpense {
             date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
             description: Some("Coffee".to_string()),
-            amount: Some(Decimal::new(550, 2)),  // 5.50
+            amount: Some(Decimal::new(550, 2)), // 5.50
         }
         .to_command_string(false);
 
         let example2 = CommandAddExpense {
             date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
             description: Some("My Lunch".to_string()),
-            amount: Some(Decimal::new(1200, 2)),  // 12.00
+            amount: Some(Decimal::new(1200, 2)), // 12.00
         }
         .to_command_string(false);
 
         let example3 = CommandAddExpense {
             date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
             description: Some("Groceries".to_string()),
-            amount: Some(Decimal::new(4530, 2)),  // 45.30
+            amount: Some(Decimal::new(4530, 2)), // 45.30
         }
         .to_command_string(false);
 

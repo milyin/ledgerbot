@@ -150,8 +150,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use yoroolbot::storage::InMemStore;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_add_and_get_shares() {

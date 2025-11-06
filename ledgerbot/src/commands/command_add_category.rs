@@ -10,7 +10,10 @@ use yoroolbot::{
     markdown_format, markdown_string,
 };
 
-use crate::{commands::Command, storages::{Category, CategoryStorageTrait}};
+use crate::{
+    commands::Command,
+    storages::{Category, CategoryStorageTrait},
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddCategory {

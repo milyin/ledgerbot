@@ -10,7 +10,6 @@ pub mod command_edit_filter;
 pub mod command_edit_words_filter;
 pub mod command_follow;
 pub mod command_help;
-pub mod follow_helper;
 pub mod command_list;
 pub mod command_list_shares;
 pub mod command_remove_category;
@@ -22,6 +21,7 @@ pub mod command_select_period;
 pub mod command_start;
 pub mod command_unfollow;
 pub mod expenses;
+pub mod follow_helper;
 pub mod report;
 
 use std::sync::Arc;

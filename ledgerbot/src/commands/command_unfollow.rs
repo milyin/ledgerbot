@@ -67,9 +67,7 @@ impl CommandTrait for CommandUnfollow {
             }
             None => {
                 target
-                    .send_markdown_message(markdown_format!(
-                        "ℹ️ You are not following any chat\\."
-                    ))
+                    .send_markdown_message(markdown_format!("ℹ️ You are not following any chat\\."))
                     .await?;
             }
         }

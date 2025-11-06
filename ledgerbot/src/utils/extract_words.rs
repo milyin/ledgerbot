@@ -120,8 +120,16 @@ mod tests {
         // Create test expenses
         let date = NaiveDate::from_ymd_opt(2021, 1, 1).unwrap();
         let expenses = vec![
-            Expense::new(date, "Coffee at Starbucks".to_string(), Decimal::new(550, 2)),
-            Expense::new(date, "Lunch at restaurant".to_string(), Decimal::new(1200, 2)),
+            Expense::new(
+                date,
+                "Coffee at Starbucks".to_string(),
+                Decimal::new(550, 2),
+            ),
+            Expense::new(
+                date,
+                "Lunch at restaurant".to_string(),
+                Decimal::new(1200, 2),
+            ),
             Expense::new(date, "Bus ticket".to_string(), Decimal::new(275, 2)),
             Expense::new(date, "Taxi ride".to_string(), Decimal::new(1500, 2)),
         ];
