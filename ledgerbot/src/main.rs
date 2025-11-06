@@ -15,7 +15,7 @@ use teloxide::prelude::*;
 use yoroolbot::storage::FilesystemYamlStore;
 
 use crate::storages::{
-    CategoryData, CategoryStorage, ExpenseData, ExpenseStorage, ShareData, Storage,
+    CategoryData, CategoryStorage, ExpenseData, ExpenseStorage, ShareData, Stores,
 };
 
 #[tokio::main]
@@ -43,18 +43,18 @@ async fn main() {
         let expense_store = FilesystemYamlStore::<ExpenseData>::new(expenses_dir);
         let share_store = FilesystemYamlStore::<ShareData>::new(share_dir);
 
-        Storage::new()
+        Stores::new()
             .categories_storage(CategoryStorage::new(category_store))
-            .expenses_storage(ExpenseStorage::new(expense_store))
+            .expenses_store(expense_store)
             .shares_storage(storages::ShareStorage::new(share_store))
     } else {
         // Use in-memory storage
         log::info!("Using in-memory storage");
-        Storage::new()
+        Stores::new()
     };
 
     // Wrap storage in Arc for use throughout the bot
-    let storage: Arc<Storage> = Arc::new(storage);
+    let storage: Arc<Stores> = Arc::new(storage);
 
     // Create handler using modern teloxide patterns
     let handler = dptree::entry()

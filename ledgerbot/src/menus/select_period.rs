@@ -15,13 +15,13 @@ use crate::storages::{ExpensePeriod, ExpenseStorageTrait};
 
 pub async fn select_period<NEXT: CommandTrait, BACK: CommandTrait, NEWPERIOD: CommandTrait>(
     target: &CommandReplyTarget,
-    storage: &Arc<dyn ExpenseStorageTrait>,
+    stores: &Arc<dyn ExpenseStorageTrait>,
     prompt: MarkdownString,
     next_command: impl Fn(&ExpensePeriod) -> NEXT,
     back_command: Option<BACK>,
     new_period_command: Option<NEWPERIOD>,
 ) -> ResponseResult<()> {
-    let periods = storage.list_periods(target.chat.id).await;
+    let periods = stores.list_periods().await;
     let msg = target.markdown_message(prompt).await?;
     if periods.is_empty() && new_period_command.is_none() {
         target

@@ -11,7 +11,7 @@ use crate::{
         command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter,
         follow_helper::validate_and_get_follow_access,
     },
-    storages::{Category, Storage},
+    storages::{Category, Stores},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -28,7 +28,7 @@ impl CommandTrait for CommandCategories {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "categories";
     const PLACEHOLDERS: &[&'static str] = &[];

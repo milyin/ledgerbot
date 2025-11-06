@@ -5,7 +5,7 @@ use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
     markdown_format, markdown_string,
-    storage::ButtonData,
+    storage::{self, ButtonData},
 };
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
             format_single_category_report,
         },
     },
-    storages::{Category, ExpensePeriod, Storage},
+    storages::{self, Category, ExpensePeriod, Stores},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -38,7 +38,7 @@ impl CommandTrait for CommandReport {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "report";
     const PLACEHOLDERS: &[&'static str] = &["period", "reference_period", "category", "page"];
@@ -118,7 +118,8 @@ impl CommandTrait for CommandReport {
             );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().expense_storage();
+        let storages_ = storage.storage(chat_id);
+        let expense_storage = storages_.expenses();
         crate::menus::select_period::select_period(
             target,
             &expense_storage,
@@ -170,10 +171,11 @@ impl CommandTrait for CommandReport {
         let chat_id = follow_access.effective_chat_id;
 
         // Get expenses for both periods
-        let expense_storage = storage.clone().expense_storage();
-        let current_expenses = expense_storage.get_expenses(chat_id, *period).await;
+        let storage_ = storage.storage(chat_id);
+        let expense_storage = storage_.expenses();
+        let current_expenses = expense_storage.get_expenses(*period).await;
         let reference_expenses = expense_storage
-            .get_expenses(chat_id, *reference_period)
+            .get_expenses(*reference_period)
             .await;
 
         // Determine if we should show comparison (only if periods differ)
@@ -190,10 +192,10 @@ impl CommandTrait for CommandReport {
             .await
             .unwrap_or_default();
 
-        let all_expenses = storage
-            .clone()
-            .expense_storage()
-            .get_all_expenses(chat_id)
+        let storage_ = storage.storage(chat_id);
+        let all_expenses = storage_
+            .expenses()
+            .get_all_expenses()
             .await
             .into_iter()
             .map(|(_, expense)| expense)
@@ -222,7 +224,7 @@ impl CommandTrait for CommandReport {
             + markdown_string!("\n_Select a period to comparison or view report by categories_");
 
         // Get available periods for buttons
-        let periods = expense_storage.list_periods(chat_id).await;
+        let periods = expense_storage.list_periods().await;
 
         // Create period buttons (4 per row)
         // When clicked, selected period becomes reference
@@ -308,18 +310,17 @@ impl CommandTrait for CommandReport {
         };
 
         let chat_id = follow_access.effective_chat_id;
+        let storage_ = storage.storage(chat_id);
 
         // If category is None, show summary with category buttons
         if category.is_none() {
-            let chat_expenses = storage
-                .clone()
-                .expense_storage()
-                .get_expenses(chat_id, *period)
+            let chat_expenses = storage_
+                .expenses()
+                .get_expenses(*period)
                 .await;
-            let reference_expenses = storage
-                .clone()
-                .expense_storage()
-                .get_expenses(chat_id, *reference_period)
+            let reference_expenses = storage_
+                .expenses()
+                .get_expenses(*reference_period)
                 .await;
 
             // Determine if we should show comparison (only if periods differ)
@@ -336,10 +337,9 @@ impl CommandTrait for CommandReport {
                 .await
                 .unwrap_or_default();
 
-            let all_expenses = storage
-                .clone()
-                .expense_storage()
-                .get_all_expenses(chat_id)
+            let all_expenses = storage_
+                .expenses()
+                .get_all_expenses()
                 .await
                 .into_iter()
                 .map(|(_, expense)| expense)
@@ -463,10 +463,10 @@ impl CommandTrait for CommandReport {
 
         let chat_id = follow_access.effective_chat_id;
 
-        let chat_expenses = storage
-            .clone()
-            .expense_storage()
-            .get_expenses(chat_id, *period)
+        let storage_ = storage.storage(chat_id);
+        let chat_expenses = storage_
+            .expenses()
+            .get_expenses(*period)
             .await;
         let chat_categories = storage
             .clone()

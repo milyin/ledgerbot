@@ -14,7 +14,7 @@ use crate::{
         select_category_filter::select_category_filter,
         select_word::{Words, select_word},
     },
-    storages::{Category, Storage},
+    storages::{Category, Stores},
     utils::extract_words::extract_and_merge_words,
 };
 
@@ -37,7 +37,7 @@ impl CommandTrait for CommandEditWordsFilter {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "edit_words_filter";
     const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<page>", "<words>"];

@@ -6,7 +6,7 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, storage::unpac
 use crate::{
     batch::{add_to_batch, execute_batch},
     commands::{Command, execute_command},
-    storages::Storage,
+    storages::Stores,
     utils::parse_expenses::parse_expenses,
 };
 
@@ -14,7 +14,7 @@ use crate::{
 pub async fn handle_text_message(
     bot: Bot,
     msg: Message,
-    storage: Arc<Storage>,
+    storage: Arc<Stores>,
 ) -> ResponseResult<()> {
     if let Some(text) = msg.text() {
         // Get bot username for filtering
@@ -99,7 +99,7 @@ pub async fn handle_text_message(
 pub async fn handle_callback_query(
     bot: Bot,
     q: CallbackQuery,
-    storage: Arc<Storage>,
+    storage: Arc<Stores>,
 ) -> ResponseResult<()> {
     let bot_username = bot.get_me().await?.username().to_string();
     // Answer the callback query to remove the loading state

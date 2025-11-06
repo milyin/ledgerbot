@@ -3,7 +3,7 @@ use std::sync::Arc;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format,
+    markdown_format, storage,
 };
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
         expenses::format_expenses_chronological, follow_helper::validate_and_get_follow_access,
     },
     menus::select_period::select_period,
-    storages::{ExpensePeriod, Storage},
+    storages::{ExpensePeriod, Stores},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -30,7 +30,7 @@ impl CommandTrait for CommandList {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "list";
     const PLACEHOLDERS: &[&'static str] = &["period"];
@@ -95,7 +95,8 @@ impl CommandTrait for CommandList {
         );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().expense_storage();
+        let storage_ = storage.storage(chat_id);
+        let expense_storage = storage_.expenses();
         select_period(
             target,
             &expense_storage,
@@ -140,10 +141,10 @@ impl CommandTrait for CommandList {
             target.send_markdown_message(header).await?;
         }
 
-        let chat_expenses = storage
-            .clone()
-            .expense_storage()
-            .get_expenses(chat_id, *period)
+        let storage_ = storage.storage(chat_id);
+        let chat_expenses = storage_
+            .expenses()
+            .get_expenses(*period)
             .await;
 
         match format_expenses_chronological(&chat_expenses) {

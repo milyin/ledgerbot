@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     commands::command_add_words_filter::CommandAddWordsFilter,
-    storages::{Category, Storage},
+    storages::{Category, Stores},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -28,7 +28,7 @@ impl CommandTrait for CommandAddFilter {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "add_filter";
 

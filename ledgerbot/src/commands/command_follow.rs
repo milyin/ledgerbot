@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     commands::{command_unfollow::CommandUnfollow, follow_helper},
-    storages::Storage,
+    storages::Stores,
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -35,7 +35,7 @@ impl CommandTrait for CommandFollow {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "follow";
     const PLACEHOLDERS: &[&'static str] = &["<chat_id>"];

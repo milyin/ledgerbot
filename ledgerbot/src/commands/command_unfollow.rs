@@ -6,7 +6,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::Storage;
+use crate::storages::Stores;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandUnfollow;
@@ -22,7 +22,7 @@ impl CommandTrait for CommandUnfollow {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "unfollow";
     const PLACEHOLDERS: &[&'static str] = &[];

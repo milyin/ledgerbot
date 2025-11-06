@@ -8,7 +8,7 @@ use yoroolbot::{
 
 use crate::{
     menus::select_period::select_period,
-    storages::{ExpensePeriod, Storage},
+    storages::{ExpensePeriod, Stores},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -27,7 +27,7 @@ impl CommandTrait for CommandSelectPeriod {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "select_period";
     const PLACEHOLDERS: &[&'static str] = &["YYYY-MM"];
@@ -77,7 +77,8 @@ impl CommandTrait for CommandSelectPeriod {
         );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().expense_storage();
+        let storage_ = storage.storage(chat_id);
+        let expense_storage = storage_.expenses();
         select_period(
             target,
             &expense_storage,

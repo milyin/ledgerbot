@@ -5,10 +5,10 @@ use rust_decimal::Decimal;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format,
+    markdown_format, storage,
 };
 
-use crate::storages::{Expense, Storage, get_current_period};
+use crate::storages::{Expense, Stores, get_current_period};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddExpense {
@@ -28,7 +28,7 @@ impl CommandTrait for CommandAddExpense {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "add_expense";
     const PLACEHOLDERS: &[&'static str] = &["<date>", "<description>", "<amount>"];
@@ -154,11 +154,12 @@ impl CommandTrait for CommandAddExpense {
         // Get the current period for this chat
         let period = get_current_period(&storage, target.chat.id).await;
 
+        let storage_ = storage.storage(target.chat.id);
+
         // Store the expense in the selected period
-        storage
-            .clone()
-            .expense_storage()
-            .add_expenses(target.chat.id, period, vec![expense])
+        storage_
+            .expenses()
+            .add_expenses(period, vec![expense])
             .await;
 
         if !target.batch {

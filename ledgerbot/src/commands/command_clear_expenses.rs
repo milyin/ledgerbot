@@ -4,12 +4,12 @@ use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
     markdown_format, markdown_string,
-    storage::ButtonData,
+    storage::{self, ButtonData},
 };
 
 use crate::{
     menus::select_period::select_period,
-    storages::{ExpensePeriod, Storage},
+    storages::{ExpensePeriod, Stores},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -29,7 +29,7 @@ impl CommandTrait for CommandClearExpenses {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "clear_expenses";
     const PLACEHOLDERS: &[&'static str] = &["period", "confirm"];
@@ -79,7 +79,8 @@ impl CommandTrait for CommandClearExpenses {
         );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().expense_storage();
+        let storage_ = storage.storage(chat_id);
+        let expense_storage = storage_.expenses();
         select_period(
             target,
             &expense_storage,
@@ -137,10 +138,10 @@ impl CommandTrait for CommandClearExpenses {
 
         let chat_id = target.chat.id;
 
-        storage
-            .clone()
-            .expense_storage()
-            .clear_expenses(chat_id, *period)
+        let storage_ = storage.storage(chat_id);
+        storage_
+            .expenses()
+            .clear_expenses(*period)
             .await;
 
         target

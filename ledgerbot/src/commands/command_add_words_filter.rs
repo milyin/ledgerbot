@@ -12,7 +12,7 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::{Category, Expense, Storage},
+    storages::{Category, Expense, Stores},
     utils::extract_words::extract_words,
 };
 
@@ -34,7 +34,7 @@ impl CommandTrait for CommandAddWordsFilter {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Storage>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "add_words_filter";
     const PLACEHOLDERS: &[&'static str] = &["<category>", "<page>", "<words>"];
@@ -118,11 +118,12 @@ impl CommandTrait for CommandAddWordsFilter {
         page: &usize,
         selected_words: &Words,
     ) -> ResponseResult<()> {
+        let storage_ = storage.storage(target.chat.id);
+
         // Get all expenses across all periods for word extraction
-        let all_expenses = storage
-            .clone()
-            .expense_storage()
-            .get_all_expenses(target.chat.id)
+        let all_expenses = storage_
+            .expenses()
+            .get_all_expenses()
             .await;
 
         // Extract just the Expense objects (ignore period information)

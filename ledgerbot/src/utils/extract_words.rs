@@ -1,10 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
 use teloxide::types::ChatId;
+use yoroolbot::storage;
 
 use crate::{
     menus::select_word::Words,
-    storages::{Expense, Storage},
+    storages::{Expense, Stores},
 };
 
 /// Extract unique words from uncategorized expenses
@@ -75,15 +76,16 @@ pub fn merge_words(existing: &[String], available: &[String]) -> Vec<String> {
 }
 
 pub async fn extract_and_merge_words(
-    storage: &Arc<Storage>,
+    stores: &Arc<Stores>,
     chat_id: ChatId,
     words: Option<Words>,
 ) -> Words {
+    let storage = stores.storage(chat_id);
+
     // Get all expenses across all periods
     let all_expenses = storage
-        .clone()
-        .expense_storage()
-        .get_all_expenses(chat_id)
+        .expenses()
+        .get_all_expenses()
         .await;
 
     // Extract just the Expense objects (ignore period information)
@@ -92,7 +94,7 @@ pub async fn extract_and_merge_words(
         .map(|(_, expense)| expense)
         .collect();
 
-    let categories = storage
+    let categories = stores
         .clone()
         .category_storage()
         .get_chat_categories(chat_id)

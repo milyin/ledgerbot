@@ -48,7 +48,7 @@ use crate::{
         command_select_period::CommandSelectPeriod, command_start::CommandStart,
         command_unfollow::CommandUnfollow,
     },
-    storages::Storage,
+    storages::Stores,
 };
 
 /// Bot commands
@@ -232,7 +232,7 @@ pub async fn execute_command(
     bot: Bot,
     chat: Chat,
     msg_id: Option<MessageId>,
-    storage: Arc<Storage>,
+    storage: Arc<Stores>,
     cmd: Command,
     batch: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
