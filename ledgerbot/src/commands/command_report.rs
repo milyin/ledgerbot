@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
+use yoroolbot::{
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
+    markdown_string, storage::ButtonData,
+};
 
 use crate::{
     commands::report::{
@@ -185,7 +188,7 @@ impl CommandTrait for CommandReport {
         }
 
         // Build summary message (will show comparison if periods differ)
-        let (summary_message, _) = format_category_comparison(
+        let (mut summary_message, _) = format_category_comparison(
             reference_expenses_opt,
             &current_expenses,
             &chat_categories,
@@ -193,19 +196,22 @@ impl CommandTrait for CommandReport {
             period,
         );
 
+        summary_message = summary_message
+            + markdown_string!("\n_Select a period to comparison or view report by categories_");
+
         // Get available periods for buttons
         let periods = expense_storage.list_periods(chat_id).await;
 
         // Create period buttons (4 per row)
-        // When clicked, current period becomes reference, clicked period becomes current
+        // When clicked, selected period becomes reference
         let period_buttons: Vec<yoroolbot::storage::ButtonData> = periods
             .iter()
             .map(|p| {
                 yoroolbot::storage::ButtonData::Callback(
                     format!("📅 {}", p),
                     CommandReport {
-                        period: Some(*p),
-                        reference_period: Some(*period), // Current becomes reference
+                        period: Some(*period),
+                        reference_period: Some(*p), // Selected becomes reference
                         category: None,
                         page: None,
                     }
@@ -220,7 +226,14 @@ impl CommandTrait for CommandReport {
             .collect();
 
         // Add "Report by categories" button
-        buttons.push(vec![yoroolbot::storage::ButtonData::Callback(
+        buttons.push(vec![
+            ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
+                period: Some(*reference_period),
+                reference_period: Some(*period),
+                category: None,
+                page: None,
+            }.to_command_string(false)),
+            ButtonData::Callback(
             "📁 Report by categories".to_string(),
             CommandReport {
                 period: Some(*period),
@@ -330,7 +343,14 @@ impl CommandTrait for CommandReport {
             }
 
             // Add back button
-            buttons.push(vec![yoroolbot::storage::ButtonData::Callback(
+            buttons.push(vec![
+                ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
+                    period: Some(*reference_period),
+                    reference_period: Some(*period),
+                    category: Some(Category::None),
+                    page: None,
+                }.to_command_string(false)),
+                ButtonData::Callback(
                 "↩️ Back to Summary".to_string(),
                 CommandReport {
                     period: Some(*period),
@@ -469,7 +489,15 @@ impl CommandTrait for CommandReport {
         nav_buttons.push(page_nav_row);
 
         // Back button row - goes back to category selection with both periods
-        let back_button_row = vec![yoroolbot::storage::ButtonData::Callback(
+        let back_button_row = vec![
+            ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
+                period: Some(*reference_period),
+                reference_period: Some(*period),
+                category: Some(category.clone()),
+                page: Some(0),
+            }.to_command_string(false)),
+            
+            ButtonData::Callback(
             "↩️ Back to Categories".to_string(),
             CommandReport {
                 period: Some(*period),
