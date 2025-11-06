@@ -1,14 +1,15 @@
 use std::{error::Error, fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
+use yoroolbot::{markdown::MarkdownString, markdown_format};
 
 /// Error type for ShareUsername parsing
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseShareUsernameError(String);
+#[derive(Debug, Clone)]
+pub struct ParseShareUsernameError(MarkdownString);
 
 impl fmt::Display for ParseShareUsernameError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.0.to_string())
     }
 }
 
@@ -32,11 +33,11 @@ impl Default for ShareUsername {
 impl ShareUsername {
     /// Parse and validate a Telegram username
     /// Username must start with '@' and follow Telegram's username rules
-    pub fn from_string(s: &str) -> Result<Self, String> {
+    pub fn from_string(s: &str) -> Result<Self, MarkdownString> {
         // Must start with '@'
         if !s.starts_with('@') {
-            return Err(format!(
-                "Username '{}' must start with '@'. Example: @username",
+            return Err(markdown_format!(
+                "Username `{}` must start with `@`\\. Example: @username",
                 s
             ));
         }
@@ -47,14 +48,14 @@ impl ShareUsername {
         // Check length (5-32 characters after '@')
         let len = username_part.len();
         if len < 5 {
-            return Err(format!(
-                "Username '{}' is too short. Must be at least 5 characters after '@'.",
+            return Err(markdown_format!(
+                "Username `{}` is too short\\. Must be at least 5 characters after `@`\\.",
                 s
             ));
         }
         if len > 32 {
-            return Err(format!(
-                "Username '{}' is too long. Must be at most 32 characters after '@'.",
+            return Err(markdown_format!(
+                "Username `{}` is too long\\. Must be at most 32 characters after `@`\\.",
                 s
             ));
         }
@@ -62,9 +63,9 @@ impl ShareUsername {
         // Check that all characters are valid (letters, digits, underscores)
         for ch in username_part.chars() {
             if !ch.is_ascii_alphanumeric() && ch != '_' {
-                return Err(format!(
-                    "Username '{}' contains invalid character '{}'. Only letters, digits, and underscores are allowed.",
-                    s, ch
+                return Err(markdown_format!(
+                    "Username `{}` contains invalid character `{}`\\. Only letters, digits, and underscores are allowed\\.",
+                    s, ch.to_string()
                 ));
             }
         }
@@ -109,21 +110,24 @@ mod tests {
     fn test_missing_at_sign() {
         let result = ShareUsername::from_string("user123");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("must start with '@'"));
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("must start"));
     }
 
     #[test]
     fn test_too_short() {
         let result = ShareUsername::from_string("@abc");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("too short"));
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("too short"));
     }
 
     #[test]
     fn test_too_long() {
         let result = ShareUsername::from_string("@abcdefghijklmnopqrstuvwxyz1234567");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("too long"));
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("too long"));
     }
 
     #[test]
