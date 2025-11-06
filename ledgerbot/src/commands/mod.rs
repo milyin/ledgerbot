@@ -261,12 +261,12 @@ pub async fn execute_command(
         }
         Command::ClearCategories(clear_categories) => {
             clear_categories
-                .run(&target, storage.clone().category_storage())
+                .run(&target, storage.storage(target.chat.id).categories())
                 .await?;
         }
         Command::AddCategory(add_category) => {
             add_category
-                .run(&target, storage.clone().category_storage())
+                .run(&target, storage.storage(target.chat.id).categories())
                 .await?;
         }
         Command::Categories(categories) => {
@@ -277,22 +277,22 @@ pub async fn execute_command(
         }
         Command::RemoveCategory(remove_category) => {
             remove_category
-                .run(&target, storage.clone().category_storage())
+                .run(&target, storage.storage(target.chat.id).categories())
                 .await?;
         }
         Command::RenameCategory(rename_category) => {
             rename_category
-                .run(&target, storage.clone().category_storage())
+                .run(&target, storage.storage(target.chat.id).categories())
                 .await?;
         }
         Command::RemoveFilter(remove_filter) => {
             remove_filter
-                .run(&target, storage.clone().category_storage())
+                .run(&target, storage.storage(target.chat.id).categories())
                 .await?;
         }
         Command::EditFilter(edit_filter) => {
             edit_filter
-                .run(&target, storage.clone().category_storage())
+                .run(&target, storage.storage(target.chat.id).categories())
                 .await?;
         }
         Command::AddExpense(add_expense) => {

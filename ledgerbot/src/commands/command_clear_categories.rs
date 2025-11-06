@@ -82,7 +82,7 @@ impl CommandTrait for CommandClearCategories {
         }
 
         if let Err(e) = storage
-            .replace_categories(target.chat.id, HashMap::new())
+            .replace_categories(HashMap::new())
             .await
         {
             target.send_markdown_message(e).await?;

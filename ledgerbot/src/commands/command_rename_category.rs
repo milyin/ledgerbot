@@ -112,7 +112,7 @@ impl CommandTrait for CommandRenameCategory {
         new_category: &Category,
     ) -> ResponseResult<()> {
         if let Err(e) = storage
-            .rename_category(target.chat.id, old_category, new_category)
+            .rename_category(old_category, new_category)
             .await
         {
             target.send_markdown_message(e).await?;

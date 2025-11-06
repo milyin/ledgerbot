@@ -25,7 +25,7 @@ pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let categories = storage
-        .get_chat_categories(target.chat.id)
+        .get_categories()
         .await
         .unwrap_or_default();
     if categories.is_empty() {

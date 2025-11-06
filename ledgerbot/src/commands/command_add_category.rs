@@ -80,7 +80,7 @@ impl CommandTrait for CommandAddCategory {
         storage: Self::Context,
         category: &Category,
     ) -> teloxide::prelude::ResponseResult<()> {
-        match storage.add_category(target.chat.id, category).await {
+        match storage.add_category(category).await {
             Ok(()) => {
                 target
                     .send_markdown_message(markdown_format!(

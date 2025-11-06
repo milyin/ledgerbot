@@ -80,10 +80,10 @@ pub async fn extract_and_merge_words(
     chat_id: ChatId,
     words: Option<Words>,
 ) -> Words {
-    let storage = stores.storage(chat_id);
+    let storage_ = stores.storage(chat_id);
 
     // Get all expenses across all periods
-    let all_expenses = storage
+    let all_expenses = storage_
         .expenses()
         .get_all_expenses()
         .await;
@@ -94,10 +94,9 @@ pub async fn extract_and_merge_words(
         .map(|(_, expense)| expense)
         .collect();
 
-    let categories = stores
-        .clone()
-        .category_storage()
-        .get_chat_categories(chat_id)
+    let categories = storage_
+        .categories()
+        .get_categories()
         .await
         .unwrap_or_default();
 

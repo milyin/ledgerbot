@@ -82,9 +82,10 @@ impl CommandTrait for CommandEditWordsFilter {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
+        let storage_ = storage.storage(target.chat.id);
         select_category(
             target,
-            &storage.category_storage(),
+            &storage_.categories(),
             markdown_string!("✏️ Select Category to edit word filter"),
             |category| CommandEditWordsFilter {
                 category: Some(category.clone()),
@@ -103,9 +104,10 @@ impl CommandTrait for CommandEditWordsFilter {
         storage: Self::Context,
         category: &Category,
     ) -> ResponseResult<()> {
+        let storage_ = storage.storage(target.chat.id);
         select_category_filter(
             target,
-            &storage.category_storage(),
+            &storage_.categories(),
             category,
             markdown_format!(
                 "✏️ Select word\\-based filter to edit in category `{}`",
@@ -132,12 +134,13 @@ impl CommandTrait for CommandEditWordsFilter {
         category: &Category,
         position: &usize,
     ) -> ResponseResult<()> {
+        let storage_ = storage.storage(target.chat.id);
         //
         // Prefill with words from old pattern only when runned with <category> and <position>
         //
         let Some(current_pattern) = read_category_filter_by_index(
             target,
-            &storage.clone().category_storage(),
+            &storage_.categories(),
             category,
             *position,
             Some(CommandEditWordsFilter {
@@ -183,12 +186,13 @@ impl CommandTrait for CommandEditWordsFilter {
         page: &usize,
         selected_words: &Words,
     ) -> ResponseResult<()> {
+        let storage_ = storage.storage(target.chat.id);
         let category = category.clone();
         let position = *position;
 
         let Some(current_pattern) = read_category_filter_by_index(
             target,
-            &storage.clone().category_storage(),
+            &storage_.categories(),
             &category,
             position,
             Some(CommandEditWordsFilter {

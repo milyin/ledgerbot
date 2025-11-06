@@ -3,7 +3,7 @@ use std::sync::Arc;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format, markdown_string,
+    markdown_format, markdown_string, storage,
 };
 
 use crate::{
@@ -74,9 +74,10 @@ impl CommandTrait for CommandAddWordsFilter {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
+        let storage_ = storage.storage(target.chat.id);
         select_category(
             target,
-            &storage.category_storage(),
+            &storage_.categories(),
             markdown_string!("➕ Select Category to add filter"),
             |category| CommandAddWordsFilter {
                 category: Some(category.clone()),
@@ -132,10 +133,9 @@ impl CommandTrait for CommandAddWordsFilter {
             .map(|(_, expense)| expense)
             .collect();
 
-        let categories = storage
-            .clone()
-            .category_storage()
-            .get_chat_categories(target.chat.id)
+        let categories = storage_
+            .categories()
+            .get_categories()
             .await
             .unwrap_or_default();
 

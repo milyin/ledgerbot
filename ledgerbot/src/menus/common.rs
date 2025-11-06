@@ -48,7 +48,7 @@ pub async fn read_category_filters_list(
     back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Vec<String>> {
     let categories = storage
-        .get_chat_categories(target.chat.id)
+        .get_categories()
         .await
         .unwrap_or_default();
     let Some(filters) = categories.get(category.as_str()) else {

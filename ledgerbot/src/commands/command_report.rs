@@ -185,10 +185,9 @@ impl CommandTrait for CommandReport {
             (Some(&reference_expenses[..]), Some(reference_period))
         };
 
-        let chat_categories = storage
-            .clone()
-            .category_storage()
-            .get_chat_categories(chat_id)
+        let chat_categories = storage_
+            .categories()
+            .get_categories()
             .await
             .unwrap_or_default();
 
@@ -330,10 +329,9 @@ impl CommandTrait for CommandReport {
                 (Some(&reference_expenses[..]), Some(reference_period))
             };
 
-            let chat_categories = storage
-                .clone()
-                .category_storage()
-                .get_chat_categories(chat_id)
+            let chat_categories = storage_
+                .categories()
+                .get_categories()
                 .await
                 .unwrap_or_default();
 
@@ -468,10 +466,9 @@ impl CommandTrait for CommandReport {
             .expenses()
             .get_expenses(*period)
             .await;
-        let chat_categories = storage
-            .clone()
-            .category_storage()
-            .get_chat_categories(chat_id)
+        let chat_categories = storage_
+            .categories()
+            .get_categories()
             .await
             .unwrap_or_default();
 

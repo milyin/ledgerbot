@@ -44,7 +44,7 @@ async fn main() {
         let share_store = FilesystemYamlStore::<ShareData>::new(share_dir);
 
         Stores::new()
-            .categories_storage(CategoryStorage::new(category_store))
+            .categories_store(category_store)
             .expenses_store(expense_store)
             .shares_storage(storages::ShareStorage::new(share_store))
     } else {

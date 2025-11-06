@@ -114,7 +114,7 @@ impl CommandTrait for CommandRemoveCategory {
             return Ok(());
         }
 
-        if let Err(e) = storage.remove_category(target.chat.id, category).await {
+        if let Err(e) = storage.remove_category(category).await {
             target.send_markdown_message(e).await?;
         }
         target

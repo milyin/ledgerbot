@@ -14,7 +14,7 @@ use crate::storages::{
 #[derive(Clone)]
 pub struct Stores {
     expenses_data_store: Arc<dyn DataStoreTrait<ExpenseData>>,
-    categories: Arc<dyn CategoryStorageTrait>,
+    categories_data_store: Arc<dyn DataStoreTrait<CategoryData>>,
     shares: Arc<dyn ShareStorageTrait>,
     batch: Arc<dyn BatchStorageTrait>,
     callback_data: Arc<dyn CallbackDataStorageTrait>,
@@ -25,9 +25,10 @@ impl Stores {
     /// Create a new storage with all storage types initialized (in-memory)
     pub fn new() -> Self {
         let expenses_data_store = Arc::new(InMemStore::<ExpenseData>::new());
+        let categories_data_store = Arc::new(InMemStore::<CategoryData>::new());
         Self {
             expenses_data_store,
-            categories: Arc::new(CategoryStorage::new(InMemStore::<CategoryData>::new())),
+            categories_data_store,
             shares: Arc::new(ShareStorage::new(InMemStore::<ShareData>::new())),
             batch: Arc::new(BatchStorage::new()),
             callback_data: Arc::new(CallbackDataStorage::new()),
@@ -51,8 +52,8 @@ impl Stores {
 
     /// Builder-like method to configure category storage
     /// Replaces the category storage with the provided implementation
-    pub fn categories_storage(mut self, storage: impl CategoryStorageTrait + 'static) -> Self {
-        self.categories = Arc::new(storage);
+    pub fn categories_store(mut self, store: impl DataStoreTrait<CategoryData> + 'static) -> Self {
+        self.categories_data_store = Arc::new(store);
         self
     }
 
@@ -61,11 +62,6 @@ impl Stores {
     pub fn shares_storage(mut self, storage: impl ShareStorageTrait + 'static) -> Self {
         self.shares = Arc::new(storage);
         self
-    }
-
-    /// Get category storage
-    pub fn category_storage(self: &Arc<Self>) -> Arc<dyn CategoryStorageTrait> {
-        self.categories.clone()
     }
 
     /// Get share storage
@@ -102,11 +98,18 @@ pub struct Storage {
 }
 
 impl Storage {
-    /// Builder-like method to configure expense storage
-    /// Replaces the expense storage with the provided implementation
+    /// Get expense storage for this chat
     pub fn expenses(&self) -> Arc<dyn ExpenseStorageTrait> {
         Arc::new(ExpenseStorage::new(
             self.stores.expenses_data_store.clone(),
+            self.chat_id,
+        ))
+    }
+
+    /// Get category storage for this chat
+    pub fn categories(&self) -> Arc<dyn CategoryStorageTrait> {
+        Arc::new(CategoryStorage::new(
+            self.stores.categories_data_store.clone(),
             self.chat_id,
         ))
     }

@@ -72,10 +72,10 @@ impl CommandTrait for CommandCategories {
             target.send_markdown_message(header).await?;
         }
 
-        let categories = storage
-            .clone()
-            .category_storage()
-            .get_chat_categories(chat_id)
+        let storage_ = storage.storage(chat_id);
+        let categories = storage_
+            .categories()
+            .get_categories()
             .await
             .unwrap_or_default();
 
