@@ -181,10 +181,10 @@ impl CommandTrait for CommandReport {
         let (summary_message, _) =
             // Same period - show single column
             format_category_comparison(
-                &reference_expenses,
+                Some(&reference_expenses),
                 &current_expenses,
                 &chat_categories,
-                reference_period,
+                Some(reference_period),
                 period,
             );
 
@@ -281,10 +281,10 @@ impl CommandTrait for CommandReport {
 
             // Show comparison summary and get list of categories
             let (message, found_categories) = format_category_comparison(
-                &reference_expenses,
+                Some(&reference_expenses),
                 &chat_expenses,
                 &chat_categories,
-                reference_period,
+                Some(reference_period),
                 period,
             );
 

@@ -274,19 +274,30 @@ pub fn format_single_category_report(
 /// Format category comparison showing two periods side by side
 /// Returns a tuple of (formatted message, list of categories found)
 pub fn format_category_comparison(
-    reference_expenses: &[Expense],
+    reference_expenses: Option<&[Expense]>,
     current_expenses: &[Expense],
     categories: &HashMap<String, Vec<String>>,
-    reference_period: &ExpensePeriod,
+    reference_period: Option<&ExpensePeriod>,
     current_period: &ExpensePeriod,
 ) -> (MarkdownString, Vec<Category>) {
+    // Check if we have a reference period to compare with
+    let has_reference = reference_expenses.is_some() && reference_period.is_some();
+    let reference_expenses = reference_expenses.unwrap_or(&[]);
+
     if current_expenses.is_empty() && reference_expenses.is_empty() {
         return (
-            markdown_format!(
-                "No expenses recorded for periods *{}* and *{}*\\.",
-                reference_period.to_string(),
-                current_period.to_string()
-            ),
+            if let Some(ref_period) = reference_period {
+                markdown_format!(
+                    "No expenses recorded for periods *{}* and *{}*\\.",
+                    ref_period.to_string(),
+                    current_period.to_string()
+                )
+            } else {
+                markdown_format!(
+                    "No expenses recorded for period *{}*\\.",
+                    current_period.to_string()
+                )
+            },
             Vec::new(),
         );
     }
@@ -378,44 +389,81 @@ pub fn format_category_comparison(
 
     let mut table_lines = Vec::new();
 
-    // Add column headers
-    let header_label = format!("{:<width$}", "", width = max_name_len);
-    let ref_header = format!("{:>7}", reference_period);
-    let cur_header = format!("{:>7}", current_period);
-    let header_line = format!("{}  {}  {}", header_label, ref_header, cur_header);
-    let separation_line = "-".repeat(header_line.len());
-    table_lines.push(header_line);
-    table_lines.push(separation_line.clone());
+    if has_reference {
+        // Two-column comparison table
+        let header_label = format!("{:<width$}", "", width = max_name_len);
+        let ref_header = format!("{:>7}", reference_period.unwrap());
+        let cur_header = format!("{:>7}", current_period);
+        let header_line = format!("{}  {}  {}", header_label, ref_header, cur_header);
+        let separation_line = "-".repeat(header_line.len());
+        table_lines.push(header_line);
+        table_lines.push(separation_line.clone());
 
-    // Add each category row with both amounts
-    for (category, ref_amount, cur_amount) in &category_subtotals {
-        let padded_name = format!("{:<width$}", category.as_str(), width = max_name_len);
-        let ref_str = format!("{:>7.2}", ref_amount);
-        let cur_str = format!("{:>7.2}", cur_amount);
-        table_lines.push(format!("{}  {}  {}", padded_name, ref_str, cur_str));
+        // Add each category row with both amounts
+        for (category, ref_amount, cur_amount) in &category_subtotals {
+            let padded_name = format!("{:<width$}", category.as_str(), width = max_name_len);
+            let ref_str = format!("{:>7.2}", ref_amount);
+            let cur_str = format!("{:>7.2}", cur_amount);
+            table_lines.push(format!("{}  {}  {}", padded_name, ref_str, cur_str));
+        }
+
+        // Add separator line
+        table_lines.push(separation_line.clone());
+
+        // Add total row
+        let total_label = format!("{:<width$}", "Total", width = max_name_len);
+        let ref_total_str = format!("{:>7.2}", ref_total);
+        let cur_total_str = format!("{:>7.2}", cur_total);
+        table_lines.push(format!(
+            "{}  {}  {}",
+            total_label, ref_total_str, cur_total_str
+        ));
+    } else {
+        // Single-column table
+        let header_label = format!("{:<width$}", "", width = max_name_len);
+        let cur_header = format!("{:>7}", current_period);
+        let header_line = format!("{}  {}", header_label, cur_header);
+        let separation_line = "-".repeat(header_line.len());
+        table_lines.push(header_line);
+        table_lines.push(separation_line.clone());
+
+        // Add each category row with current amount only
+        for (category, _, cur_amount) in &category_subtotals {
+            let padded_name = format!("{:<width$}", category.as_str(), width = max_name_len);
+            let cur_str = format!("{:>7.2}", cur_amount);
+            table_lines.push(format!("{}  {}", padded_name, cur_str));
+        }
+
+        // Add separator line
+        table_lines.push(separation_line.clone());
+
+        // Add total row
+        let total_label = format!("{:<width$}", "Total", width = max_name_len);
+        let cur_total_str = format!("{:>7.2}", cur_total);
+        table_lines.push(format!(
+            "{}  {}",
+            total_label, cur_total_str
+        ));
     }
-
-    // Add separator line
-    table_lines.push(separation_line.clone());
-
-    // Add total row
-    let total_label = format!("{:<width$}", "Total", width = max_name_len);
-    let ref_total_str = format!("{:>7.2}", ref_total);
-    let cur_total_str = format!("{:>7.2}", cur_total);
-    table_lines.push(format!(
-        "{}  {}  {}",
-        total_label, ref_total_str, cur_total_str
-    ));
 
     // Join all lines and use @code modifier to wrap in code block
     let table_content = table_lines.join("\n");
-    let message = markdown_format!(
-        "📊 Expense summary for period *{}* with reference period {}\n\
-         {}",
-        current_period.to_string(),
-        reference_period.to_string(),
-        @code table_content,
-    );
+    let message = if has_reference {
+        markdown_format!(
+            "📊 Expense summary for period *{}* with reference period {}\n\
+             {}",
+            current_period.to_string(),
+            reference_period.unwrap().to_string(),
+            @code table_content,
+        )
+    } else {
+        markdown_format!(
+            "📊 Expense summary for period *{}*\n\
+             {}",
+            current_period.to_string(),
+            @code table_content,
+        )
+    };
 
     // Extract categories from subtotals
     let found_categories: Vec<Category> = category_subtotals
