@@ -10,7 +10,7 @@ use yoroolbot::{
     markdown_format, markdown_string,
 };
 
-use crate::storages::{ShareStorageTrait, ShareUsername};
+use crate::{commands::command_follow::CommandFollow, storages::{ShareStorageTrait, ShareUsername}};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandAddShare {
@@ -81,8 +81,13 @@ impl CommandTrait for CommandAddShare {
             Ok(()) => {
                 target
                     .send_markdown_message(markdown_format!(
-                        "✅ Username `{}` added to share list\\.",
-                        username.as_str()
+                        "✅ Username `{}` added to share list\\.\n\nUser `{}` can now follow this chat using `{}`",
+                        username.as_str(),
+                        username.as_str(),
+                        CommandFollow {
+                            chat_id: Some(target.chat.id.0),
+                        }
+                        .to_command_string(true)
                     ))
                     .await?;
             }

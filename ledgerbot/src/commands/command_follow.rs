@@ -6,7 +6,10 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::{commands::command_unfollow::CommandUnfollow, storages::StorageTrait};
+use crate::{
+    commands::{command_add_share::CommandAddShare, command_unfollow::CommandUnfollow},
+    storages::StorageTrait,
+};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct CommandFollow {
@@ -105,9 +108,9 @@ impl CommandTrait for CommandFollow {
         if !user_in_list {
             target
                 .send_markdown_message(markdown_format!(
-                    "❌ You are not in the share list for chat `{}`\\. Ask the chat owner to add you using `/add\\_share {}`\\.",
+                    "❌ You are not in the share list for chat `{}`\\. Ask the chat owner to add you using {}",
                     target_chat_id.0,
-                    current_username
+                    CommandAddShare::new(current_username).to_command_string(true)
                 ))
                 .await?;
             return Ok(());
