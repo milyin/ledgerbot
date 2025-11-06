@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_string, storage::ButtonData,
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg}, markdown_format, markdown_string, storage::ButtonData
 };
 
 use crate::{
@@ -121,26 +120,8 @@ impl CommandTrait for CommandReport {
         storage: Self::Context,
         period: &ExpensePeriod,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-
-        // Get all available periods
-        let periods = storage
-            .clone()
-            .as_expense_storage()
-            .list_periods(chat_id)
-            .await;
-
-        // Find the previous period (one before the selected period)
-        let reference_period = periods
-            .iter()
-            .rev() // Reverse to go from newest to oldest
-            .skip_while(|p| *p != period) // Skip until we find the selected period
-            .nth(1) // Get the next one (previous in time)
-            .copied()
-            .unwrap_or(*period); // If no previous period, use the same period
-
-        // Forward to run2 with reference period
-        self.run2(target, storage, period, &reference_period).await
+        // Forward to run2 with reference period same as selected period
+        self.run2(target, storage, period, period).await
     }
 
     async fn run2(
@@ -230,12 +211,16 @@ impl CommandTrait for CommandReport {
 
         // Add swap button only if periods differ
         if period != reference_period {
-            action_row.push(ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
-                period: Some(*reference_period),
-                reference_period: Some(*period),
-                category: None,
-                page: None,
-            }.to_command_string(false)));
+            action_row.push(ButtonData::Callback(
+                "🔄 Swap".to_string(),
+                CommandReport {
+                    period: Some(*reference_period),
+                    reference_period: Some(*period),
+                    category: None,
+                    page: None,
+                }
+                .to_command_string(false),
+            ));
         }
 
         // Always add "Report by categories" button
@@ -355,12 +340,16 @@ impl CommandTrait for CommandReport {
 
             // Add swap button only if periods differ
             if period != reference_period {
-                nav_row.push(ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
-                    period: Some(*reference_period),
-                    reference_period: Some(*period),
-                    category: Some(Category::None),
-                    page: None,
-                }.to_command_string(false)));
+                nav_row.push(ButtonData::Callback(
+                    "🔄 Swap".to_string(),
+                    CommandReport {
+                        period: Some(*reference_period),
+                        reference_period: Some(*period),
+                        category: Some(Category::None),
+                        page: None,
+                    }
+                    .to_command_string(false),
+                ));
             }
 
             // Always add back button
@@ -431,7 +420,7 @@ impl CommandTrait for CommandReport {
             format_single_category_report(&filtered_expenses, *page_number, RECORDS_PER_PAGE);
 
         // Build header with category name, period, page info, and total
-        let message = if filtered_expenses.is_empty() {
+        let mut message = if filtered_expenses.is_empty() {
             yoroolbot::markdown_format!(
                 "*{}* \\(period: *{}*\\): No expenses in this category\\.",
                 category.as_str(),
@@ -509,12 +498,22 @@ impl CommandTrait for CommandReport {
 
         // Add swap button only if periods differ
         if period != reference_period {
-            back_button_row.push(ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
-                period: Some(*reference_period),
-                reference_period: Some(*period),
-                category: Some(category.clone()),
-                page: Some(0),
-            }.to_command_string(false)));
+            message = message
+                + markdown_format!(
+                    "\n_Use *🔄 Swap* to switch to reference period {}_",
+                    reference_period.to_string()
+                );
+
+            back_button_row.push(ButtonData::Callback(
+                "🔄 Swap".to_string(),
+                CommandReport {
+                    period: Some(*reference_period),
+                    reference_period: Some(*period),
+                    category: Some(category.clone()),
+                    page: Some(0),
+                }
+                .to_command_string(false),
+            ));
         }
 
         // Always add back button
