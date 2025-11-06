@@ -7,8 +7,11 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::{command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter},
-    storages::{Category, CategoryStorageTrait},
+    commands::{
+        command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter,
+        follow_helper::validate_and_get_follow_access,
+    },
+    storages::{Category, StorageTrait},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -25,7 +28,7 @@ impl CommandTrait for CommandCategories {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn CategoryStorageTrait>;
+    type Context = Arc<dyn StorageTrait>;
 
     const NAME: &'static str = "categories";
     const PLACEHOLDERS: &[&'static str] = &[];
@@ -49,8 +52,29 @@ impl CommandTrait for CommandCategories {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
+        // Validate follow access and get effective chat ID
+        let follow_access = match validate_and_get_follow_access(target, &storage).await {
+            Ok(access) => access,
+            Err(warning_msg) => {
+                target.send_markdown_message(warning_msg).await?;
+                // Continue with current chat
+                crate::commands::follow_helper::FollowAccess {
+                    effective_chat_id: target.chat.id,
+                    header_note: None,
+                }
+            }
+        };
+
+        let chat_id = follow_access.effective_chat_id;
+
+        // Show follow status as separate message if applicable
+        if let Some(header) = follow_access.header_note {
+            target.send_markdown_message(header).await?;
+        }
+
         let categories = storage
+            .clone()
+            .as_category_storage()
             .get_chat_categories(chat_id)
             .await
             .unwrap_or_default();

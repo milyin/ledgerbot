@@ -270,9 +270,7 @@ pub async fn execute_command(
                 .await?;
         }
         Command::Categories(categories) => {
-            categories
-                .run(&target, storage.clone().as_category_storage())
-                .await?;
+            categories.run(&target, storage.clone()).await?;
         }
         Command::AddFilter(add_filter) => {
             add_filter.run(&target, storage.clone()).await?;
