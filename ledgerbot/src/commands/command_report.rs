@@ -156,6 +156,13 @@ impl CommandTrait for CommandReport {
             .get_expenses(chat_id, *reference_period)
             .await;
 
+        // Determine if we should show comparison (only if periods differ)
+        let (reference_expenses_opt, reference_period_opt) = if period == reference_period {
+            (None, None)
+        } else {
+            (Some(&reference_expenses[..]), Some(reference_period))
+        };
+
         let chat_categories = storage
             .clone()
             .as_category_storage()
@@ -178,15 +185,13 @@ impl CommandTrait for CommandReport {
         }
 
         // Build summary message (will show comparison if periods differ)
-        let (summary_message, _) =
-            // Same period - show single column
-            format_category_comparison(
-                Some(&reference_expenses),
-                &current_expenses,
-                &chat_categories,
-                Some(reference_period),
-                period,
-            );
+        let (summary_message, _) = format_category_comparison(
+            reference_expenses_opt,
+            &current_expenses,
+            &chat_categories,
+            reference_period_opt,
+            period,
+        );
 
         // Get available periods for buttons
         let periods = expense_storage.list_periods(chat_id).await;
@@ -256,6 +261,14 @@ impl CommandTrait for CommandReport {
                 .as_expense_storage()
                 .get_expenses(chat_id, *reference_period)
                 .await;
+
+            // Determine if we should show comparison (only if periods differ)
+            let (reference_expenses_opt, reference_period_opt) = if period == reference_period {
+                (None, None)
+            } else {
+                (Some(&reference_expenses[..]), Some(reference_period))
+            };
+
             let chat_categories = storage
                 .clone()
                 .as_category_storage()
@@ -281,10 +294,10 @@ impl CommandTrait for CommandReport {
 
             // Show comparison summary and get list of categories
             let (message, found_categories) = format_category_comparison(
-                Some(&reference_expenses),
+                reference_expenses_opt,
                 &chat_expenses,
                 &chat_categories,
-                Some(reference_period),
+                reference_period_opt,
                 period,
             );
 
