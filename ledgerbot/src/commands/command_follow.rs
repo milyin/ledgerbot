@@ -7,7 +7,7 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::{command_add_share::CommandAddShare, command_unfollow::CommandUnfollow},
+    commands::{command_unfollow::CommandUnfollow, follow_helper},
     storages::StorageTrait,
 };
 
@@ -71,48 +71,12 @@ impl CommandTrait for CommandFollow {
         target_chat_id: &i64,
     ) -> ResponseResult<()> {
         let target_chat_id = ChatId(*target_chat_id);
-        // Get current user's username from the chat
-        let current_username = match &target.chat.username() {
-            Some(username) => format!("@{}", username),
-            None => {
-                target
-                    .send_markdown_message(markdown_format!(
-                        "❌ You need to have a Telegram username to use this feature\\. Please set a username in your Telegram settings\\."
-                    ))
-                    .await?;
-                return Ok(());
-            }
-        };
 
-        // Get share list from target chat
-        let share_storage = storage.clone().as_share_storage();
-        let shares = match share_storage.get_chat_shares(target_chat_id).await {
-            Ok(shares) => shares,
-            Err(e) => {
-                target
-                    .send_markdown_message(markdown_format!(
-                        "❌ Failed to get share list from chat `{}`\\: {}",
-                        target_chat_id.0,
-                        e.to_string()
-                    ))
-                    .await?;
-                return Ok(());
-            }
-        };
-
-        // Check if current user is in the share list
-        let user_in_list = shares
-            .iter()
-            .any(|share_username| share_username.as_str() == current_username);
-
-        if !user_in_list {
-            target
-                .send_markdown_message(markdown_format!(
-                    "❌ You are not in the share list for chat `{}`\\. Ask the chat owner to add you using {}",
-                    target_chat_id.0,
-                    CommandAddShare::new(current_username).to_command_string(true)
-                ))
-                .await?;
+        // Validate access using the shared helper
+        if let Err(error_msg) =
+            follow_helper::validate_follow_access(target, &storage, target_chat_id).await
+        {
+            target.send_markdown_message(error_msg).await?;
             return Ok(());
         }
 
