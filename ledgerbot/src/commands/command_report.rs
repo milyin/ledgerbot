@@ -225,15 +225,21 @@ impl CommandTrait for CommandReport {
             .map(|chunk| chunk.to_vec())
             .collect();
 
-        // Add "Report by categories" button
-        buttons.push(vec![
-            ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
+        // Add action buttons row
+        let mut action_row = Vec::new();
+
+        // Add swap button only if periods differ
+        if period != reference_period {
+            action_row.push(ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
                 period: Some(*reference_period),
                 reference_period: Some(*period),
                 category: None,
                 page: None,
-            }.to_command_string(false)),
-            ButtonData::Callback(
+            }.to_command_string(false)));
+        }
+
+        // Always add "Report by categories" button
+        action_row.push(ButtonData::Callback(
             "📁 Report by categories".to_string(),
             CommandReport {
                 period: Some(*period),
@@ -242,7 +248,9 @@ impl CommandTrait for CommandReport {
                 page: None,
             }
             .to_command_string(false),
-        )]);
+        ));
+
+        buttons.push(action_row);
 
         // Send message with period selection menu
         target
@@ -342,15 +350,21 @@ impl CommandTrait for CommandReport {
                 buttons.push(current_row);
             }
 
-            // Add back button
-            buttons.push(vec![
-                ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
+            // Add navigation buttons row
+            let mut nav_row = Vec::new();
+
+            // Add swap button only if periods differ
+            if period != reference_period {
+                nav_row.push(ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
                     period: Some(*reference_period),
                     reference_period: Some(*period),
                     category: Some(Category::None),
                     page: None,
-                }.to_command_string(false)),
-                ButtonData::Callback(
+                }.to_command_string(false)));
+            }
+
+            // Always add back button
+            nav_row.push(ButtonData::Callback(
                 "↩️ Back to Summary".to_string(),
                 CommandReport {
                     period: Some(*period),
@@ -359,7 +373,9 @@ impl CommandTrait for CommandReport {
                     page: None,
                 }
                 .to_command_string(false),
-            )]);
+            ));
+
+            buttons.push(nav_row);
 
             // Send message with category menu
             target.markdown_message_with_menu(message, buttons).await?;
@@ -489,15 +505,20 @@ impl CommandTrait for CommandReport {
         nav_buttons.push(page_nav_row);
 
         // Back button row - goes back to category selection with both periods
-        let back_button_row = vec![
-            ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
+        let mut back_button_row = Vec::new();
+
+        // Add swap button only if periods differ
+        if period != reference_period {
+            back_button_row.push(ButtonData::Callback("🔄 Swap".to_string(), CommandReport {
                 period: Some(*reference_period),
                 reference_period: Some(*period),
                 category: Some(category.clone()),
                 page: Some(0),
-            }.to_command_string(false)),
-            
-            ButtonData::Callback(
+            }.to_command_string(false)));
+        }
+
+        // Always add back button
+        back_button_row.push(ButtonData::Callback(
             "↩️ Back to Categories".to_string(),
             CommandReport {
                 period: Some(*period),
@@ -506,7 +527,8 @@ impl CommandTrait for CommandReport {
                 page: None,
             }
             .to_command_string(false),
-        )];
+        ));
+
         nav_buttons.push(back_button_row);
 
         target
