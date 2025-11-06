@@ -15,7 +15,7 @@ use crate::storages::{
 pub struct Stores {
     expenses_data_store: Arc<dyn DataStoreTrait<ExpenseData>>,
     categories_data_store: Arc<dyn DataStoreTrait<CategoryData>>,
-    shares: Arc<dyn ShareStorageTrait>,
+    shares_data_store: Arc<dyn DataStoreTrait<ShareData>>,
     batch: Arc<dyn BatchStorageTrait>,
     callback_data: Arc<dyn CallbackDataStorageTrait>,
     variables: Arc<VariableStorage>,
@@ -26,10 +26,11 @@ impl Stores {
     pub fn new() -> Self {
         let expenses_data_store = Arc::new(InMemStore::<ExpenseData>::new());
         let categories_data_store = Arc::new(InMemStore::<CategoryData>::new());
+        let shares_data_store = Arc::new(InMemStore::<ShareData>::new());
         Self {
             expenses_data_store,
             categories_data_store,
-            shares: Arc::new(ShareStorage::new(InMemStore::<ShareData>::new())),
+            shares_data_store,
             batch: Arc::new(BatchStorage::new()),
             callback_data: Arc::new(CallbackDataStorage::new()),
             variables: Arc::new(VariableStorage::new()),
@@ -59,14 +60,9 @@ impl Stores {
 
     /// Builder-like method to configure share storage
     /// Replaces the share storage with the provided implementation
-    pub fn shares_storage(mut self, storage: impl ShareStorageTrait + 'static) -> Self {
-        self.shares = Arc::new(storage);
+    pub fn shares_store(mut self, store: impl DataStoreTrait<ShareData> + 'static) -> Self {
+        self.shares_data_store = Arc::new(store);
         self
-    }
-
-    /// Get share storage
-    pub fn share_storage(self: &Arc<Self>) -> Arc<dyn ShareStorageTrait> {
-        self.shares.clone()
     }
 
     /// Get batch storage
@@ -110,6 +106,14 @@ impl Storage {
     pub fn categories(&self) -> Arc<dyn CategoryStorageTrait> {
         Arc::new(CategoryStorage::new(
             self.stores.categories_data_store.clone(),
+            self.chat_id,
+        ))
+    }
+
+    /// Get share storage for this chat
+    pub fn shares(&self) -> Arc<dyn ShareStorageTrait> {
+        Arc::new(ShareStorage::new(
+            self.stores.shares_data_store.clone(),
             self.chat_id,
         ))
     }

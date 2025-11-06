@@ -80,7 +80,7 @@ impl CommandTrait for CommandAddShare {
         storage: Self::Context,
         username: &ShareUsername,
     ) -> teloxide::prelude::ResponseResult<()> {
-        match storage.add_share(target.chat.id, username).await {
+        match storage.add_share(username).await {
             Ok(()) => {
                 target
                     .send_markdown_message(markdown_format!(

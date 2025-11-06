@@ -114,7 +114,7 @@ impl CommandTrait for CommandRemoveShare {
             return Ok(());
         }
 
-        if let Err(e) = storage.remove_share(target.chat.id, username).await {
+        if let Err(e) = storage.remove_share(username).await {
             target.send_markdown_message(e).await?;
         }
         target

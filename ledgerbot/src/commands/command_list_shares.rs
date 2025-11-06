@@ -50,7 +50,7 @@ impl CommandTrait for CommandListShares {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let shares = storage.get_chat_shares(chat_id).await.unwrap_or_default();
+        let shares = storage.get_shares().await.unwrap_or_default();
 
         if shares.is_empty() {
             target

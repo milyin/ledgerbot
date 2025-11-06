@@ -46,7 +46,7 @@ async fn main() {
         Stores::new()
             .categories_store(category_store)
             .expenses_store(expense_store)
-            .shares_storage(storages::ShareStorage::new(share_store))
+            .shares_store(share_store)
     } else {
         // Use in-memory storage
         log::info!("Using in-memory storage");

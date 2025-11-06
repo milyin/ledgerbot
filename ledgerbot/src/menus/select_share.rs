@@ -25,7 +25,7 @@ pub async fn select_share<NEXT: CommandTrait, BACK: CommandTrait>(
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
     let shares = storage
-        .get_chat_shares(target.chat.id)
+        .get_shares()
         .await
         .unwrap_or_default();
     if shares.is_empty() {

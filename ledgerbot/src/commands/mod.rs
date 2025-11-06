@@ -309,17 +309,17 @@ pub async fn execute_command(
         }
         Command::AddShare(add_share) => {
             add_share
-                .run(&target, storage.clone().share_storage())
+                .run(&target, storage.storage(chat.id).shares())
                 .await?;
         }
         Command::ListShares(list_shares) => {
             list_shares
-                .run(&target, storage.clone().share_storage())
+                .run(&target, storage.storage(chat.id).shares())
                 .await?;
         }
         Command::RemoveShare(remove_share) => {
             remove_share
-                .run(&target, storage.clone().share_storage())
+                .run(&target, storage.storage(chat.id).shares())
                 .await?;
         }
         Command::Follow(follow) => {

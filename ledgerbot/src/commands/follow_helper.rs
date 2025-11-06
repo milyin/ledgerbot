@@ -61,8 +61,9 @@ pub async fn validate_and_get_follow_access(
     };
 
     // Validate access by checking share list
-    let share_storage = storage.clone().share_storage();
-    let shares = match share_storage.get_chat_shares(followed_chat).await {
+    let storage_ = storage.storage(followed_chat);
+    let share_storage = storage_.shares();
+    let shares = match share_storage.get_shares().await {
         Ok(shares) => shares,
         Err(_) => {
             // Can't access share list, clear follow and use current chat
@@ -122,8 +123,9 @@ pub async fn validate_follow_access(
     };
 
     // Get share list from target chat
-    let share_storage = storage.clone().share_storage();
-    let shares = match share_storage.get_chat_shares(target_chat_id).await {
+    let storage_ = storage.storage(target_chat_id);
+    let share_storage = storage_.shares();
+    let shares = match share_storage.get_shares().await {
         Ok(shares) => shares,
         Err(e) => {
             return Err(markdown_format!(
