@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use rust_decimal::Decimal;
 use yoroolbot::{
     markdown::MarkdownString, markdown_format, markdown_string,
 };
@@ -79,7 +80,7 @@ pub fn check_category_conflicts(
                     "📝 *Expense:* {} {} {}\n",
                     &*date_str,
                     &*conflict.expense.description,
-                    conflict.expense.amount
+                    conflict.expense.amount.to_string()
                 );
             error_message = error_message + markdown_string!("*Matching categories:*\n");
             for (category_name, pattern) in conflict.matching_categories {
@@ -349,19 +350,19 @@ pub fn format_category_comparison(
     category_names.sort();
 
     // Calculate totals for each category
-    let mut category_subtotals: Vec<(Category, f64, f64)> = Vec::new();
-    let mut ref_total = 0.0;
-    let mut cur_total = 0.0;
+    let mut category_subtotals: Vec<(Category, Decimal, Decimal)> = Vec::new();
+    let mut ref_total = Decimal::ZERO;
+    let mut cur_total = Decimal::ZERO;
 
     for category_name in &category_names {
-        let ref_amount: f64 = ref_categorized
+        let ref_amount: Decimal = ref_categorized
             .get(category_name)
             .map(|items| items.iter().map(|e| e.amount).sum())
-            .unwrap_or(0.0);
-        let cur_amount: f64 = cur_categorized
+            .unwrap_or(Decimal::ZERO);
+        let cur_amount: Decimal = cur_categorized
             .get(category_name)
             .map(|items| items.iter().map(|e| e.amount).sum())
-            .unwrap_or(0.0);
+            .unwrap_or(Decimal::ZERO);
 
         if let Ok(category) = Category::from_string(category_name) {
             category_subtotals.push((category, ref_amount, cur_amount));
@@ -372,8 +373,8 @@ pub fn format_category_comparison(
 
     // Add "Other" category if either period has uncategorized expenses
     if !ref_uncategorized.is_empty() || !cur_uncategorized.is_empty() {
-        let ref_amount: f64 = ref_uncategorized.iter().map(|e| e.amount).sum();
-        let cur_amount: f64 = cur_uncategorized.iter().map(|e| e.amount).sum();
+        let ref_amount: Decimal = ref_uncategorized.iter().map(|e| e.amount).sum();
+        let cur_amount: Decimal = cur_uncategorized.iter().map(|e| e.amount).sum();
         category_subtotals.push((Category::Other, ref_amount, cur_amount));
         ref_total += ref_amount;
         cur_total += cur_amount;

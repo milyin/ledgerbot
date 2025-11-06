@@ -1,6 +1,7 @@
 use std::{marker::PhantomData, sync::Arc};
 
 use chrono::NaiveDate;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use yoroolbot::storage::DataStoreTrait;
@@ -24,12 +25,12 @@ pub async fn get_current_period(storage: &Arc<dyn StorageTrait>, chat_id: ChatId
 pub struct Expense {
     pub date: NaiveDate,
     pub description: String,
-    pub amount: f64,
+    pub amount: Decimal,
 }
 
 impl Expense {
     /// Convenient constructor for creating expense records
-    pub fn new(date: NaiveDate, description: String, amount: f64) -> Self {
+    pub fn new(date: NaiveDate, description: String, amount: Decimal) -> Self {
         Self {
             date,
             description,
@@ -38,7 +39,7 @@ impl Expense {
     }
 
     /// Create expense from timestamp (for backward compatibility during migration)
-    pub fn from_timestamp(timestamp: i64, description: String, amount: f64) -> Self {
+    pub fn from_timestamp(timestamp: i64, description: String, amount: Decimal) -> Self {
         use chrono::{TimeZone, Utc};
         let datetime = Utc.timestamp_opt(timestamp, 0).unwrap();
         Self {

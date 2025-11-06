@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use chrono::NaiveDate;
+use rust_decimal::Decimal;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -13,13 +14,13 @@ use crate::storages::{Expense, StorageTrait, get_current_period};
 pub struct CommandAddExpense {
     pub date: Option<NaiveDate>,
     pub description: Option<String>,
-    pub amount: Option<f64>,
+    pub amount: Option<Decimal>,
 }
 
 impl CommandTrait for CommandAddExpense {
     type A = NaiveDate; // date (required)
     type B = String; // description (required, with escaped spaces)
-    type C = f64; // amount (required)
+    type C = Decimal; // amount (required)
     type D = EmptyArg;
     type E = EmptyArg;
     type F = EmptyArg;
@@ -74,21 +75,21 @@ impl CommandTrait for CommandAddExpense {
         let example1 = CommandAddExpense {
             date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
             description: Some("Coffee".to_string()),
-            amount: Some(5.50),
+            amount: Some(Decimal::new(550, 2)),  // 5.50
         }
         .to_command_string(false);
 
         let example2 = CommandAddExpense {
             date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
             description: Some("My Lunch".to_string()),
-            amount: Some(12.00),
+            amount: Some(Decimal::new(1200, 2)),  // 12.00
         }
         .to_command_string(false);
 
         let example3 = CommandAddExpense {
             date: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
             description: Some("Groceries".to_string()),
-            amount: Some(45.30),
+            amount: Some(Decimal::new(4530, 2)),  // 45.30
         }
         .to_command_string(false);
 
@@ -145,7 +146,7 @@ impl CommandTrait for CommandAddExpense {
         storage: Self::Context,
         date: &NaiveDate,
         description: &String,
-        amount: &f64,
+        amount: &Decimal,
     ) -> ResponseResult<()> {
         // Create expense record
         let expense = Expense::new(*date, description.clone(), *amount);
