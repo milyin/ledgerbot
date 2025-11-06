@@ -11,25 +11,25 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::Command,
-    storages::{Category, CategoryStorageTrait},
+    commands::command_follow::CommandFollow,
+    storages::{ShareStorageTrait, ShareUsername},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct CommandAddCategory {
-    pub category: Option<Category>,
+pub struct CommandAddShare {
+    pub username: Option<ShareUsername>,
 }
 
-impl CommandAddCategory {
-    pub fn new(name: impl Into<String>) -> Self {
-        CommandAddCategory {
-            category: Category::from_string(&name.into()).ok(),
+impl CommandAddShare {
+    pub fn new(username: impl Into<String>) -> Self {
+        CommandAddShare {
+            username: ShareUsername::from_string(&username.into()).ok(),
         }
     }
 }
 
-impl CommandTrait for CommandAddCategory {
-    type A = Category;
+impl CommandTrait for CommandAddShare {
+    type A = ShareUsername;
     type B = EmptyArg;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -39,10 +39,10 @@ impl CommandTrait for CommandAddCategory {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn CategoryStorageTrait>;
+    type Context = Arc<dyn ShareStorageTrait>;
 
-    const NAME: &'static str = "add_category";
-    const PLACEHOLDERS: &[&'static str] = &["<name>"];
+    const NAME: &'static str = "add_share";
+    const PLACEHOLDERS: &[&'static str] = &["<username>"];
 
     fn from_arguments(
         a: Option<Self::A>,
@@ -55,11 +55,11 @@ impl CommandTrait for CommandAddCategory {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandAddCategory { category: a }
+        CommandAddShare { username: a }
     }
 
     fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
+        self.username.as_ref()
     }
 
     async fn run0(
@@ -68,9 +68,9 @@ impl CommandTrait for CommandAddCategory {
         _storage: Self::Context,
     ) -> teloxide::prelude::ResponseResult<()> {
         target
-            .send_markdown_message(markdown_string!("➕ Add Category"))
+            .send_markdown_message(markdown_string!("➕ Add Share"))
             .await?;
-        add_category_menu(target).await?;
+        add_share_menu(target).await?;
         Ok(())
     }
 
@@ -78,15 +78,19 @@ impl CommandTrait for CommandAddCategory {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &Category,
+        username: &ShareUsername,
     ) -> teloxide::prelude::ResponseResult<()> {
-        match storage.add_category(target.chat.id, category).await {
+        match storage.add_share(target.chat.id, username).await {
             Ok(()) => {
                 target
                     .send_markdown_message(markdown_format!(
-                        "✅ Category `{}` created\\. Use {} to add regex patterns\\.",
-                        category.as_str(),
-                        Command::ADD_FILTER
+                        "✅ Username `{}` added to share list\\.\n\nUser `{}` can now follow this chat using `{}`",
+                        username.as_str(),
+                        username.as_str(),
+                        CommandFollow {
+                            chat_id: Some(target.chat.id.0),
+                        }
+                        .to_command_string(true)
                     ))
                     .await?;
             }
@@ -98,21 +102,15 @@ impl CommandTrait for CommandAddCategory {
     }
 }
 
-impl From<CommandAddCategory> for crate::commands::Command {
-    fn from(cmd: CommandAddCategory) -> Self {
-        crate::commands::Command::AddCategory(cmd)
-    }
-}
-
-/// Show add category menu
-pub async fn add_category_menu(target: &CommandReplyTarget) -> ResponseResult<()> {
+/// Show add share menu
+pub async fn add_share_menu(target: &CommandReplyTarget) -> ResponseResult<()> {
     let text = markdown_string!(
-        "➕ **Add a new category:**\n\nClick the button below and type the category name\\."
+        "➕ **Add a username to share list:**\n\nClick the button below and type the username \\(e\\.g\\., @username\\)\\."
     );
     let keyboard = InlineKeyboardMarkup::new(vec![vec![
         InlineKeyboardButton::switch_inline_query_current_chat(
-            "➕ Add Category",
-            CommandAddCategory::default().to_command_string(false),
+            "➕ Add Share",
+            CommandAddShare::default().to_command_string(false),
         ),
     ]]);
 

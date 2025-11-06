@@ -7,18 +7,18 @@ use yoroolbot::{
 };
 
 use crate::{
-    menus::{select_category::select_category, update_category::update_category},
-    storages::{Category, CategoryStorageTrait},
+    menus::{select_share::select_share, update_share::update_share},
+    storages::{ShareStorageTrait, ShareUsername},
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub struct CommandRemoveCategory {
-    pub category: Option<Category>,
+pub struct CommandRemoveShare {
+    pub username: Option<ShareUsername>,
     pub confirm: Option<bool>,
 }
 
-impl CommandTrait for CommandRemoveCategory {
-    type A = Category;
+impl CommandTrait for CommandRemoveShare {
+    type A = ShareUsername;
     type B = bool;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -28,13 +28,13 @@ impl CommandTrait for CommandRemoveCategory {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn CategoryStorageTrait>;
+    type Context = Arc<dyn ShareStorageTrait>;
 
-    const NAME: &'static str = "remove_category";
-    const PLACEHOLDERS: &[&'static str] = &["<name>", "<confirm>"];
+    const NAME: &'static str = "remove_share";
+    const PLACEHOLDERS: &[&'static str] = &["<username>", "<confirm>"];
 
     fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
+        self.username.as_ref()
     }
 
     fn param2(&self) -> Option<&Self::B> {
@@ -42,7 +42,7 @@ impl CommandTrait for CommandRemoveCategory {
     }
 
     fn from_arguments(
-        category: Option<Self::A>,
+        username: Option<Self::A>,
         confirm: Option<Self::B>,
         _: Option<Self::C>,
         _: Option<Self::D>,
@@ -52,7 +52,7 @@ impl CommandTrait for CommandRemoveCategory {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandRemoveCategory { category, confirm }
+        CommandRemoveShare { username, confirm }
     }
 
     async fn run0(
@@ -60,12 +60,12 @@ impl CommandTrait for CommandRemoveCategory {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        select_category(
+        select_share(
             target,
             &storage,
-            markdown_string!("✏️ Select Category to remove"),
-            |category| CommandRemoveCategory {
-                category: Some(category.clone()),
+            markdown_string!("✏️ Select username to remove"),
+            |username| CommandRemoveShare {
+                username: Some(username.clone()),
                 confirm: None,
             },
             None::<NoopCommand>,
@@ -77,20 +77,20 @@ impl CommandTrait for CommandRemoveCategory {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &Category,
+        username: &ShareUsername,
     ) -> ResponseResult<()> {
-        update_category(
+        update_share(
             target,
             &storage,
-            category,
-            markdown_format!("🗑️ Confirm Category `{}` Removal", category.as_str()),
+            username,
+            markdown_format!("🗑️ Confirm Username `{}` Removal", username.as_str()),
             "🗑️ Remove",
-            CommandRemoveCategory {
-                category: Some(category.clone()),
+            CommandRemoveShare {
+                username: Some(username.clone()),
                 confirm: Some(true),
             },
-            Some(CommandRemoveCategory {
-                category: None,
+            Some(CommandRemoveShare {
+                username: None,
                 confirm: None,
             }),
         )
@@ -101,26 +101,26 @@ impl CommandTrait for CommandRemoveCategory {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        category: &Category,
+        username: &ShareUsername,
         confirm: &bool,
     ) -> ResponseResult<()> {
         if !*confirm {
             target
                 .send_markdown_message(markdown_format!(
-                    "❌ Category `{}` removal cancelled\\.",
-                    category.as_str()
+                    "❌ Username `{}` removal cancelled\\.",
+                    username.as_str()
                 ))
                 .await?;
             return Ok(());
         }
 
-        if let Err(e) = storage.remove_category(target.chat.id, category).await {
+        if let Err(e) = storage.remove_share(target.chat.id, username).await {
             target.send_markdown_message(e).await?;
         }
         target
             .send_markdown_message(markdown_format!(
-                "✅ Category `{}` removed\\.",
-                category.as_str()
+                "✅ Username `{}` removed from share list\\.",
+                username.as_str()
             ))
             .await?;
         Ok(())

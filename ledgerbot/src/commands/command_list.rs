@@ -7,7 +7,9 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::expenses::format_expenses_chronological,
+    commands::{
+        expenses::format_expenses_chronological, follow_helper::validate_and_get_follow_access,
+    },
     menus::select_period::select_period,
     storages::{ExpensePeriod, StorageTrait},
 };
@@ -56,7 +58,26 @@ impl CommandTrait for CommandList {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
+        // Validate follow access and get effective chat ID
+        let follow_access = match validate_and_get_follow_access(target, &storage).await {
+            Ok(access) => access,
+            Err(warning_msg) => {
+                target.send_markdown_message(warning_msg).await?;
+                // Continue with current chat
+                crate::commands::follow_helper::FollowAccess {
+                    effective_chat_id: target.chat.id,
+                    header_note: None,
+                }
+            }
+        };
+
+        let chat_id = follow_access.effective_chat_id;
+
+        // Show follow status as separate message if applicable
+        if let Some(header) = follow_access.header_note {
+            target.send_markdown_message(header).await?;
+        }
+
         let var_storage = storage.clone().as_variable_storage();
         let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
 
@@ -99,7 +120,25 @@ impl CommandTrait for CommandList {
         storage: Self::Context,
         period: &ExpensePeriod,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
+        // Validate follow access and get effective chat ID
+        let follow_access = match validate_and_get_follow_access(target, &storage).await {
+            Ok(access) => access,
+            Err(warning_msg) => {
+                target.send_markdown_message(warning_msg).await?;
+                // Continue with current chat
+                crate::commands::follow_helper::FollowAccess {
+                    effective_chat_id: target.chat.id,
+                    header_note: None,
+                }
+            }
+        };
+
+        let chat_id = follow_access.effective_chat_id;
+
+        // Show follow status as separate message if applicable
+        if let Some(header) = follow_access.header_note {
+            target.send_markdown_message(header).await?;
+        }
 
         let chat_expenses = storage
             .clone()
