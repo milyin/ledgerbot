@@ -1,4 +1,6 @@
 use chrono::{NaiveDate, TimeZone, Utc};
+use rust_decimal::Decimal;
+use std::str::FromStr;
 use teloxide::utils::command::BotCommands;
 
 use crate::commands::{Command, command_add_expense::CommandAddExpense};
@@ -68,7 +70,7 @@ pub fn parse_expenses(
             };
 
             // Extract amount and description
-            let amount = parts.last().and_then(|s| s.parse::<f64>().ok());
+            let amount = parts.last().and_then(|s| Decimal::from_str(s).ok());
             let description_parts = &parts[description_start_idx..parts.len() - 1];
             let description = if description_parts.is_empty() {
                 None
@@ -102,6 +104,7 @@ pub fn parse_expenses(
 #[cfg(test)]
 mod tests {
     use chrono::NaiveDate;
+    use rust_decimal::Decimal;
 
     use super::*;
     use crate::commands::{
@@ -121,13 +124,13 @@ mod tests {
         assert!(matches!(&results[0], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 5).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         // Check second expense
         assert!(matches!(&results[1], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 6).unwrap())
             && cmd.description == Some("Lunch".to_string())
-            && cmd.amount == Some(12.00)));
+            && cmd.amount == Some(Decimal::new(1200, 2))));
     }
 
     #[test]
@@ -143,13 +146,13 @@ mod tests {
         assert!(matches!(&results[0], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 5).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         // Check second expense
         assert!(matches!(&results[1], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 6).unwrap())
             && cmd.description == Some("Tea".to_string())
-            && cmd.amount == Some(3.00)));
+            && cmd.amount == Some(Decimal::new(300, 2))));
     }
 
     #[test]
@@ -165,13 +168,13 @@ mod tests {
         assert!(matches!(&results[0], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         // Check second expense
         assert!(matches!(&results[1], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Lunch".to_string())
-            && cmd.amount == Some(12.00)));
+            && cmd.amount == Some(Decimal::new(1200, 2))));
     }
 
     #[test]
@@ -187,19 +190,19 @@ mod tests {
         assert!(matches!(&results[0], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 5).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         // Check second expense without date (should use message timestamp)
         assert!(matches!(&results[1], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Lunch".to_string())
-            && cmd.amount == Some(12.00)));
+            && cmd.amount == Some(Decimal::new(1200, 2))));
 
         // Check third expense with explicit date
         assert!(matches!(&results[2], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2024, 10, 6).unwrap())
             && cmd.description == Some("Dinner".to_string())
-            && cmd.amount == Some(15.00)));
+            && cmd.amount == Some(Decimal::new(1500, 2))));
     }
 
     #[test]
@@ -215,17 +218,17 @@ mod tests {
         assert!(matches!(&results[0], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         assert!(matches!(&results[1], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Lunch".to_string())
-            && cmd.amount == Some(12.00)));
+            && cmd.amount == Some(Decimal::new(1200, 2))));
 
         assert!(matches!(&results[2], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Bus ticket".to_string())
-            && cmd.amount == Some(2.75)));
+            && cmd.amount == Some(Decimal::new(275, 2))));
     }
 
     #[test]
@@ -244,7 +247,7 @@ mod tests {
         assert!(matches!(&results[1], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         // Check second command
         assert!(matches!(&results[2], Ok(Command::Report(_))));
@@ -253,7 +256,7 @@ mod tests {
         assert!(matches!(&results[3], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Lunch".to_string())
-            && cmd.amount == Some(12.00)));
+            && cmd.amount == Some(Decimal::new(1200, 2))));
     }
 
     #[test]
@@ -269,7 +272,7 @@ mod tests {
         assert!(matches!(&results[0], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         // Check first command
         assert!(matches!(&results[1], Ok(Command::Help(_))));
@@ -278,13 +281,13 @@ mod tests {
         assert!(matches!(&results[2], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Lunch".to_string())
-            && cmd.amount == Some(12.00)));
+            && cmd.amount == Some(Decimal::new(1200, 2))));
 
         // Check third expense
         assert!(matches!(&results[3], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Bus ticket".to_string())
-            && cmd.amount == Some(2.75)));
+            && cmd.amount == Some(Decimal::new(275, 2))));
 
         // Check second command
         assert!(matches!(&results[4], Ok(Command::Report(_))));
@@ -302,12 +305,12 @@ mod tests {
         assert!(matches!(&results[0], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         assert!(matches!(&results[1], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Lunch".to_string())
-            && cmd.amount == Some(12.00)));
+            && cmd.amount == Some(Decimal::new(1200, 2))));
     }
 
     #[test]
@@ -417,7 +420,7 @@ mod tests {
         assert!(matches!(&results[11], Ok(Command::AddExpense(cmd))
             if cmd.date == Some(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap())
             && cmd.description == Some("Coffee".to_string())
-            && cmd.amount == Some(5.50)));
+            && cmd.amount == Some(Decimal::new(550, 2))));
 
         // Duplicate command without parameters to verify repeatability
         assert!(matches!(&results[12], Ok(Command::List(_))));

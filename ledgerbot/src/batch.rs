@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use rust_decimal::Decimal;
 use teloxide::{prelude::*, types::Chat};
 use yoroolbot::{command_trait::CommandTrait, markdown::MarkdownStringMessage, markdown_format};
 
@@ -34,7 +35,7 @@ pub async fn execute_batch(
     let batch_data = batch_storage.consume_batch(chat.id).await;
 
     let mut expense_count: usize = 0;
-    let mut total_amount: f64 = 0.0;
+    let mut total_amount: Decimal = Decimal::ZERO;
 
     if let Some(state) = batch_data {
         // Execute all stored commands
@@ -93,7 +94,7 @@ pub async fn execute_batch(
             Use {} or {} to see all expenses\\.",
                     current_period.to_string(),
                     expense_count,
-                    total_amount,
+                    total_amount.to_string(),
                     CommandList { period: None }.to_command_string(false),
                     CommandReport {
                         period: None,

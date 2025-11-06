@@ -60,6 +60,7 @@ pub fn format_expenses_chronological(
 #[cfg(test)]
 mod tests {
     use chrono::NaiveDate;
+    use rust_decimal::Decimal;
 
     use crate::{commands::expenses::format_expenses_chronological, storages::Expense};
 
@@ -71,9 +72,9 @@ mod tests {
         let date3 = NaiveDate::from_ymd_opt(2021, 1, 3).unwrap();
 
         let expenses = vec![
-            Expense::new(date2, "Lunch".to_string(), 12.00),
-            Expense::new(date1, "Coffee".to_string(), 5.50),
-            Expense::new(date3, "Dinner".to_string(), 25.00),
+            Expense::new(date2, "Lunch".to_string(), Decimal::new(1200, 2)),
+            Expense::new(date1, "Coffee".to_string(), Decimal::new(550, 2)),
+            Expense::new(date3, "Dinner".to_string(), Decimal::new(2500, 2)),
         ];
 
         let result = format_expenses_chronological(&expenses);
@@ -120,7 +121,7 @@ mod tests {
             expenses.push(Expense::new(
                 date,
                 format!("Expense number {}", i),
-                10.50 + (i as f64),
+                Decimal::new(1050 + i as i64 * 100, 2),
             ));
         }
 

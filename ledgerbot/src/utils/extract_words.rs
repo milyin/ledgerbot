@@ -111,6 +111,7 @@ mod tests {
     use std::collections::HashMap;
 
     use chrono::NaiveDate;
+    use rust_decimal::Decimal;
 
     use crate::{storages::Expense, utils::extract_words::extract_words};
 
@@ -119,10 +120,10 @@ mod tests {
         // Create test expenses
         let date = NaiveDate::from_ymd_opt(2021, 1, 1).unwrap();
         let expenses = vec![
-            Expense::new(date, "Coffee at Starbucks".to_string(), 5.50),
-            Expense::new(date, "Lunch at restaurant".to_string(), 12.00),
-            Expense::new(date, "Bus ticket".to_string(), 2.75),
-            Expense::new(date, "Taxi ride".to_string(), 15.00),
+            Expense::new(date, "Coffee at Starbucks".to_string(), Decimal::new(550, 2)),
+            Expense::new(date, "Lunch at restaurant".to_string(), Decimal::new(1200, 2)),
+            Expense::new(date, "Bus ticket".to_string(), Decimal::new(275, 2)),
+            Expense::new(date, "Taxi ride".to_string(), Decimal::new(1500, 2)),
         ];
 
         // Create categories with patterns
@@ -159,8 +160,8 @@ mod tests {
         // Create test expenses
         let date = NaiveDate::from_ymd_opt(2021, 1, 1).unwrap();
         let expenses = vec![
-            Expense::new(date, "Coffee".to_string(), 5.50),
-            Expense::new(date, "Lunch".to_string(), 12.00),
+            Expense::new(date, "Coffee".to_string(), Decimal::new(550, 2)),
+            Expense::new(date, "Lunch".to_string(), Decimal::new(1200, 2)),
         ];
 
         // Create categories that match all expenses

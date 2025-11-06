@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use rust_decimal::Decimal;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg}, markdown_format, markdown_string, storage::ButtonData
@@ -413,7 +414,7 @@ impl CommandTrait for CommandReport {
         let page_number = page.min(&max_page);
 
         // Calculate total amount for the category
-        let total_amount: f64 = filtered_expenses.iter().map(|e| e.amount).sum();
+        let total_amount: Decimal = filtered_expenses.iter().map(|e| e.amount).sum();
 
         // Format category report with pagination (just the data)
         let report_text =
@@ -431,7 +432,7 @@ impl CommandTrait for CommandReport {
                 "*{}* \\(period: *{}*\\), total `{}`,  page {}/{}\n{}",
                 category.as_str(),
                 &period.to_string(),
-                total_amount,
+                total_amount.to_string(),
                 page_number + 1,
                 total_pages,
                 @code report_text
@@ -441,7 +442,7 @@ impl CommandTrait for CommandReport {
                 "*{}* \\(period: *{}*\\), total `{}`\n{}",
                 category.as_str(),
                 &period.to_string(),
-                total_amount,
+                total_amount.to_string(),
                 @code report_text
             )
         };
