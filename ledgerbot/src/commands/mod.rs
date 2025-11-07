@@ -237,12 +237,13 @@ pub async fn execute_command(
     cmd: Command,
     batch: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let storage_ = storage.storage(chat.id);
     let target = CommandReplyTarget {
         bot: bot.clone(),
         chat: chat.clone(),
         msg_id,
         batch,
-        callback_data_storage: storage.clone().callback_data_storage(),
+        callback_data_storage: storage_.callback_data(),
     };
     match cmd {
         Command::Start(start) => {

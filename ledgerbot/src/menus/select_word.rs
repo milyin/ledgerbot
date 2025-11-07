@@ -164,7 +164,6 @@ pub async fn select_word<
     // Pack all buttons (callback and inline query) into the keyboard
     let keyboard = pack_callback_data(
         &target.callback_data_storage,
-        target.chat.id,
         msg.id.0,
         button_data,
     )

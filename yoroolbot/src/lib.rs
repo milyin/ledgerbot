@@ -25,7 +25,7 @@ pub mod storage {
     // Re-export types and traits from internal API
     pub use crate::api::storage::{
         callback_data_storage::{
-            ButtonData, CallbackDataStorage, CallbackDataStorageTrait, pack_callback_data,
+            ButtonData, CallbackDataStorage, CallbackDataStorageTrait, pack_callback_data, CallbackData,
             unpack_callback_data,
         },
         datastore::{DataStoreTrait, FilesystemYamlStore, InMemStore},

@@ -125,7 +125,8 @@ pub async fn handle_callback_query(
     log::info!("Received callback data: {}", data_str);
 
     // Unpack callback data from storage if needed
-    let callback_storage = storage.clone().callback_data_storage();
+    let storage_ = storage.storage(chat_id);
+    let callback_storage = storage_.callback_data();
     let unpacked_data = unpack_callback_data(&callback_storage, data_str).await;
 
     log::info!("Unpacked callback data: {}", unpacked_data);
