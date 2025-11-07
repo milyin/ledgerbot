@@ -7,6 +7,7 @@ use teloxide::{
 };
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
+    markdown::{MarkdownString, markdown_string},
     markdown_format,
 };
 
@@ -124,6 +125,18 @@ pub async fn read_category_filter_by_index(
         return Ok(None);
     }
     Ok(Some(filters[idx].clone()))
+}
+
+/// Generate follow status message text without sending it
+pub fn make_follow_status_message(storage: &Arc<StorageReadonly>) -> MarkdownString {
+    if let Some(external_chat_id) = storage.external_chat_id() {
+        markdown_format!(
+            "👁 *Note*: You are viewing expenses for chat ID `{}`.\n\n",
+            external_chat_id.0
+        )
+    } else {
+        markdown_string!("")
+    }
 }
 
 pub async fn show_follow_status_message(
