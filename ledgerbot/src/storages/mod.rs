@@ -8,7 +8,7 @@ mod share_username;
 mod storage;
 mod variable_storage;
 
-pub use batch_storage::{BatchStorage, BatchStorageTrait};
+pub use batch_storage::{BatchData, BatchStorage, BatchStorageReadTrait, BatchStorageTrait};
 pub use category::Category;
 pub use category_storage::{CategoryData, CategoryStorage, CategoryStorageTrait};
 pub use expense_period::ExpensePeriod;

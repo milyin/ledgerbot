@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -10,7 +11,7 @@ use yoroolbot::{
 
 use crate::storages::{Expense, Stores, get_current_period};
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandAddExpense {
     pub date: Option<NaiveDate>,
     pub description: Option<String>,

@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use teloxide::{
     payloads::SendMessageSetters,
     prelude::ResponseResult,
@@ -11,7 +12,7 @@ use yoroolbot::{
 
 use crate::commands::command_help::CommandHelp;
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandStart;
 
 impl CommandTrait for CommandStart {

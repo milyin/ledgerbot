@@ -1,57 +1,77 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use teloxide::types::ChatId;
-use tokio::sync::Mutex;
+use yoroolbot::storage::DataStoreTrait;
 
 use crate::commands::Command;
 
-/// Trait for batch storage operations (temporary command batching)
-#[async_trait::async_trait]
-pub trait BatchStorageTrait: Send + Sync {
-    /// Add commands to batch and return whether this is the first message in the batch
-    async fn add_to_batch(&self, chat_id: ChatId, commands: Vec<Result<Command, String>>) -> bool;
+/// Type alias for batch data (list of command results)
+pub type BatchData = Vec<Result<Command, String>>;
 
-    /// Consume and remove batch data for a chat
-    async fn consume_batch(&self, chat_id: ChatId) -> Option<Vec<Result<Command, String>>>;
+/// Trait for batch storage read operations (temporary command batching)
+#[async_trait::async_trait]
+pub trait BatchStorageReadTrait: Send + Sync {
+    /// Get current batch data without consuming it
+    async fn get_batch(&self) -> Option<BatchData>;
 }
 
-type BatchStorageData = Arc<Mutex<HashMap<ChatId, Vec<Result<Command, String>>>>>;
+/// Trait for batch storage operations (temporary command batching)
+#[async_trait::async_trait]
+pub trait BatchStorageTrait: BatchStorageReadTrait + Send + Sync {
+    /// Add commands to batch and return whether this is the first message in the batch
+    async fn add_to_batch(&self, commands: Vec<Result<Command, String>>) -> bool;
+
+    /// Consume and remove batch data
+    async fn consume_batch(&self) -> Option<BatchData>;
+}
 
 /// Per-chat batch storage for temporary command batching during message processing
+/// Uses a single key "batch" to store the command list
 #[derive(Clone)]
 pub struct BatchStorage {
-    data: BatchStorageData,
+    store: Arc<dyn DataStoreTrait<BatchData>>,
+    chat_id: ChatId,
 }
 
 impl BatchStorage {
-    pub fn new() -> Self {
-        Self {
-            data: Arc::new(Mutex::new(HashMap::new())),
-        }
+    /// Create a new BatchStorage with the given DataStore and chat ID
+    pub fn new(store: Arc<dyn DataStoreTrait<BatchData>>, chat_id: ChatId) -> Self {
+        Self { store, chat_id }
+    }
+}
+
+/// Implement BatchStorageReadTrait for BatchStorage
+#[async_trait::async_trait]
+impl BatchStorageReadTrait for BatchStorage {
+    async fn get_batch(&self) -> Option<BatchData> {
+        self.store.get(self.chat_id, "batch").await
     }
 }
 
 /// Implement BatchStorageTrait for BatchStorage
 #[async_trait::async_trait]
 impl BatchStorageTrait for BatchStorage {
-    async fn add_to_batch(&self, chat_id: ChatId, commands: Vec<Result<Command, String>>) -> bool {
-        let mut storage_guard = self.data.lock().await;
-        match storage_guard.get_mut(&chat_id) {
-            Some(state) => {
+    async fn add_to_batch(&self, commands: Vec<Result<Command, String>>) -> bool {
+        match self.store.get(self.chat_id, "batch").await {
+            Some(mut existing_batch) => {
                 // Update existing batch for this chat
-                state.extend(commands);
+                existing_batch.extend(commands);
+                self.store.set(self.chat_id, "batch", existing_batch).await;
                 false
             }
             None => {
                 // Start new batch for this chat
-                storage_guard.insert(chat_id, commands);
+                self.store.set(self.chat_id, "batch", commands).await;
                 true
             }
         }
     }
 
-    async fn consume_batch(&self, chat_id: ChatId) -> Option<Vec<Result<Command, String>>> {
-        let mut storage_guard = self.data.lock().await;
-        storage_guard.remove(&chat_id)
+    async fn consume_batch(&self) -> Option<BatchData> {
+        let batch = self.store.get(self.chat_id, "batch").await;
+        if batch.is_some() {
+            self.store.remove(self.chat_id, "batch").await;
+        }
+        batch
     }
 }

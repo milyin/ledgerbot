@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -16,10 +17,10 @@ use crate::{
             format_single_category_report,
         },
     },
-    storages::{self, Category, ExpensePeriod, Stores},
+    storages::{Category, ExpensePeriod, Stores},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandReport {
     pub period: Option<ExpensePeriod>,
     pub reference_period: Option<ExpensePeriod>,

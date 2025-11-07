@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
@@ -13,7 +14,7 @@ use yoroolbot::{
 };
 
 /// Represents a collection of words separated by '|'
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct Words(Vec<String>);
 
 impl Words {

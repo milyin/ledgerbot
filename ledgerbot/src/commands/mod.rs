@@ -26,6 +26,7 @@ pub mod report;
 
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::{
     prelude::*,
     types::{Chat, MessageId},
@@ -52,7 +53,7 @@ use crate::{
 };
 
 /// Bot commands
-#[derive(BotCommands, Clone, Debug, PartialEq)]
+#[derive(BotCommands, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[command(
     rename_rule = "lowercase",
     description = "These commands are supported:"

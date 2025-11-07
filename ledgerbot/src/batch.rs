@@ -19,7 +19,7 @@ pub async fn add_to_batch(
     chat: Chat,
     commands: Vec<Result<Command, String>>,
 ) -> bool {
-    batch_storage.add_to_batch(chat.id, commands).await
+    batch_storage.add_to_batch(commands).await
 }
 
 /// Send batch report after timeout and execute stored commands
@@ -32,7 +32,7 @@ pub async fn execute_batch(
     // Wait for the timeout period
     tokio::time::sleep(tokio::time::Duration::from_secs(BATCH_TIMEOUT_SECONDS)).await;
 
-    let batch_data = batch_storage.consume_batch(chat.id).await;
+    let batch_data = batch_storage.consume_batch().await;
 
     let mut expense_count: usize = 0;
     let mut total_amount: Decimal = Decimal::ZERO;

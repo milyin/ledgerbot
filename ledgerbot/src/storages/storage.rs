@@ -4,9 +4,7 @@ use teloxide::types::ChatId;
 use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait, DataStoreTrait, InMemStore};
 
 use crate::storages::{
-    BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait,
-    ExpenseData, ExpenseStorage, ExpenseStorageTrait, ShareData, ShareStorage, ShareStorageTrait,
-    VariableStorage,
+    BatchData, BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, ShareData, ShareStorage, ShareStorageTrait, VariableStorage
 };
 
 /// Main storage structure that holds all bot data
@@ -16,7 +14,7 @@ pub struct Stores {
     expenses_data_store: Arc<dyn DataStoreTrait<ExpenseData>>,
     categories_data_store: Arc<dyn DataStoreTrait<CategoryData>>,
     shares_data_store: Arc<dyn DataStoreTrait<ShareData>>,
-    batch: Arc<dyn BatchStorageTrait>,
+    batch_data_store: Arc<dyn DataStoreTrait<BatchData>>,
     callback_data: Arc<dyn CallbackDataStorageTrait>,
     variables: Arc<VariableStorage>,
 }
@@ -27,11 +25,12 @@ impl Stores {
         let expenses_data_store = Arc::new(InMemStore::<ExpenseData>::new());
         let categories_data_store = Arc::new(InMemStore::<CategoryData>::new());
         let shares_data_store = Arc::new(InMemStore::<ShareData>::new());
+        let batch_data_store = Arc::new(InMemStore::<BatchData>::new());
         Self {
             expenses_data_store,
             categories_data_store,
             shares_data_store,
-            batch: Arc::new(BatchStorage::new()),
+            batch_data_store,
             callback_data: Arc::new(CallbackDataStorage::new()),
             variables: Arc::new(VariableStorage::new()),
         }
@@ -65,9 +64,11 @@ impl Stores {
         self
     }
 
-    /// Get batch storage
-    pub fn batch_storage(self: &Arc<Self>) -> Arc<dyn BatchStorageTrait> {
-        self.batch.clone()
+    /// Builder-like method to configure batch storage
+    /// Replaces the batch storage with the provided implementation
+    pub fn batch_store(mut self, store: impl DataStoreTrait<BatchData> + 'static) -> Self {
+        self.batch_data_store = Arc::new(store);
+        self
     }
 
     /// Get callback data storage
@@ -114,6 +115,14 @@ impl Storage {
     pub fn shares(&self) -> Arc<dyn ShareStorageTrait> {
         Arc::new(ShareStorage::new(
             self.stores.shares_data_store.clone(),
+            self.chat_id,
+        ))
+    }
+
+    /// Get batch storage for this chat
+    pub fn batch(&self) -> Arc<dyn BatchStorageTrait> {
+        Arc::new(BatchStorage::new(
+            self.stores.batch_data_store.clone(),
             self.chat_id,
         ))
     }

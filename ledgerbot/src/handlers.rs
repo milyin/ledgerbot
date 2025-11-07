@@ -42,7 +42,7 @@ pub async fn handle_text_message(
         // For single-line, non-forwarded messages, execute immediately.
         if is_multiline || is_forwarded {
             // Add to batch storage for deferred execution
-            let batch_storage = storage.clone().batch_storage();
+            let batch_storage = storage.storage(msg.chat.id).batch();
             let is_first_message =
                 add_to_batch(batch_storage.clone(), msg.chat.clone(), parsed_results).await;
 
