@@ -4,7 +4,7 @@ use teloxide::types::ChatId;
 
 use crate::{
     menus::select_word::Words,
-    storages::{Expense, StorageTrait},
+    storages::{Expense, Stores},
 };
 
 /// Extract unique words from uncategorized expenses
@@ -75,15 +75,16 @@ pub fn merge_words(existing: &[String], available: &[String]) -> Vec<String> {
 }
 
 pub async fn extract_and_merge_words(
-    storage: &Arc<dyn StorageTrait>,
+    stores: &Arc<Stores>,
     chat_id: ChatId,
     words: Option<Words>,
 ) -> Words {
+    let storage_ = stores.storage(chat_id);
+
     // Get all expenses across all periods
-    let all_expenses = storage
-        .clone()
-        .as_expense_storage()
-        .get_all_expenses(chat_id)
+    let all_expenses = storage_
+        .expenses()
+        .get_all_expenses()
         .await;
 
     // Extract just the Expense objects (ignore period information)
@@ -92,10 +93,9 @@ pub async fn extract_and_merge_words(
         .map(|(_, expense)| expense)
         .collect();
 
-    let categories = storage
-        .clone()
-        .as_category_storage()
-        .get_chat_categories(chat_id)
+    let categories = storage_
+        .categories()
+        .get_categories()
         .await
         .unwrap_or_default();
 

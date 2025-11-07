@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
@@ -12,11 +13,11 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::{Category, Expense, StorageTrait},
+    storages::{Category, Expense, Storage},
     utils::extract_words::extract_words,
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandAddWordsFilter {
     pub category: Option<Category>,
     pub page: Option<usize>,
@@ -34,7 +35,7 @@ impl CommandTrait for CommandAddWordsFilter {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "add_words_filter";
     const PLACEHOLDERS: &[&'static str] = &["<category>", "<page>", "<words>"];
@@ -76,7 +77,7 @@ impl CommandTrait for CommandAddWordsFilter {
     ) -> ResponseResult<()> {
         select_category(
             target,
-            &storage.as_category_storage(),
+            &storage.categories(),
             markdown_string!("➕ Select Category to add filter"),
             |category| CommandAddWordsFilter {
                 category: Some(category.clone()),
@@ -120,9 +121,8 @@ impl CommandTrait for CommandAddWordsFilter {
     ) -> ResponseResult<()> {
         // Get all expenses across all periods for word extraction
         let all_expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_all_expenses(target.chat.id)
+            .expenses()
+            .get_all_expenses()
             .await;
 
         // Extract just the Expense objects (ignore period information)
@@ -132,9 +132,8 @@ impl CommandTrait for CommandAddWordsFilter {
             .collect();
 
         let categories = storage
-            .clone()
-            .as_category_storage()
-            .get_chat_categories(target.chat.id)
+            .categories()
+            .get_categories()
             .await
             .unwrap_or_default();
 

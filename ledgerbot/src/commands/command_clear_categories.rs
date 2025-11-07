@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -9,7 +10,7 @@ use yoroolbot::{
 
 use crate::storages::CategoryStorageTrait;
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandClearCategories {
     pub confirm: Option<bool>,
 }
@@ -82,7 +83,7 @@ impl CommandTrait for CommandClearCategories {
         }
 
         if let Err(e) = storage
-            .replace_categories(target.chat.id, HashMap::new())
+            .replace_categories(HashMap::new())
             .await
         {
             target.send_markdown_message(e).await?;

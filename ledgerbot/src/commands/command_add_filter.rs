@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -8,10 +9,10 @@ use yoroolbot::{
 
 use crate::{
     commands::command_add_words_filter::CommandAddWordsFilter,
-    storages::{Category, StorageTrait},
+    storages::{Category, Storage},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandAddFilter {
     pub category: Option<Category>,
     pub pattern: Option<String>,
@@ -28,7 +29,7 @@ impl CommandTrait for CommandAddFilter {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "add_filter";
 
@@ -86,10 +87,8 @@ impl CommandTrait for CommandAddFilter {
         category: &Category,
         pattern: &String,
     ) -> ResponseResult<()> {
-        let storage = storage.as_category_storage();
-
-        if let Err(msg) = storage
-            .add_category_filter(target.chat.id, category, pattern.clone())
+        if let Err(msg) = storage.categories()
+            .add_category_filter(category, pattern.clone())
             .await
         {
             target.send_markdown_message(msg).await?;

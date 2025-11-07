@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -8,10 +9,10 @@ use yoroolbot::{
 
 use crate::{
     menus::select_period::select_period,
-    storages::{ExpensePeriod, StorageTrait},
+    storages::{ExpensePeriod, Storage},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandSelectPeriod {
     pub period: Option<ExpensePeriod>,
 }
@@ -27,7 +28,7 @@ impl CommandTrait for CommandSelectPeriod {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "select_period";
     const PLACEHOLDERS: &[&'static str] = &["YYYY-MM"];
@@ -55,9 +56,8 @@ impl CommandTrait for CommandSelectPeriod {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-        let var_storage = storage.clone().as_variable_storage();
-        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
+        let var_storage = storage.variables();
+        let current_period: Option<ExpensePeriod> = var_storage.get().await;
 
         let current_period_str = if let Some(period) = current_period {
             period.to_string()
@@ -77,7 +77,7 @@ impl CommandTrait for CommandSelectPeriod {
         );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().as_expense_storage();
+        let expense_storage = storage.expenses_readonly();
         select_period(
             target,
             &expense_storage,
@@ -102,11 +102,9 @@ impl CommandTrait for CommandSelectPeriod {
         storage: Self::Context,
         period: &ExpensePeriod,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-
         // Store the selected period in VariableStorage
-        let var_storage = storage.clone().as_variable_storage();
-        var_storage.set(chat_id, *period).await;
+        let var_storage = storage.variables();
+        var_storage.set(*period).await;
 
         target
             .send_markdown_message(markdown_format!(

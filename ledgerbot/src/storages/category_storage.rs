@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::HashMap, sync::Arc};
 
 use teloxide::types::ChatId;
 use yoroolbot::{
@@ -10,20 +10,23 @@ use crate::{
     storages::Category,
 };
 
+
 /// Trait for category storage operations
 #[async_trait::async_trait]
-pub trait CategoryStorageTrait: Send + Sync {
-    /// Get categories for a specific chat
-    async fn get_chat_categories(
+pub trait CategoryStorageReadTrait: Send + Sync {
+    /// Get categories
+    async fn get_categories(
         &self,
-        chat_id: ChatId,
     ) -> Result<HashMap<String, Vec<String>>, MarkdownString>;
-
-    /// Add a category for a specific chat
+}
+ 
+/// Trait for category storage operations
+#[async_trait::async_trait]
+pub trait CategoryStorageTrait: CategoryStorageReadTrait + Send + Sync {
+    /// Add a category
     /// Returns error if Category::Other variant is used
     async fn add_category(
         &self,
-        chat_id: ChatId,
         category: &Category,
     ) -> Result<(), MarkdownString>;
 
@@ -31,7 +34,6 @@ pub trait CategoryStorageTrait: Send + Sync {
     /// Returns error if Category::Other variant is used
     async fn add_category_filter(
         &self,
-        chat_id: ChatId,
         category: &Category,
         regex_pattern: String,
     ) -> Result<(), MarkdownString>;
@@ -40,7 +42,6 @@ pub trait CategoryStorageTrait: Send + Sync {
     /// Returns error if Category::Other variant is used
     async fn remove_category_filter(
         &self,
-        chat_id: ChatId,
         category: &Category,
         regex_pattern: &str,
     ) -> Result<(), MarkdownString>;
@@ -49,7 +50,6 @@ pub trait CategoryStorageTrait: Send + Sync {
     /// Returns error if Category::Other variant is used
     async fn remove_category(
         &self,
-        chat_id: ChatId,
         category: &Category,
     ) -> Result<(), MarkdownString>;
 
@@ -57,7 +57,6 @@ pub trait CategoryStorageTrait: Send + Sync {
     /// Returns error if Category::Other variant is used for either old or new name
     async fn rename_category(
         &self,
-        chat_id: ChatId,
         old_category: &Category,
         new_category: &Category,
     ) -> Result<(), MarkdownString>;
@@ -65,7 +64,6 @@ pub trait CategoryStorageTrait: Send + Sync {
     /// Replace all categories for a specific chat
     async fn replace_categories(
         &self,
-        chat_id: ChatId,
         categories: HashMap<String, Vec<String>>,
     ) -> Result<(), MarkdownString>;
 }
@@ -76,44 +74,35 @@ pub type CategoryData = Vec<String>;
 /// Generic category storage that works with any DataStore implementation
 /// Each category is stored as a separate key (category name) with its filters as the value
 #[derive(Clone)]
-pub struct CategoryStorage<S>
-where
-    S: DataStoreTrait<CategoryData>,
+pub struct CategoryStorage
 {
-    store: S,
-    _phantom: PhantomData<CategoryData>,
+    store: Arc<dyn DataStoreTrait<CategoryData>>,
+    chat_id: ChatId,
 }
 
-impl<S> CategoryStorage<S>
-where
-    S: DataStoreTrait<CategoryData>,
+impl CategoryStorage
 {
-    pub fn new(store: S) -> Self {
-        Self {
-            store,
-            _phantom: PhantomData,
-        }
+    /// Create a new CategoryStorage with the given DataStore and chat ID
+    pub fn new(store: Arc<dyn DataStoreTrait<CategoryData>>, chat_id: ChatId) -> Self {
+        Self { store, chat_id }
     }
 }
 
 /// Implement CategoryStorageTrait for CategoryStorage
 #[async_trait::async_trait]
-impl<S> CategoryStorageTrait for CategoryStorage<S>
-where
-    S: DataStoreTrait<CategoryData>,
+impl CategoryStorageReadTrait for CategoryStorage
 {
-    async fn get_chat_categories(
+    async fn get_categories(
         &self,
-        chat_id: ChatId,
     ) -> Result<HashMap<String, Vec<String>>, MarkdownString> {
         // Get all keys (category names) for this chat
-        let category_names = self.store.keys(chat_id).await;
+        let category_names = self.store.keys(self.chat_id).await;
         let mut categories = HashMap::new();
 
         for category_name in category_names {
             let filters = self
                 .store
-                .get(chat_id, &category_name)
+                .get(self.chat_id, &category_name)
                 .await
                 .unwrap_or_default();
             categories.insert(category_name, filters);
@@ -121,10 +110,14 @@ where
 
         Ok(categories)
     }
+}
 
-    async fn add_category(
+/// Implement CategoryStorageTrait for CategoryStorage
+#[async_trait::async_trait]
+impl CategoryStorageTrait for CategoryStorage
+{
+     async fn add_category(
         &self,
-        chat_id: ChatId,
         category: &Category,
     ) -> Result<(), MarkdownString> {
         // Only accept Category::Category variant with a name
@@ -136,7 +129,7 @@ where
         };
 
         // Check if category already exists
-        if self.store.get(chat_id, category_name).await.is_some() {
+        if self.store.get(self.chat_id, category_name).await.is_some() {
             return Err(markdown_format!(
                 "ℹ️ Category `{}` already exists\\. Use {} to add more patterns or {} to view all\\.",
                 category_name,
@@ -146,14 +139,13 @@ where
         }
 
         // Add the new category with empty filters list
-        self.store.set(chat_id, category_name, Vec::new()).await;
+        self.store.set(self.chat_id, category_name, Vec::new()).await;
 
         Ok(())
     }
 
     async fn add_category_filter(
         &self,
-        chat_id: ChatId,
         category: &Category,
         regex_pattern: String,
     ) -> Result<(), MarkdownString> {
@@ -168,7 +160,7 @@ where
         // Get existing filters for this category
         let mut patterns = self
             .store
-            .get(chat_id, category_name)
+            .get(self.chat_id, category_name)
             .await
             .ok_or_else(|| markdown_format!("Category {} not exists", category_name))?;
 
@@ -181,13 +173,12 @@ where
         }
 
         patterns.push(regex_pattern);
-        self.store.set(chat_id, category_name, patterns).await;
+        self.store.set(self.chat_id, category_name, patterns).await;
         Ok(())
     }
 
     async fn remove_category_filter(
         &self,
-        chat_id: ChatId,
         category: &Category,
         regex_pattern: &str,
     ) -> Result<(), MarkdownString> {
@@ -202,7 +193,7 @@ where
         // Get existing filters for this category
         let mut patterns = self
             .store
-            .get(chat_id, category_name)
+            .get(self.chat_id, category_name)
             .await
             .ok_or_else(|| markdown_format!("Category {} not exists", category_name))?;
 
@@ -215,13 +206,12 @@ where
         }
 
         patterns.retain(|p| p != regex_pattern);
-        self.store.set(chat_id, category_name, patterns).await;
+        self.store.set(self.chat_id, category_name, patterns).await;
         Ok(())
     }
 
     async fn remove_category(
         &self,
-        chat_id: ChatId,
         category: &Category,
     ) -> Result<(), MarkdownString> {
         // Only accept Category::Category variant with a name
@@ -233,17 +223,16 @@ where
         };
 
         // Check if category exists
-        if self.store.get(chat_id, category_name).await.is_none() {
+        if self.store.get(self.chat_id, category_name).await.is_none() {
             return Err(markdown_format!("Category {} not exists", category_name));
         }
 
-        self.store.remove(chat_id, category_name).await;
+        self.store.remove(self.chat_id, category_name).await;
         Ok(())
     }
 
     async fn rename_category(
         &self,
-        chat_id: ChatId,
         old_category: &Category,
         new_category: &Category,
     ) -> Result<(), MarkdownString> {
@@ -266,36 +255,35 @@ where
         // Get existing filters for old category
         let patterns = self
             .store
-            .get(chat_id, old_name)
+            .get(self.chat_id, old_name)
             .await
             .ok_or_else(|| markdown_format!("Category {} not exists", old_name))?;
 
         // Check if new name already exists
-        if self.store.get(chat_id, new_name).await.is_some() {
+        if self.store.get(self.chat_id, new_name).await.is_some() {
             return Err(markdown_format!("Category {} already exists", new_name));
         }
 
         // Create new category with same patterns
-        self.store.set(chat_id, new_name, patterns).await;
+        self.store.set(self.chat_id, new_name, patterns).await;
         // Remove old category
-        self.store.remove(chat_id, old_name).await;
+        self.store.remove(self.chat_id, old_name).await;
         Ok(())
     }
 
     async fn replace_categories(
         &self,
-        chat_id: ChatId,
         categories: HashMap<String, Vec<String>>,
     ) -> Result<(), MarkdownString> {
         // Remove all existing categories for this chat
-        let existing_categories = self.store.keys(chat_id).await;
+        let existing_categories = self.store.keys(self.chat_id).await;
         for category_name in existing_categories {
-            self.store.remove(chat_id, &category_name).await;
+            self.store.remove(self.chat_id, &category_name).await;
         }
 
         // Add all new categories
         for (category_name, filters) in categories {
-            self.store.set(chat_id, &category_name, filters).await;
+            self.store.set(self.chat_id, &category_name, filters).await;
         }
 
         Ok(())

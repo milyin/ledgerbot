@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::{Requester, ResponseResult};
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -8,13 +9,11 @@ use yoroolbot::{
 
 use crate::{
     commands::{
-        command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter,
-        follow_helper::validate_and_get_follow_access,
-    },
-    storages::{Category, StorageTrait},
+        command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter
+    }, menus::common::show_follow_status_message, storages::{Category, StorageReadonly}
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandCategories;
 
 impl CommandTrait for CommandCategories {
@@ -28,7 +27,7 @@ impl CommandTrait for CommandCategories {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<StorageReadonly>;
 
     const NAME: &'static str = "categories";
     const PLACEHOLDERS: &[&'static str] = &[];
@@ -52,30 +51,11 @@ impl CommandTrait for CommandCategories {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        // Validate follow access and get effective chat ID
-        let follow_access = match validate_and_get_follow_access(target, &storage).await {
-            Ok(access) => access,
-            Err(warning_msg) => {
-                target.send_markdown_message(warning_msg).await?;
-                // Continue with current chat
-                crate::commands::follow_helper::FollowAccess {
-                    effective_chat_id: target.chat.id,
-                    header_note: None,
-                }
-            }
-        };
-
-        let chat_id = follow_access.effective_chat_id;
-
-        // Show follow status as separate message if applicable
-        if let Some(header) = follow_access.header_note {
-            target.send_markdown_message(header).await?;
-        }
+        show_follow_status_message(target, &storage).await?;
 
         let categories = storage
-            .clone()
-            .as_category_storage()
-            .get_chat_categories(chat_id)
+            .categories_readonly()
+            .get_categories()
             .await
             .unwrap_or_default();
 
@@ -111,7 +91,7 @@ impl CommandTrait for CommandCategories {
                     result.push('\n');
                 }
             }
-            target.bot.send_message(chat_id, result).await?;
+            target.bot.send_message(target.chat.id, result).await?;
         }
 
         Ok(())

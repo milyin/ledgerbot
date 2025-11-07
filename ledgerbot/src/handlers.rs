@@ -6,7 +6,7 @@ use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, storage::unpac
 use crate::{
     batch::{add_to_batch, execute_batch},
     commands::{Command, execute_command},
-    storages::StorageTrait,
+    storages::Stores,
     utils::parse_expenses::parse_expenses,
 };
 
@@ -14,7 +14,7 @@ use crate::{
 pub async fn handle_text_message(
     bot: Bot,
     msg: Message,
-    storage: Arc<dyn StorageTrait>,
+    storage: Arc<Stores>,
 ) -> ResponseResult<()> {
     if let Some(text) = msg.text() {
         // Get bot username for filtering
@@ -42,9 +42,9 @@ pub async fn handle_text_message(
         // For single-line, non-forwarded messages, execute immediately.
         if is_multiline || is_forwarded {
             // Add to batch storage for deferred execution
-            let batch_storage = storage.clone().as_batch_storage();
+            let batch_storage = storage.storage(msg.chat.id).batch();
             let is_first_message =
-                add_to_batch(batch_storage.clone(), msg.chat.clone(), parsed_results).await;
+                add_to_batch(batch_storage.clone(), parsed_results).await;
 
             // Start timeout task only for the first message in batch
             if is_first_message {
@@ -99,7 +99,7 @@ pub async fn handle_text_message(
 pub async fn handle_callback_query(
     bot: Bot,
     q: CallbackQuery,
-    storage: Arc<dyn StorageTrait>,
+    storage: Arc<Stores>,
 ) -> ResponseResult<()> {
     let bot_username = bot.get_me().await?.username().to_string();
     // Answer the callback query to remove the loading state
@@ -125,7 +125,8 @@ pub async fn handle_callback_query(
     log::info!("Received callback data: {}", data_str);
 
     // Unpack callback data from storage if needed
-    let callback_storage = storage.clone().as_callback_data_storage();
+    let storage_ = storage.storage(chat_id);
+    let callback_storage = storage_.callback_data();
     let unpacked_data = unpack_callback_data(&callback_storage, data_str).await;
 
     log::info!("Unpacked callback data: {}", unpacked_data);

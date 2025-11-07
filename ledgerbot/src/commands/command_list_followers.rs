@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::{Requester, ResponseResult};
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -7,14 +8,14 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::{command_add_share::CommandAddShare, command_follow::CommandFollow},
-    storages::ShareStorageTrait,
+    commands::{command_add_follower::CommandAddFollower, command_follow::CommandFollow},
+    storages::FollowersStorageTrait,
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
-pub struct CommandListShares;
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommandListFollowers;
 
-impl CommandTrait for CommandListShares {
+impl CommandTrait for CommandListFollowers {
     type A = EmptyArg;
     type B = EmptyArg;
     type C = EmptyArg;
@@ -25,9 +26,9 @@ impl CommandTrait for CommandListShares {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn ShareStorageTrait>;
+    type Context = Arc<dyn FollowersStorageTrait>;
 
-    const NAME: &'static str = "list_shares";
+    const NAME: &'static str = "list_followers";
     const PLACEHOLDERS: &[&'static str] = &[];
 
     fn from_arguments(
@@ -41,7 +42,7 @@ impl CommandTrait for CommandListShares {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandListShares
+        CommandListFollowers
     }
 
     async fn run0(
@@ -50,13 +51,13 @@ impl CommandTrait for CommandListShares {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let shares = storage.get_chat_shares(chat_id).await.unwrap_or_default();
+        let followers = storage.get_followers().await.unwrap_or_default();
 
-        if shares.is_empty() {
+        if followers.is_empty() {
             target
                 .send_markdown_message(markdown_format!(
-                    "👥 No usernames in share list yet\\. Use {} to add one\\.",
-                    CommandAddShare::default().to_command_string(true)
+                    "👥 No usernames in followers list yet\\. Use {} to add one\\.",
+                    CommandAddFollower::default().to_command_string(true)
                 ))
                 .await?;
         } else {
@@ -69,11 +70,11 @@ impl CommandTrait for CommandListShares {
 
             let mut result = "".to_string();
             // Sort usernames for consistent output
-            let mut sorted_shares = shares;
-            sorted_shares.sort();
+            let mut sorted_followers = followers;
+            sorted_followers.sort();
 
-            for username in sorted_shares {
-                result.push_str(&CommandAddShare::new(username.as_str()).to_command_string(true));
+            for username in sorted_followers {
+                result.push_str(&CommandAddFollower::new(username.as_str()).to_command_string(true));
                 result.push('\n');
             }
 

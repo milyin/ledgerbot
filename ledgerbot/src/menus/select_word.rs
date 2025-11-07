@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
@@ -13,7 +14,7 @@ use yoroolbot::{
 };
 
 /// Represents a collection of words separated by '|'
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct Words(Vec<String>);
 
 impl Words {
@@ -163,7 +164,6 @@ pub async fn select_word<
     // Pack all buttons (callback and inline query) into the keyboard
     let keyboard = pack_callback_data(
         &target.callback_data_storage,
-        target.chat.id,
         msg.id.0,
         button_data,
     )

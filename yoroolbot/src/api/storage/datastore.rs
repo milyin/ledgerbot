@@ -9,9 +9,9 @@ use crate::api::storage::utils::{decode_filename_to_key, encode_key_to_filename}
 /// Trait for key-value data storage with serializable values
 /// Storage is organized per-chat, with each chat having its own key-value namespace
 #[async_trait::async_trait]
-pub trait DataStoreTrait<V>: Send + Sync + Clone
+pub trait DataStoreTrait<V>: Send + Sync
 where
-    V: Serialize + for<'de> Deserialize<'de> + Send + Sync,
+    V: Serialize + for<'de> Deserialize<'de> + Send + Sync + Clone,
 {
     /// Get a value by key for a specific chat
     async fn get(&self, chat_id: ChatId, key: &str) -> Option<V>;

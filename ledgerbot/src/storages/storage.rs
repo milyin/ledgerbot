@@ -1,111 +1,221 @@
 use std::sync::Arc;
 
-use yoroolbot::storage::{CallbackDataStorage, CallbackDataStorageTrait, InMemStore};
+use teloxide::types::ChatId;
+use yoroolbot::storage::{CallbackData, CallbackDataStorage, CallbackDataStorageTrait, DataStoreTrait, InMemStore};
 
 use crate::storages::{
-    BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait,
-    ExpenseData, ExpenseStorage, ExpenseStorageTrait, ShareData, ShareStorage, ShareStorageTrait,
-    VariableStorage,
+    BatchData, BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, FollowersData, FollowersStorage, FollowersStorageTrait, VariableData, VariableStorage, category_storage::CategoryStorageReadTrait, expense_storage::ExpenseStorageReadTrait, followers_storage::FollowersStorageReadTrait
 };
-
-/// Combined storage trait that provides all storage operations
-/// This trait allows converting to specific trait objects for functions that only need subset of functionality
-pub trait StorageTrait: Send + Sync {
-    /// Convert to ExpenseStorageTrait trait object
-    fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait>;
-
-    /// Convert to CategoryStorageTrait trait object
-    fn as_category_storage(self: Arc<Self>) -> Arc<dyn CategoryStorageTrait>;
-
-    /// Convert to ShareStorageTrait trait object
-    fn as_share_storage(self: Arc<Self>) -> Arc<dyn ShareStorageTrait>;
-
-    /// Convert to BatchStorageTrait trait object
-    fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait>;
-
-    /// Convert to CallbackDataStorageTrait trait object
-    fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait>;
-
-    /// Get variable storage (concrete type, not trait object, because of generic methods)
-    fn as_variable_storage(self: Arc<Self>) -> Arc<VariableStorage>;
-}
 
 /// Main storage structure that holds all bot data
 /// This is the primary storage container for the application
 #[derive(Clone)]
-pub struct Storage {
-    expenses: Arc<dyn ExpenseStorageTrait>,
-    categories: Arc<dyn CategoryStorageTrait>,
-    shares: Arc<dyn ShareStorageTrait>,
-    batch: Arc<dyn BatchStorageTrait>,
-    callback_data: Arc<dyn CallbackDataStorageTrait>,
-    variables: Arc<VariableStorage>,
+pub struct Stores {
+    expenses_data_store: Arc<dyn DataStoreTrait<ExpenseData>>,
+    categories_data_store: Arc<dyn DataStoreTrait<CategoryData>>,
+    followers_data_store: Arc<dyn DataStoreTrait<FollowersData>>,
+    batch_data_store: Arc<dyn DataStoreTrait<BatchData>>,
+    callback_data_store: Arc<dyn DataStoreTrait<CallbackData>>,
+    variables_data: VariableData,
 }
 
-impl Storage {
+impl Stores {
     /// Create a new storage with all storage types initialized (in-memory)
     pub fn new() -> Self {
+        let expenses_data_store = Arc::new(InMemStore::<ExpenseData>::new());
+        let categories_data_store = Arc::new(InMemStore::<CategoryData>::new());
+        let followers_data_store = Arc::new(InMemStore::<FollowersData>::new());
+        let batch_data_store = Arc::new(InMemStore::<BatchData>::new());
+        let callback_data_store = Arc::new(InMemStore::<CallbackData>::new());
+        let variables_data = VariableData::default();
         Self {
-            expenses: Arc::new(ExpenseStorage::new(InMemStore::<ExpenseData>::new())),
-            categories: Arc::new(CategoryStorage::new(InMemStore::<CategoryData>::new())),
-            shares: Arc::new(ShareStorage::new(InMemStore::<ShareData>::new())),
-            batch: Arc::new(BatchStorage::new()),
-            callback_data: Arc::new(CallbackDataStorage::new()),
-            variables: Arc::new(VariableStorage::new()),
+            expenses_data_store,
+            categories_data_store,
+            followers_data_store,
+            batch_data_store,
+            callback_data_store,
+            variables_data,
         }
+    }
+
+    pub fn storage(&self, chat_id: ChatId) -> Arc<Storage> {
+        Arc::new(Storage {
+            chat_id,
+            stores: self.clone(),
+        })
+    }
+
+    pub fn storage_readonly(&self, own_chat_id: ChatId, external_chat_id: ChatId) -> Arc<StorageReadonly> {
+        Arc::new(StorageReadonly {
+            own_chat_id,
+            external_chat_id,
+            stores: self.clone(),
+        })
     }
 
     /// Builder-like method to configure expense storage
     /// Replaces the expense storage with the provided implementation
-    pub fn expenses_storage(mut self, storage: impl ExpenseStorageTrait + 'static) -> Self {
-        self.expenses = Arc::new(storage);
+    pub fn expenses_store(mut self, store: impl DataStoreTrait<ExpenseData> + 'static) -> Self {
+        self.expenses_data_store = Arc::new(store);
         self
     }
 
     /// Builder-like method to configure category storage
     /// Replaces the category storage with the provided implementation
-    pub fn categories_storage(mut self, storage: impl CategoryStorageTrait + 'static) -> Self {
-        self.categories = Arc::new(storage);
+    pub fn categories_store(mut self, store: impl DataStoreTrait<CategoryData> + 'static) -> Self {
+        self.categories_data_store = Arc::new(store);
         self
     }
 
-    /// Builder-like method to configure share storage
-    /// Replaces the share storage with the provided implementation
-    pub fn shares_storage(mut self, storage: impl ShareStorageTrait + 'static) -> Self {
-        self.shares = Arc::new(storage);
+    /// Builder-like method to configure followers storage
+    /// Replaces the followers storage with the provided implementation
+    pub fn followers_store(mut self, store: impl DataStoreTrait<FollowersData> + 'static) -> Self {
+        self.followers_data_store = Arc::new(store);
+        self
+    }
+
+    /// Builder-like method to configure batch storage
+    /// Replaces the batch storage with the provided implementation
+    pub fn batch_store(mut self, store: impl DataStoreTrait<BatchData> + 'static) -> Self {
+        self.batch_data_store = Arc::new(store);
+        self
+    }
+
+    /// Builder-like method to configure callback data storage
+    /// Replaces the callback data storage with the provided implementation
+    pub fn callback_data_store(mut self, store: impl DataStoreTrait<CallbackData> + 'static) -> Self {
+        self.callback_data_store = Arc::new(store);
         self
     }
 }
 
-impl Default for Storage {
+impl Default for Stores {
     fn default() -> Self {
         Self::new()
     }
 }
 
-/// Implement StorageTrait for Storage to enable conversion to specific trait objects
-impl StorageTrait for Storage {
-    fn as_expense_storage(self: Arc<Self>) -> Arc<dyn ExpenseStorageTrait> {
-        self.expenses.clone()
+#[derive(Clone)]
+pub struct Storage {
+    chat_id: ChatId,
+    stores: Stores,
+}
+
+impl Storage {
+    /// Get expense storage for this chat
+    pub fn expenses(&self) -> Arc<dyn ExpenseStorageTrait> {
+        Arc::new(ExpenseStorage::new(
+            self.stores.expenses_data_store.clone(),
+            self.chat_id,
+        ))
     }
 
-    fn as_category_storage(self: Arc<Self>) -> Arc<dyn CategoryStorageTrait> {
-        self.categories.clone()
+    /// Get readonly expense storage for this chat
+    pub fn expenses_readonly(&self) -> Arc<dyn ExpenseStorageReadTrait> {
+        Arc::new(ExpenseStorage::new(
+            self.stores.expenses_data_store.clone(),
+            self.chat_id,
+        ))
     }
 
-    fn as_share_storage(self: Arc<Self>) -> Arc<dyn ShareStorageTrait> {
-        self.shares.clone()
+    /// Get category storage for this chat
+    pub fn categories(&self) -> Arc<dyn CategoryStorageTrait> {
+        Arc::new(CategoryStorage::new(
+            self.stores.categories_data_store.clone(),
+            self.chat_id,
+        ))
     }
 
-    fn as_batch_storage(self: Arc<Self>) -> Arc<dyn BatchStorageTrait> {
-        self.batch.clone()
+    /// Get readonly category storage for this chat
+    pub fn categories_readonly(&self) -> Arc<dyn CategoryStorageReadTrait> {
+        Arc::new(CategoryStorage::new(
+            self.stores.categories_data_store.clone(),
+            self.chat_id,
+        ))
     }
 
-    fn as_callback_data_storage(self: Arc<Self>) -> Arc<dyn CallbackDataStorageTrait> {
-        self.callback_data.clone()
+    /// Get followers storage for this chat
+    pub fn followers(&self) -> Arc<dyn FollowersStorageTrait> {
+        Arc::new(FollowersStorage::new(
+            self.stores.followers_data_store.clone(),
+            self.chat_id,
+        ))
     }
 
-    fn as_variable_storage(self: Arc<Self>) -> Arc<VariableStorage> {
-        self.variables.clone()
+    /// Get readonly followers storage for this chat
+    pub fn followers_readonly(&self) -> Arc<dyn FollowersStorageReadTrait> {
+        Arc::new(FollowersStorage::new(
+            self.stores.followers_data_store.clone(),
+            self.chat_id,
+        ))
+    }
+
+    /// Get batch storage for this chat
+    pub fn batch(&self) -> Arc<dyn BatchStorageTrait> {
+        Arc::new(BatchStorage::new(
+            self.stores.batch_data_store.clone(),
+            self.chat_id,
+        ))
+    }
+
+    /// Get callback data storage for this chat
+    pub fn callback_data(&self) -> Arc<dyn CallbackDataStorageTrait> {
+        Arc::new(CallbackDataStorage::new(
+            self.stores.callback_data_store.clone(),
+            self.chat_id,
+        ))
+    }
+
+    /// Get variable storage for this chat
+    pub fn variables(&self) -> VariableStorage {
+        VariableStorage::new(self.stores.variables_data.clone(), self.chat_id)
     }
 }
+
+#[derive(Clone)]
+pub struct StorageReadonly {
+    own_chat_id: ChatId,
+    external_chat_id: ChatId,
+    stores: Stores,
+}
+
+impl StorageReadonly {
+    /// Get expense storage for this chat
+    pub fn expenses_readonly(&self) -> Arc<dyn ExpenseStorageReadTrait> {
+        Arc::new(ExpenseStorage::new(
+            self.stores.expenses_data_store.clone(),
+            self.external_chat_id,
+        ))
+    }
+
+    /// Get category storage for this chat
+    pub fn categories_readonly(&self) -> Arc<dyn CategoryStorageReadTrait> {
+        Arc::new(CategoryStorage::new(
+            self.stores.categories_data_store.clone(),
+            self.external_chat_id,
+        ))
+    }
+
+    /// Get follower storage for this chat
+    pub fn followers_readonly(&self) -> Arc<dyn FollowersStorageReadTrait> {
+        Arc::new(FollowersStorage::new(
+            self.stores.followers_data_store.clone(),
+            self.external_chat_id,
+        ))
+    }
+
+    /// Get variable storage for this chat
+    pub fn variables(&self) -> VariableStorage {
+        VariableStorage::new(self.stores.variables_data.clone(), self.own_chat_id)
+    }
+
+    /// Get the external chat ID if this storage is for an external chat
+    pub fn external_chat_id(&self) -> Option<ChatId> {
+        if self.own_chat_id != self.external_chat_id {
+            Some(self.external_chat_id)
+        } else {
+            None
+        }
+    }
+}
+

@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::{prelude::ResponseResult, types::ChatId};
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
     markdown_format,
 };
 
-use crate::storages::StorageTrait;
+use crate::storages::Stores;
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandUnfollow;
 
 impl CommandTrait for CommandUnfollow {
@@ -22,7 +23,7 @@ impl CommandTrait for CommandUnfollow {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "unfollow";
     const PLACEHOLDERS: &[&'static str] = &[];
@@ -46,16 +47,18 @@ impl CommandTrait for CommandUnfollow {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let variable_storage = storage.clone().as_variable_storage();
+        let chat_id = target.chat.id;
+            let storage_ = storage.storage(chat_id);
+        let variable_storage = storage_.variables();
 
         // Check if currently following any chat
-        let followed_chat: Option<ChatId> = variable_storage.get(target.chat.id).await;
+        let followed_chat: Option<ChatId> = variable_storage.get().await;
 
         match followed_chat {
             Some(chat_id) => {
                 // Remove the follow relationship
                 variable_storage
-                    .remove::<Option<ChatId>>(target.chat.id)
+                    .remove::<ChatId>()
                     .await;
 
                 target

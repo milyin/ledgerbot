@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
@@ -15,7 +16,7 @@ use crate::{
     storages::{Category, CategoryStorageTrait},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandEditFilter {
     pub category: Option<Category>,
     pub position: Option<usize>,
@@ -180,7 +181,7 @@ impl CommandTrait for CommandEditFilter {
 
         // Remove the old pattern and add the new one
         if let Err(e) = storage
-            .remove_category_filter(target.chat.id, name, &old_pattern)
+            .remove_category_filter(name, &old_pattern)
             .await
         {
             target
@@ -189,7 +190,7 @@ impl CommandTrait for CommandEditFilter {
         }
 
         if let Err(e) = storage
-            .add_category_filter(target.chat.id, name, pattern.clone())
+            .add_category_filter(name, pattern.clone())
             .await
         {
             target.send_markdown_message(e).await?;

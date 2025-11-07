@@ -7,10 +7,11 @@ use teloxide::{
 };
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
-    markdown_format,
+    markdown::MarkdownString,
+    markdown_format, markdown_string,
 };
 
-use crate::storages::{Category, CategoryStorageTrait};
+use crate::storages::{Category, CategoryStorageTrait, StorageReadonly};
 
 pub fn create_buttons_menu(
     titles: &[String],
@@ -47,10 +48,7 @@ pub async fn read_category_filters_list(
     category: &Category,
     back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Vec<String>> {
-    let categories = storage
-        .get_chat_categories(target.chat.id)
-        .await
-        .unwrap_or_default();
+    let categories = storage.get_categories().await.unwrap_or_default();
     let Some(filters) = categories.get(category.as_str()) else {
         let msg = target
             .markdown_message(markdown_format!(
@@ -126,20 +124,48 @@ pub async fn read_category_filter_by_index(
     Ok(Some(filters[idx].clone()))
 }
 
+/// Generate follow status message text without sending it
+pub fn make_follow_status_message(storage: &Arc<StorageReadonly>) -> MarkdownString {
+    if let Some(external_chat_id) = storage.external_chat_id() {
+        markdown_format!(
+            "👁 *Note*: You are viewing expenses for chat ID `{}`\\.\n\n",
+            external_chat_id.0
+        )
+    } else {
+        markdown_string!("")
+    }
+}
+
+pub async fn show_follow_status_message(
+    target: &CommandReplyTarget,
+    storage: &Arc<StorageReadonly>,
+) -> ResponseResult<()> {
+    // Show follow status as separate message if applicable
+    if let Some(external_chat_id) = storage.external_chat_id() {
+        target
+            .send_markdown_message(markdown_format!(
+                "👁 *Note*: You are viewing expenses for chat ID `{}`\\.",
+                external_chat_id.0
+            ))
+            .await?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use teloxide::types::ChatId;
     use yoroolbot::storage::{
-        CallbackDataStorage, CallbackDataStorageTrait, pack_callback_data, unpack_callback_data,
+        CallbackData, CallbackDataStorage, CallbackDataStorageTrait, InMemStore, pack_callback_data, unpack_callback_data,
     };
-
-    use super::*;
 
     #[tokio::test]
     async fn test_pack_unpack_callback_data() {
-        let storage: Arc<dyn CallbackDataStorageTrait> = Arc::new(CallbackDataStorage::new());
         let chat_id = ChatId(12345);
         let message_id = 67890;
+        let data_store = Arc::new(InMemStore::<CallbackData>::new());
+        let storage: Arc<dyn CallbackDataStorageTrait> = Arc::new(CallbackDataStorage::new(data_store, chat_id));
 
         // Create button data with short and long callback data
         let button_rows = vec![
@@ -157,7 +183,7 @@ mod tests {
         ];
 
         // Pack the callback data
-        let keyboard = pack_callback_data(&storage, chat_id, message_id, button_rows.clone()).await;
+        let keyboard = pack_callback_data(&storage, message_id, button_rows.clone()).await;
 
         // Verify keyboard structure
         assert_eq!(keyboard.inline_keyboard.len(), 2);
@@ -207,9 +233,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_pack_callback_data_clears_old_data() {
-        let storage: Arc<dyn CallbackDataStorageTrait> = Arc::new(CallbackDataStorage::new());
         let chat_id = ChatId(12345);
         let message_id = 67890;
+        let data_store = Arc::new(InMemStore::<CallbackData>::new());
+        let storage: Arc<dyn CallbackDataStorageTrait> = Arc::new(CallbackDataStorage::new(data_store, chat_id));
 
         // Create initial buttons with long callback data
         let initial_buttons = vec![vec![(
@@ -219,7 +246,7 @@ mod tests {
 
         // Pack initial buttons
         let initial_keyboard =
-            pack_callback_data(&storage, chat_id, message_id, initial_buttons).await;
+            pack_callback_data(&storage, message_id, initial_buttons).await;
 
         let initial_cb = match &initial_keyboard.inline_keyboard[0][0].kind {
             teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
@@ -240,7 +267,7 @@ mod tests {
             "toggle_word:new_category:another_very_long_word_that_also_exceeds_limit".to_string(),
         )]];
 
-        let new_keyboard = pack_callback_data(&storage, chat_id, message_id, new_buttons).await;
+        let new_keyboard = pack_callback_data(&storage, message_id, new_buttons).await;
 
         let new_cb = match &new_keyboard.inline_keyboard[0][0].kind {
             teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),

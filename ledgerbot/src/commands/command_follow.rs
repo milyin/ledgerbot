@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::{prelude::ResponseResult, types::ChatId};
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -8,10 +9,10 @@ use yoroolbot::{
 
 use crate::{
     commands::{command_unfollow::CommandUnfollow, follow_helper},
-    storages::StorageTrait,
+    storages::Stores,
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandFollow {
     pub chat_id: Option<i64>,
 }
@@ -35,7 +36,7 @@ impl CommandTrait for CommandFollow {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Stores>;
 
     const NAME: &'static str = "follow";
     const PLACEHOLDERS: &[&'static str] = &["<chat_id>"];
@@ -63,10 +64,11 @@ impl CommandTrait for CommandFollow {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let variable_storage = storage.clone().as_variable_storage();
+        let storage_ = storage.storage(target.chat.id);
+        let variable_storage = storage_.variables();
 
         // Check if currently following any chat
-        let followed_chat: Option<ChatId> = variable_storage.get(target.chat.id).await;
+        let followed_chat: Option<ChatId> = variable_storage.get().await;
 
         let status_message = match followed_chat {
             Some(chat_id) => {
@@ -124,11 +126,9 @@ impl CommandTrait for CommandFollow {
         }
 
         // User is authorized - store the follow relationship
-        let variable_storage = storage.clone().as_variable_storage();
-        variable_storage.set(target.chat.id, target_chat_id).await;
-
-        let q = variable_storage.get::<ChatId>(target.chat.id).await;
-        log::info!("Set follow chat for {}: {:?}", target.chat.id, q);
+        let storage_ = storage.storage(target.chat.id);
+        let variable_storage = storage_.variables();
+        variable_storage.set(target_chat_id).await;
 
         target
             .send_markdown_message(markdown_format!(

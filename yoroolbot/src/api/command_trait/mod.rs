@@ -102,7 +102,7 @@ impl CommandReplyTarget {
         B: Into<ButtonData>,
     {
         // Pack callback data and attach keyboard to the message
-        let keyboard = pack_callback_data(callback_data_storage, chat_id, message_id.0, menu).await;
+        let keyboard = pack_callback_data(callback_data_storage, message_id.0, menu).await;
         bot.edit_message_reply_markup(chat_id, message_id)
             .reply_markup(keyboard)
             .await?;

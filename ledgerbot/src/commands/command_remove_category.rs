@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
@@ -11,7 +12,7 @@ use crate::{
     storages::{Category, CategoryStorageTrait},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandRemoveCategory {
     pub category: Option<Category>,
     pub confirm: Option<bool>,
@@ -114,7 +115,7 @@ impl CommandTrait for CommandRemoveCategory {
             return Ok(());
         }
 
-        if let Err(e) = storage.remove_category(target.chat.id, category).await {
+        if let Err(e) = storage.remove_category(category).await {
             target.send_markdown_message(e).await?;
         }
         target

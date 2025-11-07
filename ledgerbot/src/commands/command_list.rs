@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format,
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand}, markdown_string
 };
 
 use crate::{
-    commands::{
-        expenses::format_expenses_chronological, follow_helper::validate_and_get_follow_access,
-    },
-    menus::select_period::select_period,
-    storages::{ExpensePeriod, StorageTrait},
+    commands::
+        expenses::format_expenses_chronological
+    ,
+    menus::{common::show_follow_status_message, select_period::select_period},
+    storages::{ExpensePeriod, StorageReadonly},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandList {
     pub period: Option<ExpensePeriod>,
 }
@@ -30,7 +30,7 @@ impl CommandTrait for CommandList {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<StorageReadonly>;
 
     const NAME: &'static str = "list";
     const PLACEHOLDERS: &[&'static str] = &["period"];
@@ -58,44 +58,15 @@ impl CommandTrait for CommandList {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        // Validate follow access and get effective chat ID
-        let follow_access = match validate_and_get_follow_access(target, &storage).await {
-            Ok(access) => access,
-            Err(warning_msg) => {
-                target.send_markdown_message(warning_msg).await?;
-                // Continue with current chat
-                crate::commands::follow_helper::FollowAccess {
-                    effective_chat_id: target.chat.id,
-                    header_note: None,
-                }
-            }
-        };
+        show_follow_status_message(target, &storage).await?;
 
-        let chat_id = follow_access.effective_chat_id;
-
-        // Show follow status as separate message if applicable
-        if let Some(header) = follow_access.header_note {
-            target.send_markdown_message(header).await?;
-        }
-
-        let var_storage = storage.clone().as_variable_storage();
-        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
-
-        let current_period_str = if let Some(period) = current_period {
-            period.to_string()
-        } else {
-            ExpensePeriod::current().to_string()
-        };
-
-        let prompt = markdown_format!(
+        let prompt = markdown_string!(
             "📋 *List expenses for period*\n\n\
-             Current period: *{}*\n\n\
-             Select a period to view its expenses:",
-            current_period_str
+             Select a period to view its expenses:"
         );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().as_expense_storage();
+        let expense_storage = storage.expenses_readonly();
         select_period(
             target,
             &expense_storage,
@@ -120,30 +91,11 @@ impl CommandTrait for CommandList {
         storage: Self::Context,
         period: &ExpensePeriod,
     ) -> ResponseResult<()> {
-        // Validate follow access and get effective chat ID
-        let follow_access = match validate_and_get_follow_access(target, &storage).await {
-            Ok(access) => access,
-            Err(warning_msg) => {
-                target.send_markdown_message(warning_msg).await?;
-                // Continue with current chat
-                crate::commands::follow_helper::FollowAccess {
-                    effective_chat_id: target.chat.id,
-                    header_note: None,
-                }
-            }
-        };
-
-        let chat_id = follow_access.effective_chat_id;
-
-        // Show follow status as separate message if applicable
-        if let Some(header) = follow_access.header_note {
-            target.send_markdown_message(header).await?;
-        }
+        show_follow_status_message(target, &storage).await?;
 
         let chat_expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_expenses(chat_id, *period)
+            .expenses_readonly()
+            .get_expenses(*period)
             .await;
 
         match format_expenses_chronological(&chat_expenses) {

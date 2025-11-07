@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
@@ -11,7 +12,7 @@ use crate::{
     storages::{Category, CategoryStorageTrait},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandRenameCategory {
     pub old_category: Option<Category>,
     pub new_category: Option<Category>,
@@ -112,7 +113,7 @@ impl CommandTrait for CommandRenameCategory {
         new_category: &Category,
     ) -> ResponseResult<()> {
         if let Err(e) = storage
-            .rename_category(target.chat.id, old_category, new_category)
+            .rename_category(old_category, new_category)
             .await
         {
             target.send_markdown_message(e).await?;

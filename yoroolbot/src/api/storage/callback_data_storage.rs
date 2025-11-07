@@ -1,7 +1,11 @@
-use std::{collections::HashMap, fmt::Display, str::FromStr, sync::Arc};
+use std::{fmt::Display, str::FromStr, sync::Arc};
 
 use teloxide::types::{ChatId, InlineKeyboardButton, InlineKeyboardMarkup};
-use tokio::sync::Mutex;
+
+use crate::storage::DataStoreTrait;
+
+/// Type alias for callback data (the actual callback string)
+pub type CallbackData = String;
 
 /// Represents different types of inline keyboard buttons
 #[derive(Clone)]
@@ -24,25 +28,29 @@ impl From<(&str, &str)> for ButtonData {
     }
 }
 
+/// Trait for callback data storage read operations (maps short references to full callback data)
+/// This is used to work around Telegram's 64-byte limit on callback data
+#[async_trait::async_trait]
+pub trait CallbackDataStorageReadTrait: Send + Sync {
+    /// Retrieve original callback data from a reference string
+    async fn get_callback_data(&self, reference: &str) -> Option<CallbackData>;
+}
+
 /// Trait for callback data storage operations (maps short references to full callback data)
 /// This is used to work around Telegram's 64-byte limit on callback data
 #[async_trait::async_trait]
-pub trait CallbackDataStorageTrait: Send + Sync {
+pub trait CallbackDataStorageTrait: CallbackDataStorageReadTrait + Send + Sync {
     /// Store callback data and return a short reference string
     /// The reference is based on (message_id, button_position)
     async fn store_callback_data(
         &self,
-        chat_id: ChatId,
         message_id: i32,
         button_pos: usize,
-        data: String,
+        data: CallbackData,
     ) -> String;
 
-    /// Retrieve original callback data from a reference string
-    async fn get_callback_data(&self, reference: &str) -> Option<String>;
-
     /// Clear all callback data for a specific message
-    async fn clear_message_callbacks(&self, chat_id: ChatId, message_id: i32);
+    async fn clear_message_callbacks(&self, message_id: i32);
 }
 
 /// The key for the callback data storage map
@@ -101,22 +109,26 @@ impl std::str::FromStr for CallbackDataKey {
 
 /// The CallbackDataStorage implementation which maps short references to full callback data
 /// This is used to work around Telegram's 64-byte limit on callback data
+/// Stores data using the reference string as the key in DataStoreTrait
 #[derive(Clone)]
 pub struct CallbackDataStorage {
-    data: Arc<Mutex<HashMap<CallbackDataKey, String>>>,
+    store: Arc<dyn DataStoreTrait<CallbackData>>,
+    chat_id: ChatId,
 }
 
 impl CallbackDataStorage {
-    pub fn new() -> Self {
-        Self {
-            data: Arc::new(Mutex::new(HashMap::new())),
-        }
+    /// Create a new CallbackDataStorage with the given DataStore and chat ID
+    pub fn new(store: Arc<dyn DataStoreTrait<CallbackData>>, chat_id: ChatId) -> Self {
+        Self { store, chat_id }
     }
 }
 
-impl Default for CallbackDataStorage {
-    fn default() -> Self {
-        Self::new()
+/// Implement CallbackDataStorageReadTrait for CallbackDataStorage
+#[async_trait::async_trait]
+impl CallbackDataStorageReadTrait for CallbackDataStorage {
+    async fn get_callback_data(&self, reference: &str) -> Option<CallbackData> {
+        // Reference string is already the key, just look it up
+        self.store.get(self.chat_id, reference).await
     }
 }
 
@@ -125,28 +137,26 @@ impl Default for CallbackDataStorage {
 impl CallbackDataStorageTrait for CallbackDataStorage {
     async fn store_callback_data(
         &self,
-        chat_id: ChatId,
         message_id: i32,
         button_pos: usize,
-        data: String,
+        data: CallbackData,
     ) -> String {
-        let mut storage_guard = self.data.lock().await;
-        let key = CallbackDataKey::new(chat_id, message_id, button_pos);
+        let key = CallbackDataKey::new(self.chat_id, message_id, button_pos);
         let reference = key.to_string();
-        storage_guard.insert(key, data);
+        self.store.set(self.chat_id, &reference, data).await;
         reference
     }
 
-    async fn get_callback_data(&self, reference: &str) -> Option<String> {
-        let key = CallbackDataKey::from_str(reference).ok()?;
-
-        let storage_guard = self.data.lock().await;
-        storage_guard.get(&key).cloned()
-    }
-
-    async fn clear_message_callbacks(&self, chat_id: ChatId, message_id: i32) {
-        let mut storage_guard = self.data.lock().await;
-        storage_guard.retain(|key, _| key.chat_id != chat_id || key.message_id != message_id);
+    async fn clear_message_callbacks(&self, message_id: i32) {
+        // Get all keys and filter out the ones for this message
+        let all_keys = self.store.keys(self.chat_id).await;
+        for key_str in all_keys {
+            if let Ok(key) = CallbackDataKey::from_str(&key_str) {
+                if key.chat_id == self.chat_id && key.message_id == message_id {
+                    self.store.remove(self.chat_id, &key_str).await;
+                }
+            }
+        }
     }
 }
 
@@ -163,12 +173,10 @@ impl CallbackDataStorageTrait for CallbackDataStorage {
 ///
 /// # Arguments
 /// * `storage` - The callback data storage trait
-/// * `chat_id` - The chat ID for this message
 /// * `message_id` - The message ID where buttons will be attached
 /// * `rows` - Iterator of button rows, each row is an iterator of ButtonData values
 pub async fn pack_callback_data<R, B>(
     storage: &Arc<dyn CallbackDataStorageTrait>,
-    chat_id: ChatId,
     message_id: i32,
     rows: impl IntoIterator<Item = R>,
 ) -> InlineKeyboardMarkup
@@ -177,7 +185,7 @@ where
     B: Into<ButtonData>,
 {
     // Clear old callback data for this message to prevent memory leaks
-    storage.clear_message_callbacks(chat_id, message_id).await;
+    storage.clear_message_callbacks(message_id).await;
 
     let mut button_rows = Vec::new();
     let mut button_pos = 0;
@@ -195,7 +203,7 @@ where
                     let final_callback_data = if needs_storage {
                         // Store in storage and get reference
                         storage
-                            .store_callback_data(chat_id, message_id, button_pos, callback_data)
+                            .store_callback_data(message_id, button_pos, callback_data)
                             .await
                     } else {
                         callback_data

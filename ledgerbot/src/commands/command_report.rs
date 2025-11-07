@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
@@ -10,16 +11,16 @@ use yoroolbot::{
 
 use crate::{
     commands::{
-        follow_helper::validate_and_get_follow_access,
         report::{
             check_category_conflicts, filter_category_expenses, format_category_comparison,
             format_single_category_report,
         },
     },
-    storages::{Category, ExpensePeriod, StorageTrait},
+    menus::common::make_follow_status_message,
+    storages::{Category, ExpensePeriod, StorageReadonly},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandReport {
     pub period: Option<ExpensePeriod>,
     pub reference_period: Option<ExpensePeriod>,
@@ -38,7 +39,7 @@ impl CommandTrait for CommandReport {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<StorageReadonly>;
 
     const NAME: &'static str = "report";
     const PLACEHOLDERS: &[&'static str] = &["period", "reference_period", "category", "page"];
@@ -83,22 +84,8 @@ impl CommandTrait for CommandReport {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        // Validate follow access and get effective chat ID
-        let follow_access = match validate_and_get_follow_access(target, &storage).await {
-            Ok(access) => access,
-            Err(warning_msg) => {
-                target.send_markdown_message(warning_msg).await?;
-                // Continue with current chat
-                crate::commands::follow_helper::FollowAccess {
-                    effective_chat_id: target.chat.id,
-                    header_note: None,
-                }
-            }
-        };
-
-        let chat_id = follow_access.effective_chat_id;
-        let var_storage = storage.clone().as_variable_storage();
-        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
+        let var_storage = storage.variables();
+        let current_period: Option<ExpensePeriod> = var_storage.get().await;
 
         let current_period_str = if let Some(period) = current_period {
             period.to_string()
@@ -106,10 +93,8 @@ impl CommandTrait for CommandReport {
             ExpensePeriod::current().to_string()
         };
 
-        let mut prompt = follow_access
-            .header_note
-            .unwrap_or_else(|| markdown_string!(""));
-        prompt = prompt
+        let follow_header = make_follow_status_message(&storage);
+        let prompt = follow_header
             + markdown_format!(
                 "📊 *Report for period*\n\n\
                  Current period: *{}*\n\n\
@@ -118,7 +103,7 @@ impl CommandTrait for CommandReport {
             );
 
         // Show menu with available periods
-        let expense_storage = storage.clone().as_expense_storage();
+        let expense_storage = storage.expenses_readonly();
         crate::menus::select_period::select_period(
             target,
             &expense_storage,
@@ -154,26 +139,11 @@ impl CommandTrait for CommandReport {
         period: &ExpensePeriod,
         reference_period: &ExpensePeriod,
     ) -> ResponseResult<()> {
-        // Validate follow access and get effective chat ID
-        let follow_access = match validate_and_get_follow_access(target, &storage).await {
-            Ok(access) => access,
-            Err(warning_msg) => {
-                target.send_markdown_message(warning_msg).await?;
-                // Continue with current chat
-                crate::commands::follow_helper::FollowAccess {
-                    effective_chat_id: target.chat.id,
-                    header_note: None,
-                }
-            }
-        };
-
-        let chat_id = follow_access.effective_chat_id;
-
         // Get expenses for both periods
-        let expense_storage = storage.clone().as_expense_storage();
-        let current_expenses = expense_storage.get_expenses(chat_id, *period).await;
+        let expense_storage = storage.expenses_readonly();
+        let current_expenses = expense_storage.get_expenses(*period).await;
         let reference_expenses = expense_storage
-            .get_expenses(chat_id, *reference_period)
+            .get_expenses(*reference_period)
             .await;
 
         // Determine if we should show comparison (only if periods differ)
@@ -184,16 +154,14 @@ impl CommandTrait for CommandReport {
         };
 
         let chat_categories = storage
-            .clone()
-            .as_category_storage()
-            .get_chat_categories(chat_id)
+            .categories_readonly()
+            .get_categories()
             .await
             .unwrap_or_default();
 
         let all_expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_all_expenses(chat_id)
+            .expenses_readonly()
+            .get_all_expenses()
             .await
             .into_iter()
             .map(|(_, expense)| expense)
@@ -213,16 +181,13 @@ impl CommandTrait for CommandReport {
             period,
         );
 
-        // Prepend follow header if present
-        let mut summary_message = follow_access
-            .header_note
-            .unwrap_or_else(|| markdown_string!(""));
-        summary_message = summary_message
+        let follow_header = make_follow_status_message(&storage);
+        let summary_message = follow_header
             + category_summary
             + markdown_string!("\n_Select a period to comparison or view report by categories_");
 
         // Get available periods for buttons
-        let periods = expense_storage.list_periods(chat_id).await;
+        let periods = expense_storage.list_periods().await;
 
         // Create period buttons (4 per row)
         // When clicked, selected period becomes reference
@@ -294,32 +259,15 @@ impl CommandTrait for CommandReport {
         reference_period: &ExpensePeriod,
         category: &Category,
     ) -> ResponseResult<()> {
-        // Validate follow access and get effective chat ID
-        let follow_access = match validate_and_get_follow_access(target, &storage).await {
-            Ok(access) => access,
-            Err(warning_msg) => {
-                target.send_markdown_message(warning_msg).await?;
-                // Continue with current chat
-                crate::commands::follow_helper::FollowAccess {
-                    effective_chat_id: target.chat.id,
-                    header_note: None,
-                }
-            }
-        };
-
-        let chat_id = follow_access.effective_chat_id;
-
         // If category is None, show summary with category buttons
         if category.is_none() {
             let chat_expenses = storage
-                .clone()
-                .as_expense_storage()
-                .get_expenses(chat_id, *period)
+                .expenses_readonly()
+                .get_expenses(*period)
                 .await;
             let reference_expenses = storage
-                .clone()
-                .as_expense_storage()
-                .get_expenses(chat_id, *reference_period)
+                .expenses_readonly()
+                .get_expenses(*reference_period)
                 .await;
 
             // Determine if we should show comparison (only if periods differ)
@@ -330,16 +278,14 @@ impl CommandTrait for CommandReport {
             };
 
             let chat_categories = storage
-                .clone()
-                .as_category_storage()
-                .get_chat_categories(chat_id)
+                .categories_readonly()
+                .get_categories()
                 .await
                 .unwrap_or_default();
 
             let all_expenses = storage
-                .clone()
-                .as_expense_storage()
-                .get_all_expenses(chat_id)
+                .expenses_readonly()
+                .get_all_expenses()
                 .await
                 .into_iter()
                 .map(|(_, expense)| expense)
@@ -361,11 +307,8 @@ impl CommandTrait for CommandReport {
                 period,
             );
 
-            // Prepend follow header if present
-            let mut message = follow_access
-                .header_note
-                .unwrap_or_else(|| markdown_string!(""));
-            message = message + category_summary;
+            let follow_header = make_follow_status_message(&storage);
+            let message = follow_header + category_summary;
 
             // Create category buttons (4 per row)
             let mut buttons: Vec<Vec<yoroolbot::storage::ButtonData>> = Vec::new();
@@ -448,30 +391,13 @@ impl CommandTrait for CommandReport {
     ) -> ResponseResult<()> {
         const RECORDS_PER_PAGE: usize = 25;
 
-        // Validate follow access and get effective chat ID
-        let follow_access = match validate_and_get_follow_access(target, &storage).await {
-            Ok(access) => access,
-            Err(warning_msg) => {
-                target.send_markdown_message(warning_msg).await?;
-                // Continue with current chat
-                crate::commands::follow_helper::FollowAccess {
-                    effective_chat_id: target.chat.id,
-                    header_note: None,
-                }
-            }
-        };
-
-        let chat_id = follow_access.effective_chat_id;
-
         let chat_expenses = storage
-            .clone()
-            .as_expense_storage()
-            .get_expenses(chat_id, *period)
+            .expenses_readonly()
+            .get_expenses(*period)
             .await;
         let chat_categories = storage
-            .clone()
-            .as_category_storage()
-            .get_chat_categories(chat_id)
+            .categories_readonly()
+            .get_categories()
             .await
             .unwrap_or_default();
 
@@ -519,11 +445,8 @@ impl CommandTrait for CommandReport {
             )
         };
 
-        // Prepend follow header if present
-        let mut message = follow_access
-            .header_note
-            .unwrap_or_else(|| markdown_string!(""));
-        message = message + category_report;
+        let follow_header = make_follow_status_message(&storage);
+        let mut message = follow_header + category_report;
 
         // Create navigation buttons
         let mut nav_buttons = Vec::new();

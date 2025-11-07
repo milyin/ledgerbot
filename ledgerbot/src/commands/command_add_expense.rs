@@ -2,15 +2,16 @@ use std::sync::Arc;
 
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
     markdown_format,
 };
 
-use crate::storages::{Expense, StorageTrait, get_current_period};
+use crate::storages::{Expense, Storage, get_current_period};
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandAddExpense {
     pub date: Option<NaiveDate>,
     pub description: Option<String>,
@@ -28,7 +29,7 @@ impl CommandTrait for CommandAddExpense {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn StorageTrait>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "add_expense";
     const PLACEHOLDERS: &[&'static str] = &["<date>", "<description>", "<amount>"];
@@ -152,13 +153,12 @@ impl CommandTrait for CommandAddExpense {
         let expense = Expense::new(*date, description.clone(), *amount);
 
         // Get the current period for this chat
-        let period = get_current_period(&storage, target.chat.id).await;
+        let period = get_current_period(&storage).await;
 
         // Store the expense in the selected period
         storage
-            .clone()
-            .as_expense_storage()
-            .add_expenses(target.chat.id, period, vec![expense])
+            .expenses()
+            .add_expenses(period, vec![expense])
             .await;
 
         if !target.batch {

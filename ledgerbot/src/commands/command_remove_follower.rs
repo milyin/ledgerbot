@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
@@ -7,18 +8,18 @@ use yoroolbot::{
 };
 
 use crate::{
-    menus::{select_share::select_share, update_share::update_share},
-    storages::{ShareStorageTrait, ShareUsername},
+    menus::{select_follower::select_follower, update_follower::update_follower},
+    storages::{FollowersStorageTrait, TelegramUsername},
 };
 
-#[derive(Default, Debug, Clone, PartialEq)]
-pub struct CommandRemoveShare {
-    pub username: Option<ShareUsername>,
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommandRemoveFollower {
+    pub username: Option<TelegramUsername>,
     pub confirm: Option<bool>,
 }
 
-impl CommandTrait for CommandRemoveShare {
-    type A = ShareUsername;
+impl CommandTrait for CommandRemoveFollower {
+    type A = TelegramUsername;
     type B = bool;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -28,9 +29,9 @@ impl CommandTrait for CommandRemoveShare {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn ShareStorageTrait>;
+    type Context = Arc<dyn FollowersStorageTrait>;
 
-    const NAME: &'static str = "remove_share";
+    const NAME: &'static str = "remove_follower";
     const PLACEHOLDERS: &[&'static str] = &["<username>", "<confirm>"];
 
     fn param1(&self) -> Option<&Self::A> {
@@ -52,7 +53,7 @@ impl CommandTrait for CommandRemoveShare {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandRemoveShare { username, confirm }
+        CommandRemoveFollower { username, confirm }
     }
 
     async fn run0(
@@ -60,11 +61,11 @@ impl CommandTrait for CommandRemoveShare {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        select_share(
+        select_follower(
             target,
             &storage,
             markdown_string!("✏️ Select username to remove"),
-            |username| CommandRemoveShare {
+            |username| CommandRemoveFollower {
                 username: Some(username.clone()),
                 confirm: None,
             },
@@ -77,19 +78,19 @@ impl CommandTrait for CommandRemoveShare {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        username: &ShareUsername,
+        username: &TelegramUsername,
     ) -> ResponseResult<()> {
-        update_share(
+        update_follower(
             target,
             &storage,
             username,
             markdown_format!("🗑️ Confirm Username `{}` Removal", username.as_str()),
             "🗑️ Remove",
-            CommandRemoveShare {
+            CommandRemoveFollower {
                 username: Some(username.clone()),
                 confirm: Some(true),
             },
-            Some(CommandRemoveShare {
+            Some(CommandRemoveFollower {
                 username: None,
                 confirm: None,
             }),
@@ -101,7 +102,7 @@ impl CommandTrait for CommandRemoveShare {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        username: &ShareUsername,
+        username: &TelegramUsername,
         confirm: &bool,
     ) -> ResponseResult<()> {
         if !*confirm {
@@ -114,12 +115,12 @@ impl CommandTrait for CommandRemoveShare {
             return Ok(());
         }
 
-        if let Err(e) = storage.remove_share(target.chat.id, username).await {
+        if let Err(e) = storage.remove_follower(username).await {
             target.send_markdown_message(e).await?;
         }
         target
             .send_markdown_message(markdown_format!(
-                "✅ Username `{}` removed from share list\\.",
+                "✅ Username `{}` removed from followers list\\.",
                 username.as_str()
             ))
             .await?;

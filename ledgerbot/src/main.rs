@@ -11,12 +11,11 @@ use std::{path::PathBuf, sync::Arc};
 use clap::Parser;
 use config::Args;
 use handlers::{handle_callback_query, handle_text_message};
-use storages::StorageTrait;
 use teloxide::prelude::*;
 use yoroolbot::storage::FilesystemYamlStore;
 
 use crate::storages::{
-    CategoryData, CategoryStorage, ExpenseData, ExpenseStorage, ShareData, Storage,
+    CategoryData, ExpenseData, FollowersData, Stores,
 };
 
 #[tokio::main]
@@ -38,24 +37,24 @@ async fn main() {
         // Create subdirectories for different data types
         let categories_dir = base_dir.join("categories");
         let expenses_dir = base_dir.join("expenses");
-        let share_dir = base_dir.join("shares");
+        let followers_dir = base_dir.join("followers");
 
         let category_store = FilesystemYamlStore::<CategoryData>::new(categories_dir);
         let expense_store = FilesystemYamlStore::<ExpenseData>::new(expenses_dir);
-        let share_store = FilesystemYamlStore::<ShareData>::new(share_dir);
+        let followers_store = FilesystemYamlStore::<FollowersData>::new(followers_dir);
 
-        Storage::new()
-            .categories_storage(CategoryStorage::new(category_store))
-            .expenses_storage(ExpenseStorage::new(expense_store))
-            .shares_storage(storages::ShareStorage::new(share_store))
+        Stores::new()
+            .categories_store(category_store)
+            .expenses_store(expense_store)
+            .followers_store(followers_store)
     } else {
         // Use in-memory storage
         log::info!("Using in-memory storage");
-        Storage::new()
+        Stores::new()
     };
 
-    // Wrap storage in Arc<dyn StorageTrait> for use throughout the bot
-    let storage_trait: Arc<dyn StorageTrait> = Arc::new(storage);
+    // Wrap storage in Arc for use throughout the bot
+    let storage: Arc<Stores> = Arc::new(storage);
 
     // Create handler using modern teloxide patterns
     let handler = dptree::entry()
@@ -71,7 +70,7 @@ async fn main() {
         .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![storage_trait])
+        .dependencies(dptree::deps![storage])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
