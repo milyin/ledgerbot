@@ -15,7 +15,7 @@ use teloxide::prelude::*;
 use yoroolbot::storage::FilesystemYamlStore;
 
 use crate::storages::{
-    CategoryData, ExpenseData, ShareData, Stores,
+    CategoryData, ExpenseData, FollowersData, Stores,
 };
 
 #[tokio::main]
@@ -37,16 +37,16 @@ async fn main() {
         // Create subdirectories for different data types
         let categories_dir = base_dir.join("categories");
         let expenses_dir = base_dir.join("expenses");
-        let share_dir = base_dir.join("shares");
+        let followers_dir = base_dir.join("followers");
 
         let category_store = FilesystemYamlStore::<CategoryData>::new(categories_dir);
         let expense_store = FilesystemYamlStore::<ExpenseData>::new(expenses_dir);
-        let share_store = FilesystemYamlStore::<ShareData>::new(share_dir);
+        let followers_store = FilesystemYamlStore::<FollowersData>::new(followers_dir);
 
         Stores::new()
             .categories_store(category_store)
             .expenses_store(expense_store)
-            .shares_store(share_store)
+            .followers_store(followers_store)
     } else {
         // Use in-memory storage
         log::info!("Using in-memory storage");

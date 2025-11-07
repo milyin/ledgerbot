@@ -1,7 +1,7 @@
 pub mod command_add_category;
 pub mod command_add_expense;
 pub mod command_add_filter;
-pub mod command_add_share;
+pub mod command_add_follower;
 pub mod command_add_words_filter;
 pub mod command_categories;
 pub mod command_clear_categories;
@@ -11,10 +11,10 @@ pub mod command_edit_words_filter;
 pub mod command_follow;
 pub mod command_help;
 pub mod command_list;
-pub mod command_list_shares;
+pub mod command_list_followers;
 pub mod command_remove_category;
 pub mod command_remove_filter;
-pub mod command_remove_share;
+pub mod command_remove_follower;
 pub mod command_rename_category;
 pub mod command_report;
 pub mod command_select_period;
@@ -37,14 +37,14 @@ use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 use crate::{
     commands::{
         command_add_category::CommandAddCategory, command_add_expense::CommandAddExpense,
-        command_add_filter::CommandAddFilter, command_add_share::CommandAddShare,
+        command_add_filter::CommandAddFilter, command_add_follower::CommandAddFollower,
         command_add_words_filter::CommandAddWordsFilter, command_categories::CommandCategories,
         command_clear_categories::CommandClearCategories,
         command_clear_expenses::CommandClearExpenses, command_edit_filter::CommandEditFilter,
         command_edit_words_filter::CommandEditWordsFilter, command_follow::CommandFollow,
         command_help::CommandHelp, command_list::CommandList,
-        command_list_shares::CommandListShares, command_remove_category::CommandRemoveCategory,
-        command_remove_filter::CommandRemoveFilter, command_remove_share::CommandRemoveShare,
+        command_list_followers::CommandListFollowers, command_remove_category::CommandRemoveCategory,
+        command_remove_filter::CommandRemoveFilter, command_remove_follower::CommandRemoveFollower,
         command_rename_category::CommandRenameCategory, command_report::CommandReport,
         command_select_period::CommandSelectPeriod, command_start::CommandStart,
         command_unfollow::CommandUnfollow, follow_helper::validate_and_get_follow_access,
@@ -157,23 +157,23 @@ pub enum Command {
     )]
     SelectPeriod(CommandSelectPeriod),
     #[command(
-        description = "add username to share list",
-        rename = "add_share",
-        parse_with = CommandAddShare::parse_arguments
+        description = "add username to followers list",
+        rename = "add_follower",
+        parse_with = CommandAddFollower::parse_arguments
     )]
-    AddShare(CommandAddShare),
+    AddFollower(CommandAddFollower),
     #[command(
-        description = "list all usernames in share list",
-        rename = "list_shares",
-        parse_with = CommandListShares::parse_arguments
+        description = "list all usernames in followers list",
+        rename = "list_followers",
+        parse_with = CommandListFollowers::parse_arguments
     )]
-    ListShares(CommandListShares),
+    ListFollowers(CommandListFollowers),
     #[command(
-        description = "remove username from share list",
-        rename = "remove_share",
-        parse_with = CommandRemoveShare::parse_arguments
+        description = "remove username from followers list",
+        rename = "remove_follower",
+        parse_with = CommandRemoveFollower::parse_arguments
     )]
-    RemoveShare(CommandRemoveShare),
+    RemoveFollower(CommandRemoveFollower),
     #[command(
         description = "follow expenses from another chat",
         parse_with = CommandFollow::parse_arguments
@@ -213,9 +213,9 @@ impl From<Command> for String {
                 edit_words_filter.to_command_string(true)
             }
             Command::SelectPeriod(select_period) => select_period.to_command_string(true),
-            Command::AddShare(add_share) => add_share.to_command_string(true),
-            Command::ListShares(list_shares) => list_shares.to_command_string(true),
-            Command::RemoveShare(remove_share) => remove_share.to_command_string(true),
+            Command::AddFollower(add_follower) => add_follower.to_command_string(true),
+            Command::ListFollowers(list_followers) => list_followers.to_command_string(true),
+            Command::RemoveFollower(remove_follower) => remove_follower.to_command_string(true),
             Command::Follow(follow) => follow.to_command_string(true),
             Command::Unfollow(unfollow) => unfollow.to_command_string(true),
         }
@@ -320,19 +320,19 @@ pub async fn execute_command(
         Command::SelectPeriod(select_period) => {
             select_period.run(&target, storage).await?;
         }
-        Command::AddShare(add_share) => {
-            add_share
-                .run(&target, stores.storage(chat.id).shares())
+        Command::AddFollower(add_follower) => {
+            add_follower
+                .run(&target, stores.storage(chat.id).followers())
                 .await?;
         }
-        Command::ListShares(list_shares) => {
-            list_shares
-                .run(&target, stores.storage(chat.id).shares())
+        Command::ListFollowers(list_followers) => {
+            list_followers
+                .run(&target, stores.storage(chat.id).followers())
                 .await?;
         }
-        Command::RemoveShare(remove_share) => {
-            remove_share
-                .run(&target, stores.storage(chat.id).shares())
+        Command::RemoveFollower(remove_follower) => {
+            remove_follower
+                .run(&target, stores.storage(chat.id).followers())
                 .await?;
         }
         Command::Follow(follow) => {

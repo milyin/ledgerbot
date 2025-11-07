@@ -11,25 +11,25 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::{ShareStorageTrait, ShareUsername};
+use crate::storages::{FollowersStorageTrait, TelegramUsername};
 
-pub async fn update_share<NEXT: CommandTrait, BACK: CommandTrait>(
+pub async fn update_follower<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
-    storage: &Arc<dyn ShareStorageTrait>,
-    username: &ShareUsername,
+    storage: &Arc<dyn FollowersStorageTrait>,
+    username: &TelegramUsername,
     prompt: MarkdownString,
     button_text: &str,
     update_command: NEXT,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
-    let shares = storage
-        .get_shares()
+    let followers = storage
+        .get_followers()
         .await
         .unwrap_or_default();
-    if !shares.contains(username) {
+    if !followers.contains(username) {
         let msg = target
             .markdown_message(markdown_format!(
-                "❌ Username `{}` is not in the share list",
+                "❌ Username `{}` is not in the follower list",
                 username.as_str()
             ))
             .await?;

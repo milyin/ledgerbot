@@ -12,35 +12,35 @@ use yoroolbot::{
 };
 
 use crate::{
-    commands::command_add_share::CommandAddShare,
+    commands::command_add_follower::CommandAddFollower,
     menus::common::create_buttons_menu,
-    storages::{ShareStorageTrait, ShareUsername},
+    storages::{FollowersStorageTrait, TelegramUsername},
 };
 
-pub async fn select_share<NEXT: CommandTrait, BACK: CommandTrait>(
+pub async fn select_follower<NEXT: CommandTrait, BACK: CommandTrait>(
     target: &CommandReplyTarget,
-    storage: &Arc<dyn ShareStorageTrait>,
+    storage: &Arc<dyn FollowersStorageTrait>,
     prompt: MarkdownString,
-    next_command: impl Fn(&ShareUsername) -> NEXT,
+    next_command: impl Fn(&TelegramUsername) -> NEXT,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
-    let shares = storage
-        .get_shares()
+    let followers = storage
+        .get_followers()
         .await
         .unwrap_or_default();
-    if shares.is_empty() {
+    if followers.is_empty() {
         target
             .send_markdown_message(markdown_format!(
-                "👥 No usernames in share list yet\\. Use {} to add one\\.",
-                CommandAddShare::default().to_command_string(true)
+                "👥 No usernames in follower list yet\\. Use {} to add one\\.",
+                CommandAddFollower::default().to_command_string(true)
             ))
             .await?;
         return Ok(());
     }
 
     let msg = target.markdown_message(prompt).await?;
-    let menu = create_shares_menu(
-        &shares,
+    let menu = create_followers_menu(
+        &followers,
         |username| next_command(username).to_command_string(false),
         back_command,
         false,
@@ -53,16 +53,16 @@ pub async fn select_share<NEXT: CommandTrait, BACK: CommandTrait>(
     Ok(())
 }
 
-pub fn create_shares_menu(
-    shares: &[ShareUsername],
-    operation: impl Fn(&ShareUsername) -> String,
+pub fn create_followers_menu(
+    users: &[TelegramUsername],
+    operation: impl Fn(&TelegramUsername) -> String,
     back_command: Option<impl CommandTrait>,
     inline: bool,
 ) -> InlineKeyboardMarkup {
-    let texts = shares
+    let texts = users
         .iter()
         .map(|username| format!("👤 {}", username.as_str()))
         .collect::<Vec<_>>();
-    let values = shares.iter().map(operation).collect::<Vec<_>>();
+    let values = users.iter().map(operation).collect::<Vec<_>>();
     create_buttons_menu(&texts, &values, back_command, inline)
 }

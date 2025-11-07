@@ -13,24 +13,24 @@ use yoroolbot::{
 
 use crate::{
     commands::command_follow::CommandFollow,
-    storages::{ShareStorageTrait, ShareUsername},
+    storages::{FollowersStorageTrait, TelegramUsername},
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CommandAddShare {
-    pub username: Option<ShareUsername>,
+pub struct CommandAddFollower {
+    pub username: Option<TelegramUsername>,
 }
 
-impl CommandAddShare {
+impl CommandAddFollower {
     pub fn new(username: impl Into<String>) -> Self {
-        CommandAddShare {
-            username: ShareUsername::from_string(&username.into()).ok(),
+        CommandAddFollower {
+            username: TelegramUsername::from_string(&username.into()).ok(),
         }
     }
 }
 
-impl CommandTrait for CommandAddShare {
-    type A = ShareUsername;
+impl CommandTrait for CommandAddFollower {
+    type A = TelegramUsername;
     type B = EmptyArg;
     type C = EmptyArg;
     type D = EmptyArg;
@@ -40,9 +40,9 @@ impl CommandTrait for CommandAddShare {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<dyn ShareStorageTrait>;
+    type Context = Arc<dyn FollowersStorageTrait>;
 
-    const NAME: &'static str = "add_share";
+    const NAME: &'static str = "add_follower";
     const PLACEHOLDERS: &[&'static str] = &["<username>"];
 
     fn from_arguments(
@@ -56,7 +56,7 @@ impl CommandTrait for CommandAddShare {
         _: Option<Self::H>,
         _: Option<Self::I>,
     ) -> Self {
-        CommandAddShare { username: a }
+        CommandAddFollower { username: a }
     }
 
     fn param1(&self) -> Option<&Self::A> {
@@ -69,9 +69,9 @@ impl CommandTrait for CommandAddShare {
         _storage: Self::Context,
     ) -> teloxide::prelude::ResponseResult<()> {
         target
-            .send_markdown_message(markdown_string!("➕ Add Share"))
+            .send_markdown_message(markdown_string!("➕ Add Follower"))
             .await?;
-        add_share_menu(target).await?;
+        add_follower_menu(target).await?;
         Ok(())
     }
 
@@ -79,13 +79,13 @@ impl CommandTrait for CommandAddShare {
         &self,
         target: &CommandReplyTarget,
         storage: Self::Context,
-        username: &ShareUsername,
+        username: &TelegramUsername,
     ) -> teloxide::prelude::ResponseResult<()> {
-        match storage.add_share(username).await {
+        match storage.add_follower(username).await {
             Ok(()) => {
                 target
                     .send_markdown_message(markdown_format!(
-                        "✅ Username `{}` added to share list\\.\n\nUser `{}` can now follow this chat using `{}`",
+                        "✅ Username `{}` added to followers list\\.\n\nUser `{}` can now follow this chat using `{}`",
                         username.as_str(),
                         username.as_str(),
                         CommandFollow {
@@ -104,14 +104,14 @@ impl CommandTrait for CommandAddShare {
 }
 
 /// Show add share menu
-pub async fn add_share_menu(target: &CommandReplyTarget) -> ResponseResult<()> {
+pub async fn add_follower_menu(target: &CommandReplyTarget) -> ResponseResult<()> {
     let text = markdown_string!(
-        "➕ **Add a username to share list:**\n\nClick the button below and type the username \\(e\\.g\\., @username\\)\\."
+        "➕ **Add a username to followers list:**\n\nClick the button below and type the username \\(e\\.g\\., @username\\)\\."
     );
     let keyboard = InlineKeyboardMarkup::new(vec![vec![
         InlineKeyboardButton::switch_inline_query_current_chat(
-            "➕ Add Share",
-            CommandAddShare::default().to_command_string(false),
+            "➕ Add Follower",
+            CommandAddFollower::default().to_command_string(false),
         ),
     ]]);
 

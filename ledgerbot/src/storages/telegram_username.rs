@@ -3,17 +3,17 @@ use std::{error::Error, fmt, str::FromStr};
 use serde::{Deserialize, Serialize};
 use yoroolbot::{markdown::MarkdownString, markdown_format};
 
-/// Error type for ShareUsername parsing
+/// Error type for TelegramUsername parsing
 #[derive(Debug, Clone)]
-pub struct ParseShareUsernameError(MarkdownString);
+pub struct ParseTelegramUsernameError(MarkdownString);
 
-impl fmt::Display for ParseShareUsernameError {
+impl fmt::Display for ParseTelegramUsernameError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.to_string())
+        write!(f, "{}", self.0)
     }
 }
 
-impl Error for ParseShareUsernameError {}
+impl Error for ParseTelegramUsernameError {}
 
 /// Represents a validated Telegram username for sharing
 /// Usernames must:
@@ -21,16 +21,16 @@ impl Error for ParseShareUsernameError {}
 /// - Be 5-32 characters long (after the '@')
 /// - Contain only letters (A-Z, case-insensitive), digits (0-9), and underscores
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct ShareUsername(String);
+pub struct TelegramUsername(String);
 
-impl Default for ShareUsername {
+impl Default for TelegramUsername {
     fn default() -> Self {
         // Return a valid but placeholder username
-        ShareUsername("@_____".to_string())
+        TelegramUsername("@_____".to_string())
     }
 }
 
-impl ShareUsername {
+impl TelegramUsername {
     /// Parse and validate a Telegram username
     /// Username must start with '@' and follow Telegram's username rules
     pub fn from_string(s: &str) -> Result<Self, MarkdownString> {
@@ -71,7 +71,7 @@ impl ShareUsername {
             }
         }
 
-        Ok(ShareUsername(s.to_string()))
+        Ok(TelegramUsername(s.to_string()))
     }
 
     /// Get the username as a string slice (includes the '@' prefix)
@@ -80,17 +80,17 @@ impl ShareUsername {
     }
 }
 
-impl fmt::Display for ShareUsername {
+impl fmt::Display for TelegramUsername {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl FromStr for ShareUsername {
-    type Err = ParseShareUsernameError;
+impl FromStr for TelegramUsername {
+    type Err = ParseTelegramUsernameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::from_string(s).map_err(ParseShareUsernameError)
+        Self::from_string(s).map_err(ParseTelegramUsernameError)
     }
 }
 
@@ -100,16 +100,16 @@ mod tests {
 
     #[test]
     fn test_valid_username() {
-        let username = ShareUsername::from_string("@user123").unwrap();
+        let username = TelegramUsername::from_string("@user123").unwrap();
         assert_eq!(username.as_str(), "@user123");
 
-        let username2 = ShareUsername::from_string("@Alice_Bot").unwrap();
+        let username2 = TelegramUsername::from_string("@Alice_Bot").unwrap();
         assert_eq!(username2.as_str(), "@Alice_Bot");
     }
 
     #[test]
     fn test_missing_at_sign() {
-        let result = ShareUsername::from_string("user123");
+        let result = TelegramUsername::from_string("user123");
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.to_string().contains("must start"));
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_too_short() {
-        let result = ShareUsername::from_string("@abc");
+        let result = TelegramUsername::from_string("@abc");
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.to_string().contains("too short"));
@@ -125,7 +125,7 @@ mod tests {
 
     #[test]
     fn test_too_long() {
-        let result = ShareUsername::from_string("@abcdefghijklmnopqrstuvwxyz1234567");
+        let result = TelegramUsername::from_string("@abcdefghijklmnopqrstuvwxyz1234567");
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert!(err.to_string().contains("too long"));
@@ -133,43 +133,43 @@ mod tests {
 
     #[test]
     fn test_invalid_characters() {
-        assert!(ShareUsername::from_string("@user-name").is_err());
-        assert!(ShareUsername::from_string("@user.name").is_err());
-        assert!(ShareUsername::from_string("@user@name").is_err());
-        assert!(ShareUsername::from_string("@user name").is_err());
+        assert!(TelegramUsername::from_string("@user-name").is_err());
+        assert!(TelegramUsername::from_string("@user.name").is_err());
+        assert!(TelegramUsername::from_string("@user@name").is_err());
+        assert!(TelegramUsername::from_string("@user name").is_err());
     }
 
     #[test]
     fn test_valid_edge_cases() {
         // Exactly 5 characters after '@'
-        assert!(ShareUsername::from_string("@abcde").is_ok());
+        assert!(TelegramUsername::from_string("@abcde").is_ok());
 
         // Exactly 32 characters after '@'
-        assert!(ShareUsername::from_string("@abcdefghijklmnopqrstuvwxyz123456").is_ok());
+        assert!(TelegramUsername::from_string("@abcdefghijklmnopqrstuvwxyz123456").is_ok());
 
         // Mix of letters, digits, underscores
-        assert!(ShareUsername::from_string("@Test_User_123").is_ok());
+        assert!(TelegramUsername::from_string("@Test_User_123").is_ok());
     }
 
     #[test]
     fn test_fromstr_trait() {
-        let username: ShareUsername = "@user123".parse().unwrap();
+        let username: TelegramUsername = "@user123".parse().unwrap();
         assert_eq!(username.as_str(), "@user123");
 
-        let result: Result<ShareUsername, _> = "invalid".parse();
+        let result: Result<TelegramUsername, _> = "invalid".parse();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_display() {
-        let username = ShareUsername::from_string("@user123").unwrap();
+        let username = TelegramUsername::from_string("@user123").unwrap();
         assert_eq!(format!("{}", username), "@user123");
     }
 
     #[test]
     fn test_ordering() {
-        let user1 = ShareUsername::from_string("@alice").unwrap();
-        let user2 = ShareUsername::from_string("@bobby").unwrap();
+        let user1 = TelegramUsername::from_string("@alice").unwrap();
+        let user2 = TelegramUsername::from_string("@bobby").unwrap();
         assert!(user1 < user2);
     }
 }

@@ -3,8 +3,8 @@ mod category;
 mod category_storage;
 mod expense_period;
 mod expense_storage;
-mod share_storage;
-mod share_username;
+mod followers_storage;
+mod telegram_username;
 mod storage;
 mod variable_storage;
 
@@ -16,7 +16,7 @@ pub use expense_period::ExpensePeriod;
 pub use expense_storage::{
     Expense, ExpenseData, ExpenseStorage, ExpenseStorageTrait, get_current_period, ExpenseStorageReadTrait,
 };
-pub use share_storage::{ShareData, ShareStorage, ShareStorageTrait};
-pub use share_username::ShareUsername;
+pub use followers_storage::{FollowersData, FollowersStorage, FollowersStorageTrait};
+pub use telegram_username::TelegramUsername;
 pub use storage::Stores;
 pub use variable_storage::{VariableStorage, VariableData};

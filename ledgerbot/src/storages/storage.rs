@@ -4,7 +4,7 @@ use teloxide::types::ChatId;
 use yoroolbot::storage::{CallbackData, CallbackDataStorage, CallbackDataStorageTrait, DataStoreTrait, InMemStore};
 
 use crate::storages::{
-    BatchData, BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, ShareData, ShareStorage, ShareStorageTrait, VariableData, VariableStorage, category_storage::CategoryStorageReadTrait, expense_storage::ExpenseStorageReadTrait, share_storage::ShareStorageReadTrait
+    BatchData, BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, FollowersData, FollowersStorage, FollowersStorageTrait, VariableData, VariableStorage, category_storage::CategoryStorageReadTrait, expense_storage::ExpenseStorageReadTrait, followers_storage::FollowersStorageReadTrait
 };
 
 /// Main storage structure that holds all bot data
@@ -13,7 +13,7 @@ use crate::storages::{
 pub struct Stores {
     expenses_data_store: Arc<dyn DataStoreTrait<ExpenseData>>,
     categories_data_store: Arc<dyn DataStoreTrait<CategoryData>>,
-    shares_data_store: Arc<dyn DataStoreTrait<ShareData>>,
+    followers_data_store: Arc<dyn DataStoreTrait<FollowersData>>,
     batch_data_store: Arc<dyn DataStoreTrait<BatchData>>,
     callback_data_store: Arc<dyn DataStoreTrait<CallbackData>>,
     variables_data: VariableData,
@@ -24,14 +24,14 @@ impl Stores {
     pub fn new() -> Self {
         let expenses_data_store = Arc::new(InMemStore::<ExpenseData>::new());
         let categories_data_store = Arc::new(InMemStore::<CategoryData>::new());
-        let shares_data_store = Arc::new(InMemStore::<ShareData>::new());
+        let followers_data_store = Arc::new(InMemStore::<FollowersData>::new());
         let batch_data_store = Arc::new(InMemStore::<BatchData>::new());
         let callback_data_store = Arc::new(InMemStore::<CallbackData>::new());
         let variables_data = VariableData::default();
         Self {
             expenses_data_store,
             categories_data_store,
-            shares_data_store,
+            followers_data_store,
             batch_data_store,
             callback_data_store,
             variables_data,
@@ -67,10 +67,10 @@ impl Stores {
         self
     }
 
-    /// Builder-like method to configure share storage
-    /// Replaces the share storage with the provided implementation
-    pub fn shares_store(mut self, store: impl DataStoreTrait<ShareData> + 'static) -> Self {
-        self.shares_data_store = Arc::new(store);
+    /// Builder-like method to configure followers storage
+    /// Replaces the followers storage with the provided implementation
+    pub fn followers_store(mut self, store: impl DataStoreTrait<FollowersData> + 'static) -> Self {
+        self.followers_data_store = Arc::new(store);
         self
     }
 
@@ -134,18 +134,18 @@ impl Storage {
         ))
     }
 
-    /// Get share storage for this chat
-    pub fn shares(&self) -> Arc<dyn ShareStorageTrait> {
-        Arc::new(ShareStorage::new(
-            self.stores.shares_data_store.clone(),
+    /// Get followers storage for this chat
+    pub fn followers(&self) -> Arc<dyn FollowersStorageTrait> {
+        Arc::new(FollowersStorage::new(
+            self.stores.followers_data_store.clone(),
             self.chat_id,
         ))
     }
 
-    /// Get readonly share storage for this chat
-    pub fn shares_readonly(&self) -> Arc<dyn ShareStorageReadTrait> {
-        Arc::new(ShareStorage::new(
-            self.stores.shares_data_store.clone(),
+    /// Get readonly followers storage for this chat
+    pub fn followers_readonly(&self) -> Arc<dyn FollowersStorageReadTrait> {
+        Arc::new(FollowersStorage::new(
+            self.stores.followers_data_store.clone(),
             self.chat_id,
         ))
     }
@@ -196,10 +196,10 @@ impl StorageReadonly {
         ))
     }
 
-    /// Get share storage for this chat
-    pub fn shares_readonly(&self) -> Arc<dyn ShareStorageReadTrait> {
-        Arc::new(ShareStorage::new(
-            self.stores.shares_data_store.clone(),
+    /// Get follower storage for this chat
+    pub fn followers_readonly(&self) -> Arc<dyn FollowersStorageReadTrait> {
+        Arc::new(FollowersStorage::new(
+            self.stores.followers_data_store.clone(),
             self.external_chat_id,
         ))
     }
