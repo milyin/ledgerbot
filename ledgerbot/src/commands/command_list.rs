@@ -3,15 +3,15 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand}, markdown_format, markdown_string, storage
+    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand}, markdown_string
 };
 
 use crate::{
-    commands::{
-        expenses::format_expenses_chronological, follow_helper::validate_and_get_follow_access,
-    },
+    commands::
+        expenses::format_expenses_chronological
+    ,
     menus::{common::show_follow_status_message, select_period::select_period},
-    storages::{ExpensePeriod, Storage, StorageReadonly, Stores},
+    storages::{ExpensePeriod, StorageReadonly},
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -66,7 +66,7 @@ impl CommandTrait for CommandList {
         );
 
         // Show menu with available periods
-        let expense_storage = storage.expenses();
+        let expense_storage = storage.expenses_readonly();
         select_period(
             target,
             &expense_storage,
@@ -94,7 +94,7 @@ impl CommandTrait for CommandList {
         show_follow_status_message(target, &storage).await?;
 
         let chat_expenses = storage
-            .expenses()
+            .expenses_readonly()
             .get_expenses(*period)
             .await;
 

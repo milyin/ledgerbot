@@ -7,8 +7,8 @@ use teloxide::{
 };
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait},
-    markdown::{MarkdownString, markdown_string},
-    markdown_format,
+    markdown::MarkdownString,
+    markdown_format, markdown_string,
 };
 
 use crate::storages::{Category, CategoryStorageTrait, StorageReadonly};
@@ -48,10 +48,7 @@ pub async fn read_category_filters_list(
     category: &Category,
     back_command: Option<impl CommandTrait>,
 ) -> ResponseResult<Vec<String>> {
-    let categories = storage
-        .get_categories()
-        .await
-        .unwrap_or_default();
+    let categories = storage.get_categories().await.unwrap_or_default();
     let Some(filters) = categories.get(category.as_str()) else {
         let msg = target
             .markdown_message(markdown_format!(
@@ -131,7 +128,7 @@ pub async fn read_category_filter_by_index(
 pub fn make_follow_status_message(storage: &Arc<StorageReadonly>) -> MarkdownString {
     if let Some(external_chat_id) = storage.external_chat_id() {
         markdown_format!(
-            "👁 *Note*: You are viewing expenses for chat ID `{}`.\n\n",
+            "👁 *Note*: You are viewing expenses for chat ID `{}`\\.\n\n",
             external_chat_id.0
         )
     } else {
@@ -145,10 +142,12 @@ pub async fn show_follow_status_message(
 ) -> ResponseResult<()> {
     // Show follow status as separate message if applicable
     if let Some(external_chat_id) = storage.external_chat_id() {
-        target.send_markdown_message(markdown_format!(
-            "👁 *Note*: You are viewing expenses for chat ID `{}`.",
-            external_chat_id.0
-        )).await?;
+        target
+            .send_markdown_message(markdown_format!(
+                "👁 *Note*: You are viewing expenses for chat ID `{}`\\.",
+                external_chat_id.0
+            ))
+            .await?;
     }
     Ok(())
 }
@@ -157,7 +156,7 @@ pub async fn show_follow_status_message(
 mod tests {
     use teloxide::types::ChatId;
     use yoroolbot::storage::{
-        CallbackDataStorage, CallbackDataStorageTrait, pack_callback_data, unpack_callback_data
+        CallbackDataStorage, CallbackDataStorageTrait, pack_callback_data, unpack_callback_data,
     };
 
     use super::*;

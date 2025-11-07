@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format, markdown_string, storage,
+    markdown_format, markdown_string,
 };
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
-    storages::{Category, Expense, Storage, Stores},
+    storages::{Category, Expense, Storage},
     utils::extract_words::extract_words,
 };
 

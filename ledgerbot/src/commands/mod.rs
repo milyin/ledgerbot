@@ -267,23 +267,23 @@ pub async fn execute_command(
             list.run(&target, storage_readonly).await?;
         }
         Command::Report(report) => {
-            report.run(&target, stores.clone()).await?;
+            report.run(&target, storage_readonly).await?;
         }
         Command::ClearExpenses(clear_expenses) => {
-            clear_expenses.run(&target, stores.clone()).await?;
+            clear_expenses.run(&target, storage).await?;
         }
         Command::ClearCategories(clear_categories) => {
             clear_categories
-                .run(&target, stores.storage(target.chat.id).categories())
+                .run(&target, storage.categories())
                 .await?;
         }
         Command::AddCategory(add_category) => {
             add_category
-                .run(&target, stores.storage(target.chat.id).categories())
+                .run(&target, storage.categories())
                 .await?;
         }
         Command::Categories(categories) => {
-            categories.run(&target, stores.clone()).await?;
+            categories.run(&target, storage_readonly).await?;
         }
         Command::AddFilter(add_filter) => {
             add_filter.run(&target, storage).await?;
@@ -295,17 +295,17 @@ pub async fn execute_command(
         }
         Command::RenameCategory(rename_category) => {
             rename_category
-                .run(&target, stores.storage(target.chat.id).categories())
+                .run(&target, storage.categories())
                 .await?;
         }
         Command::RemoveFilter(remove_filter) => {
             remove_filter
-                .run(&target, stores.storage(target.chat.id).categories())
+                .run(&target, storage.categories())
                 .await?;
         }
         Command::EditFilter(edit_filter) => {
             edit_filter
-                .run(&target, stores.storage(target.chat.id).categories())
+                .run(&target, storage.categories())
                 .await?;
         }
         Command::AddExpense(add_expense) => {
@@ -318,7 +318,7 @@ pub async fn execute_command(
             edit_words_filter.run(&target, stores.clone()).await?;
         }
         Command::SelectPeriod(select_period) => {
-            select_period.run(&target, stores.clone()).await?;
+            select_period.run(&target, storage).await?;
         }
         Command::AddShare(add_share) => {
             add_share

@@ -1,7 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
 use teloxide::types::ChatId;
-use yoroolbot::storage;
 
 use crate::{
     menus::select_word::Words,

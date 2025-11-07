@@ -44,7 +44,7 @@ pub async fn handle_text_message(
             // Add to batch storage for deferred execution
             let batch_storage = storage.storage(msg.chat.id).batch();
             let is_first_message =
-                add_to_batch(batch_storage.clone(), msg.chat.clone(), parsed_results).await;
+                add_to_batch(batch_storage.clone(), parsed_results).await;
 
             // Start timeout task only for the first message in batch
             if is_first_message {

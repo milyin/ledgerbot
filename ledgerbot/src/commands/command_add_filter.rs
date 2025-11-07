@@ -9,7 +9,7 @@ use yoroolbot::{
 
 use crate::{
     commands::command_add_words_filter::CommandAddWordsFilter,
-    storages::{Category, Storage, Stores},
+    storages::{Category, Storage},
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

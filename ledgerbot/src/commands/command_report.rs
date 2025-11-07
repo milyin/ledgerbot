@@ -6,7 +6,7 @@ use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
     markdown_format, markdown_string,
-    storage::{self, ButtonData},
+    storage::ButtonData,
 };
 
 use crate::{
@@ -103,7 +103,7 @@ impl CommandTrait for CommandReport {
             );
 
         // Show menu with available periods
-        let expense_storage = storage.expenses();
+        let expense_storage = storage.expenses_readonly();
         crate::menus::select_period::select_period(
             target,
             &expense_storage,
@@ -140,7 +140,7 @@ impl CommandTrait for CommandReport {
         reference_period: &ExpensePeriod,
     ) -> ResponseResult<()> {
         // Get expenses for both periods
-        let expense_storage = storage.expenses();
+        let expense_storage = storage.expenses_readonly();
         let current_expenses = expense_storage.get_expenses(*period).await;
         let reference_expenses = expense_storage
             .get_expenses(*reference_period)
@@ -154,13 +154,13 @@ impl CommandTrait for CommandReport {
         };
 
         let chat_categories = storage
-            .categories()
+            .categories_readonly()
             .get_categories()
             .await
             .unwrap_or_default();
 
         let all_expenses = storage
-            .expenses()
+            .expenses_readonly()
             .get_all_expenses()
             .await
             .into_iter()
@@ -262,11 +262,11 @@ impl CommandTrait for CommandReport {
         // If category is None, show summary with category buttons
         if category.is_none() {
             let chat_expenses = storage
-                .expenses()
+                .expenses_readonly()
                 .get_expenses(*period)
                 .await;
             let reference_expenses = storage
-                .expenses()
+                .expenses_readonly()
                 .get_expenses(*reference_period)
                 .await;
 
@@ -278,13 +278,13 @@ impl CommandTrait for CommandReport {
             };
 
             let chat_categories = storage
-                .categories()
+                .categories_readonly()
                 .get_categories()
                 .await
                 .unwrap_or_default();
 
             let all_expenses = storage
-                .expenses()
+                .expenses_readonly()
                 .get_all_expenses()
                 .await
                 .into_iter()
@@ -392,11 +392,11 @@ impl CommandTrait for CommandReport {
         const RECORDS_PER_PAGE: usize = 25;
 
         let chat_expenses = storage
-            .expenses()
+            .expenses_readonly()
             .get_expenses(*period)
             .await;
         let chat_categories = storage
-            .categories()
+            .categories_readonly()
             .get_categories()
             .await
             .unwrap_or_default();

@@ -16,7 +16,6 @@ use crate::{
 /// Add expense data to batch and return whether this is the first message in the batch
 pub async fn add_to_batch(
     batch_storage: Arc<dyn BatchStorageTrait>,
-    chat: Chat,
     commands: Vec<Result<Command, String>>,
 ) -> bool {
     batch_storage.add_to_batch(commands).await

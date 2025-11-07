@@ -9,16 +9,8 @@ use yoroolbot::{
 
 use crate::{
     commands::command_add_share::CommandAddShare,
-    storages::{Storage, StorageReadonly, Stores},
+    storages::{StorageReadonly, Stores},
 };
-
-/// Result of follow access validation
-pub struct FollowAccess {
-    /// The chat ID to use for accessing data (either current chat or followed chat)
-    pub effective_chat_id: ChatId,
-    /// Optional header message to display in reports when following another chat
-    pub header_note: Option<MarkdownString>,
-}
 
 /// Validates if the current user has access to follow the stored follow chat
 /// Returns the effective chat ID to use and an optional header note
@@ -60,7 +52,7 @@ pub async fn validate_and_get_follow_access(
 
     // Validate access by checking share list
     let external_storage = stores.storage_readonly(target.chat.id, followed_chat);
-    let share_storage = external_storage.shares();
+    let share_storage = external_storage.shares_readonly();
     let shares = match share_storage.get_shares().await {
         Ok(shares) => shares,
         Err(_) => {

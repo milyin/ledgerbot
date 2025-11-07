@@ -9,9 +9,8 @@ use yoroolbot::{
 
 use crate::{
     commands::{
-        command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter,
-        follow_helper::validate_and_get_follow_access,
-    }, menus::common::show_follow_status_message, storages::{Category, StorageReadonly, Stores}
+        command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter
+    }, menus::common::show_follow_status_message, storages::{Category, StorageReadonly}
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -55,7 +54,7 @@ impl CommandTrait for CommandCategories {
         show_follow_status_message(target, &storage).await?;
 
         let categories = storage
-            .categories()
+            .categories_readonly()
             .get_categories()
             .await
             .unwrap_or_default();

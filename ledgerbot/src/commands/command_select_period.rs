@@ -9,7 +9,7 @@ use yoroolbot::{
 
 use crate::{
     menus::select_period::select_period,
-    storages::{ExpensePeriod, Stores},
+    storages::{ExpensePeriod, Storage},
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,7 +28,7 @@ impl CommandTrait for CommandSelectPeriod {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Stores>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "select_period";
     const PLACEHOLDERS: &[&'static str] = &["YYYY-MM"];
@@ -56,9 +56,7 @@ impl CommandTrait for CommandSelectPeriod {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-        let storage_ = storage.storage(chat_id);
-        let var_storage = storage_.variables();
+        let var_storage = storage.variables();
         let current_period: Option<ExpensePeriod> = var_storage.get().await;
 
         let current_period_str = if let Some(period) = current_period {
@@ -79,8 +77,7 @@ impl CommandTrait for CommandSelectPeriod {
         );
 
         // Show menu with available periods
-        let storage_ = storage.storage(chat_id);
-        let expense_storage = storage_.expenses();
+        let expense_storage = storage.expenses_readonly();
         select_period(
             target,
             &expense_storage,
@@ -105,11 +102,8 @@ impl CommandTrait for CommandSelectPeriod {
         storage: Self::Context,
         period: &ExpensePeriod,
     ) -> ResponseResult<()> {
-        let chat_id = target.chat.id;
-
         // Store the selected period in VariableStorage
-        let storage_ = storage.storage(chat_id);
-        let var_storage = storage_.variables();
+        let var_storage = storage.variables();
         var_storage.set(*period).await;
 
         target

@@ -15,7 +15,7 @@ use teloxide::prelude::*;
 use yoroolbot::storage::FilesystemYamlStore;
 
 use crate::storages::{
-    CategoryData, CategoryStorage, ExpenseData, ExpenseStorage, ShareData, Stores,
+    CategoryData, ExpenseData, ShareData, Stores,
 };
 
 #[tokio::main]

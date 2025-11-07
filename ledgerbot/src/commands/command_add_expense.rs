@@ -6,10 +6,10 @@ use serde::{Deserialize, Serialize};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format, storage,
+    markdown_format,
 };
 
-use crate::storages::{Expense, Storage, Stores, get_current_period};
+use crate::storages::{Expense, Storage, get_current_period};
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CommandAddExpense {
