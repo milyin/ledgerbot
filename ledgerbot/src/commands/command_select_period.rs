@@ -57,8 +57,9 @@ impl CommandTrait for CommandSelectPeriod {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let var_storage = storage.clone().variable_storage();
-        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
+        let storage_ = storage.storage(chat_id);
+        let var_storage = storage_.variables();
+        let current_period: Option<ExpensePeriod> = var_storage.get().await;
 
         let current_period_str = if let Some(period) = current_period {
             period.to_string()
@@ -107,8 +108,9 @@ impl CommandTrait for CommandSelectPeriod {
         let chat_id = target.chat.id;
 
         // Store the selected period in VariableStorage
-        let var_storage = storage.clone().variable_storage();
-        var_storage.set(chat_id, *period).await;
+        let storage_ = storage.storage(chat_id);
+        let var_storage = storage_.variables();
+        var_storage.set(*period).await;
 
         target
             .send_markdown_message(markdown_format!(

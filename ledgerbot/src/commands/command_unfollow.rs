@@ -47,16 +47,18 @@ impl CommandTrait for CommandUnfollow {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        let variable_storage = storage.clone().variable_storage();
+        let chat_id = target.chat.id;
+            let storage_ = storage.storage(chat_id);
+        let variable_storage = storage_.variables();
 
         // Check if currently following any chat
-        let followed_chat: Option<ChatId> = variable_storage.get(target.chat.id).await;
+        let followed_chat: Option<ChatId> = variable_storage.get().await;
 
         match followed_chat {
             Some(chat_id) => {
                 // Remove the follow relationship
                 variable_storage
-                    .remove::<Option<ChatId>>(target.chat.id)
+                    .remove::<Option<ChatId>>()
                     .await;
 
                 target

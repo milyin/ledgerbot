@@ -16,9 +16,10 @@ pub type ExpenseData = Vec<Expense>;
 /// Helper function to get the current period for a chat
 /// Returns the selected period from VariableStorage, or current month if not set
 pub async fn get_current_period(storage: &Arc<Stores>, chat_id: ChatId) -> ExpensePeriod {
-    let var_storage = storage.clone().variable_storage();
+    let storage_ = storage.storage(chat_id);
+    let var_storage = storage_.variables();
     var_storage
-        .get::<ExpensePeriod>(chat_id)
+        .get::<ExpensePeriod>()
         .await
         .unwrap_or_else(ExpensePeriod::current)
 }

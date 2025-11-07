@@ -76,9 +76,10 @@ pub async fn execute_batch(
             }
         }
 
-        let current_period = storage
-            .variable_storage()
-            .get(chat.id)
+        let storage_ = storage.storage(chat.id);
+        let current_period = storage_
+            .variables()
+            .get()
             .await
             .unwrap_or(ExpensePeriod::current());
 

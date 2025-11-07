@@ -4,7 +4,7 @@ use teloxide::types::ChatId;
 use yoroolbot::storage::{CallbackData, CallbackDataStorage, CallbackDataStorageTrait, DataStoreTrait, InMemStore};
 
 use crate::storages::{
-    BatchData, BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, ShareData, ShareStorage, ShareStorageTrait, VariableStorage
+    BatchData, BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, ShareData, ShareStorage, ShareStorageTrait, VariableData, VariableStorage
 };
 
 /// Main storage structure that holds all bot data
@@ -16,7 +16,7 @@ pub struct Stores {
     shares_data_store: Arc<dyn DataStoreTrait<ShareData>>,
     batch_data_store: Arc<dyn DataStoreTrait<BatchData>>,
     callback_data_store: Arc<dyn DataStoreTrait<CallbackData>>,
-    variables: Arc<VariableStorage>,
+    variables_data: VariableData,
 }
 
 impl Stores {
@@ -27,13 +27,14 @@ impl Stores {
         let shares_data_store = Arc::new(InMemStore::<ShareData>::new());
         let batch_data_store = Arc::new(InMemStore::<BatchData>::new());
         let callback_data_store = Arc::new(InMemStore::<CallbackData>::new());
+        let variables_data = VariableData::default();
         Self {
             expenses_data_store,
             categories_data_store,
             shares_data_store,
             batch_data_store,
             callback_data_store,
-            variables: Arc::new(VariableStorage::new()),
+            variables_data,
         }
     }
 
@@ -77,11 +78,6 @@ impl Stores {
     pub fn callback_data_store(mut self, store: impl DataStoreTrait<CallbackData> + 'static) -> Self {
         self.callback_data_store = Arc::new(store);
         self
-    }
-
-    /// Get variable storage
-    pub fn variable_storage(self: &Arc<Self>) -> Arc<VariableStorage> {
-        self.variables.clone()
     }
 }
 
@@ -136,5 +132,10 @@ impl Storage {
             self.stores.callback_data_store.clone(),
             self.chat_id,
         ))
+    }
+
+    /// Get variable storage for this chat
+    pub fn variables(&self) -> VariableStorage {
+        VariableStorage::new(self.stores.variables_data.clone(), self.chat_id)
     }
 }

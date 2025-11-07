@@ -28,10 +28,12 @@ pub async fn validate_and_get_follow_access(
     target: &CommandReplyTarget,
     storage: &Arc<Stores>,
 ) -> Result<FollowAccess, MarkdownString> {
-    let variable_storage = storage.clone().variable_storage();
+    let chat_id = target.chat.id;
+    let storage_ = storage.storage(chat_id);
+    let variable_storage = storage_.variables();
 
     // Check if currently following any chat
-    let followed_chat: Option<ChatId> = variable_storage.get(target.chat.id).await;
+    let followed_chat: Option<ChatId> = variable_storage.get().await;
 
     let followed_chat = match followed_chat {
         Some(chat_id) => chat_id,
@@ -51,7 +53,7 @@ pub async fn validate_and_get_follow_access(
             // User doesn't have username anymore, can't validate access
             // Clear the follow and use current chat
             variable_storage
-                .remove::<Option<ChatId>>(target.chat.id)
+                .remove::<Option<ChatId>>()
                 .await;
 
             return Err(markdown_format!(
@@ -68,7 +70,7 @@ pub async fn validate_and_get_follow_access(
         Err(_) => {
             // Can't access share list, clear follow and use current chat
             variable_storage
-                .remove::<Option<ChatId>>(target.chat.id)
+                .remove::<Option<ChatId>>()
                 .await;
 
             return Err(markdown_format!(
@@ -86,7 +88,7 @@ pub async fn validate_and_get_follow_access(
     if !user_in_list {
         // User no longer has access, clear follow and use current chat
         variable_storage
-            .remove::<Option<ChatId>>(target.chat.id)
+            .remove::<Option<ChatId>>()
             .await;
 
         return Err(markdown_format!(

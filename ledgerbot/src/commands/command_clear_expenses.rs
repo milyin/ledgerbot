@@ -63,8 +63,9 @@ impl CommandTrait for CommandClearExpenses {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-        let var_storage = storage.clone().variable_storage();
-        let current_period: Option<ExpensePeriod> = var_storage.get(chat_id).await;
+        let storage_ = storage.storage(chat_id);
+        let var_storage = storage_.variables();
+        let current_period: Option<ExpensePeriod> = var_storage.get().await;
 
         let current_period_str = if let Some(period) = current_period {
             period.to_string()
