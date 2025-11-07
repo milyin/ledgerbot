@@ -9,7 +9,7 @@ use yoroolbot::{
 
 use crate::{
     commands::command_add_words_filter::CommandAddWordsFilter,
-    storages::{Category, Stores},
+    storages::{Category, Storage, Stores},
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ impl CommandTrait for CommandAddFilter {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Stores>;
+    type Context = Arc<Storage>;
 
     const NAME: &'static str = "add_filter";
 
@@ -87,9 +87,7 @@ impl CommandTrait for CommandAddFilter {
         category: &Category,
         pattern: &String,
     ) -> ResponseResult<()> {
-        let storage_ = storage.storage(target.chat.id);
-
-        if let Err(msg) = storage_.categories()
+        if let Err(msg) = storage.categories()
             .add_category_filter(category, pattern.clone())
             .await
         {

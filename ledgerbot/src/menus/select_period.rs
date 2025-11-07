@@ -11,11 +11,11 @@ use yoroolbot::{
     markdown_string,
 };
 
-use crate::storages::{ExpensePeriod, ExpenseStorageTrait};
+use crate::storages::{ExpensePeriod, ExpenseStorageReadTrait};
 
 pub async fn select_period<NEXT: CommandTrait, BACK: CommandTrait, NEWPERIOD: CommandTrait>(
     target: &CommandReplyTarget,
-    stores: &Arc<dyn ExpenseStorageTrait>,
+    stores: &Arc<dyn ExpenseStorageReadTrait>,
     prompt: MarkdownString,
     next_command: impl Fn(&ExpensePeriod) -> NEXT,
     back_command: Option<BACK>,

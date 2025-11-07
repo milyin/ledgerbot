@@ -4,7 +4,7 @@ use teloxide::types::ChatId;
 use yoroolbot::storage::{CallbackData, CallbackDataStorage, CallbackDataStorageTrait, DataStoreTrait, InMemStore};
 
 use crate::storages::{
-    BatchData, BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, ShareData, ShareStorage, ShareStorageTrait, VariableData, VariableStorage
+    BatchData, BatchStorage, BatchStorageReadTrait, BatchStorageTrait, CategoryData, CategoryStorage, CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, ShareData, ShareStorage, ShareStorageTrait, VariableData, VariableStorage, category_storage::CategoryStorageReadTrait, expense_storage::ExpenseStorageReadTrait, share_storage::ShareStorageReadTrait
 };
 
 /// Main storage structure that holds all bot data
@@ -41,6 +41,14 @@ impl Stores {
     pub fn storage(&self, chat_id: ChatId) -> Arc<Storage> {
         Arc::new(Storage {
             chat_id,
+            stores: self.clone(),
+        })
+    }
+
+    pub fn storage_readonly(&self, own_chat_id: ChatId, external_chat_id: ChatId) -> Arc<StorageReadonly> {
+        Arc::new(StorageReadonly {
+            own_chat_id,
+            external_chat_id,
             stores: self.clone(),
         })
     }
@@ -89,8 +97,8 @@ impl Default for Stores {
 
 #[derive(Clone)]
 pub struct Storage {
-    pub chat_id: ChatId,
-    pub stores: Stores,
+    chat_id: ChatId,
+    stores: Stores,
 }
 
 impl Storage {
@@ -139,3 +147,51 @@ impl Storage {
         VariableStorage::new(self.stores.variables_data.clone(), self.chat_id)
     }
 }
+
+#[derive(Clone)]
+pub struct StorageReadonly {
+    own_chat_id: ChatId,
+    external_chat_id: ChatId,
+    stores: Stores,
+}
+
+impl StorageReadonly {
+    /// Get expense storage for this chat
+    pub fn expenses(&self) -> Arc<dyn ExpenseStorageReadTrait> {
+        Arc::new(ExpenseStorage::new(
+            self.stores.expenses_data_store.clone(),
+            self.external_chat_id,
+        ))
+    }
+
+    /// Get category storage for this chat
+    pub fn categories(&self) -> Arc<dyn CategoryStorageReadTrait> {
+        Arc::new(CategoryStorage::new(
+            self.stores.categories_data_store.clone(),
+            self.external_chat_id,
+        ))
+    }
+
+    /// Get share storage for this chat
+    pub fn shares(&self) -> Arc<dyn ShareStorageReadTrait> {
+        Arc::new(ShareStorage::new(
+            self.stores.shares_data_store.clone(),
+            self.external_chat_id,
+        ))
+    }
+
+    /// Get variable storage for this chat
+    pub fn variables(&self) -> VariableStorage {
+        VariableStorage::new(self.stores.variables_data.clone(), self.chat_id)
+    }
+
+    /// Get the external chat ID if this storage is for an external chat
+    pub fn external_chat_id(&self) -> Option<ChatId> {
+        if self.own_chat_id != self.external_chat_id {
+            Some(self.external_chat_id)
+        } else {
+            None
+        }
+    }
+}
+

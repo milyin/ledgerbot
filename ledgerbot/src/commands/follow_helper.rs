@@ -7,7 +7,10 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::{commands::command_add_share::CommandAddShare, storages::Stores};
+use crate::{
+    commands::command_add_share::CommandAddShare,
+    storages::{Storage, StorageReadonly, Stores},
+};
 
 /// Result of follow access validation
 pub struct FollowAccess {
@@ -26,23 +29,18 @@ pub struct FollowAccess {
 /// 3. Returns the effective chat ID (followed or current) and a header note
 pub async fn validate_and_get_follow_access(
     target: &CommandReplyTarget,
-    storage: &Arc<Stores>,
-) -> Result<FollowAccess, MarkdownString> {
-    let chat_id = target.chat.id;
-    let storage_ = storage.storage(chat_id);
-    let variable_storage = storage_.variables();
+    stores: &Arc<Stores>,
+) -> Result<Arc<StorageReadonly>, MarkdownString> {
+    let storage = stores.storage(target.chat.id);
+    let variable_storage = storage.variables();
 
     // Check if currently following any chat
     let followed_chat: Option<ChatId> = variable_storage.get().await;
-
     let followed_chat = match followed_chat {
         Some(chat_id) => chat_id,
         None => {
             // Not following anyone, use current chat
-            return Ok(FollowAccess {
-                effective_chat_id: target.chat.id,
-                header_note: None,
-            });
+            return Ok(stores.storage_readonly(target.chat.id, target.chat.id));
         }
     };
 
@@ -52,26 +50,22 @@ pub async fn validate_and_get_follow_access(
         None => {
             // User doesn't have username anymore, can't validate access
             // Clear the follow and use current chat
-            variable_storage
-                .remove::<Option<ChatId>>()
-                .await;
+            variable_storage.remove::<Option<ChatId>>().await;
 
             return Err(markdown_format!(
-                "⚠️ You no longer have a Telegram username\\. Follow access has been cleared\\. Using current chat data\\."
+                "⚠️ You don't have a Telegram username\\. Follow access has been cleared\\. Using current chat data\\."
             ));
         }
     };
 
     // Validate access by checking share list
-    let storage_ = storage.storage(followed_chat);
-    let share_storage = storage_.shares();
+    let external_storage = stores.storage_readonly(target.chat.id, followed_chat);
+    let share_storage = external_storage.shares();
     let shares = match share_storage.get_shares().await {
         Ok(shares) => shares,
         Err(_) => {
             // Can't access share list, clear follow and use current chat
-            variable_storage
-                .remove::<Option<ChatId>>()
-                .await;
+            variable_storage.remove::<Option<ChatId>>().await;
 
             return Err(markdown_format!(
                 "⚠️ Cannot access share list from chat `{}`\\. Follow access has been cleared\\. Using current chat data\\.",
@@ -87,9 +81,7 @@ pub async fn validate_and_get_follow_access(
 
     if !user_in_list {
         // User no longer has access, clear follow and use current chat
-        variable_storage
-            .remove::<Option<ChatId>>()
-            .await;
+        variable_storage.remove::<Option<ChatId>>().await;
 
         return Err(markdown_format!(
             "⚠️ You no longer have access to chat `{}`\\. Follow access has been cleared\\. Using current chat data\\.",
@@ -97,14 +89,8 @@ pub async fn validate_and_get_follow_access(
         ));
     }
 
-    // Access validated, return followed chat with header note
-    Ok(FollowAccess {
-        effective_chat_id: followed_chat,
-        header_note: Some(markdown_format!(
-            "👁️ **Following expenses from chat `{}`**\n\n",
-            followed_chat.0
-        )),
-    })
+    // Access validated, return external storage
+    Ok(stores.storage_readonly(target.chat.id, followed_chat))
 }
 
 /// Validates if the current user has access to follow a specific target chat

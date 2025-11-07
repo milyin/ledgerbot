@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use yoroolbot::storage::DataStoreTrait;
 
-use crate::storages::Stores;
+use crate::storages::Storage;
 
 use super::ExpensePeriod;
 
@@ -15,9 +15,8 @@ pub type ExpenseData = Vec<Expense>;
 
 /// Helper function to get the current period for a chat
 /// Returns the selected period from VariableStorage, or current month if not set
-pub async fn get_current_period(storage: &Arc<Stores>, chat_id: ChatId) -> ExpensePeriod {
-    let storage_ = storage.storage(chat_id);
-    let var_storage = storage_.variables();
+pub async fn get_current_period(storage: &Arc<Storage>) -> ExpensePeriod {
+    let var_storage = storage.variables();
     var_storage
         .get::<ExpensePeriod>()
         .await

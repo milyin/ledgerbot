@@ -11,8 +11,7 @@ use crate::{
     commands::{
         command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter,
         follow_helper::validate_and_get_follow_access,
-    },
-    storages::{Category, Stores},
+    }, menus::common::show_follow_status_message, storages::{Category, StorageReadonly, Stores}
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -29,7 +28,7 @@ impl CommandTrait for CommandCategories {
     type H = EmptyArg;
     type I = EmptyArg;
 
-    type Context = Arc<Stores>;
+    type Context = Arc<StorageReadonly>;
 
     const NAME: &'static str = "categories";
     const PLACEHOLDERS: &[&'static str] = &[];
@@ -53,28 +52,9 @@ impl CommandTrait for CommandCategories {
         target: &CommandReplyTarget,
         storage: Self::Context,
     ) -> ResponseResult<()> {
-        // Validate follow access and get effective chat ID
-        let follow_access = match validate_and_get_follow_access(target, &storage).await {
-            Ok(access) => access,
-            Err(warning_msg) => {
-                target.send_markdown_message(warning_msg).await?;
-                // Continue with current chat
-                crate::commands::follow_helper::FollowAccess {
-                    effective_chat_id: target.chat.id,
-                    header_note: None,
-                }
-            }
-        };
+        show_follow_status_message(target, &storage).await?;
 
-        let chat_id = follow_access.effective_chat_id;
-
-        // Show follow status as separate message if applicable
-        if let Some(header) = follow_access.header_note {
-            target.send_markdown_message(header).await?;
-        }
-
-        let storage_ = storage.storage(chat_id);
-        let categories = storage_
+        let categories = storage
             .categories()
             .get_categories()
             .await
@@ -112,7 +92,7 @@ impl CommandTrait for CommandCategories {
                     result.push('\n');
                 }
             }
-            target.bot.send_message(chat_id, result).await?;
+            target.bot.send_message(target.chat.id, result).await?;
         }
 
         Ok(())

@@ -47,7 +47,7 @@ use crate::{
         command_remove_filter::CommandRemoveFilter, command_remove_share::CommandRemoveShare,
         command_rename_category::CommandRenameCategory, command_report::CommandReport,
         command_select_period::CommandSelectPeriod, command_start::CommandStart,
-        command_unfollow::CommandUnfollow,
+        command_unfollow::CommandUnfollow, follow_helper::validate_and_get_follow_access,
     },
     storages::Stores,
 };
@@ -233,18 +233,29 @@ pub async fn execute_command(
     bot: Bot,
     chat: Chat,
     msg_id: Option<MessageId>,
-    storage: Arc<Stores>,
+    stores: Arc<Stores>,
     cmd: Command,
     batch: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let storage_ = storage.storage(chat.id);
+    let storage = stores.storage(chat.id);
     let target = CommandReplyTarget {
         bot: bot.clone(),
         chat: chat.clone(),
         msg_id,
         batch,
-        callback_data_storage: storage_.callback_data(),
+        callback_data_storage: storage.callback_data(),
     };
+    // Validate follow access (setting to use data from another user) and
+    // get appropriate readonly storage. The readwrite storage is always for the current chat.
+    let storage_readonly = match validate_and_get_follow_access(&target, &stores).await {
+        Ok(storage) => storage,
+        Err(warning_msg) => {
+            target.send_markdown_message(warning_msg).await?;
+            // Continue with current chat
+            stores.storage_readonly(target.chat.id, target.chat.id)
+        }
+    };
+
     match cmd {
         Command::Start(start) => {
             start.run(&target, ()).await?;
@@ -253,82 +264,82 @@ pub async fn execute_command(
             help.run(&target, ()).await?;
         }
         Command::List(list) => {
-            list.run(&target, storage.clone()).await?;
+            list.run(&target, storage_readonly).await?;
         }
         Command::Report(report) => {
-            report.run(&target, storage.clone()).await?;
+            report.run(&target, stores.clone()).await?;
         }
         Command::ClearExpenses(clear_expenses) => {
-            clear_expenses.run(&target, storage.clone()).await?;
+            clear_expenses.run(&target, stores.clone()).await?;
         }
         Command::ClearCategories(clear_categories) => {
             clear_categories
-                .run(&target, storage.storage(target.chat.id).categories())
+                .run(&target, stores.storage(target.chat.id).categories())
                 .await?;
         }
         Command::AddCategory(add_category) => {
             add_category
-                .run(&target, storage.storage(target.chat.id).categories())
+                .run(&target, stores.storage(target.chat.id).categories())
                 .await?;
         }
         Command::Categories(categories) => {
-            categories.run(&target, storage.clone()).await?;
+            categories.run(&target, stores.clone()).await?;
         }
         Command::AddFilter(add_filter) => {
-            add_filter.run(&target, storage.clone()).await?;
+            add_filter.run(&target, storage).await?;
         }
         Command::RemoveCategory(remove_category) => {
             remove_category
-                .run(&target, storage.storage(target.chat.id).categories())
+                .run(&target, stores.storage(target.chat.id).categories())
                 .await?;
         }
         Command::RenameCategory(rename_category) => {
             rename_category
-                .run(&target, storage.storage(target.chat.id).categories())
+                .run(&target, stores.storage(target.chat.id).categories())
                 .await?;
         }
         Command::RemoveFilter(remove_filter) => {
             remove_filter
-                .run(&target, storage.storage(target.chat.id).categories())
+                .run(&target, stores.storage(target.chat.id).categories())
                 .await?;
         }
         Command::EditFilter(edit_filter) => {
             edit_filter
-                .run(&target, storage.storage(target.chat.id).categories())
+                .run(&target, stores.storage(target.chat.id).categories())
                 .await?;
         }
         Command::AddExpense(add_expense) => {
-            add_expense.run(&target, storage.clone()).await?;
+            add_expense.run(&target, storage).await?;
         }
         Command::AddWordsFilter(add_words_filter) => {
-            add_words_filter.run(&target, storage.clone()).await?;
+            add_words_filter.run(&target, storage).await?;
         }
         Command::EditWordsFilter(edit_words_filter) => {
-            edit_words_filter.run(&target, storage.clone()).await?;
+            edit_words_filter.run(&target, stores.clone()).await?;
         }
         Command::SelectPeriod(select_period) => {
-            select_period.run(&target, storage.clone()).await?;
+            select_period.run(&target, stores.clone()).await?;
         }
         Command::AddShare(add_share) => {
             add_share
-                .run(&target, storage.storage(chat.id).shares())
+                .run(&target, stores.storage(chat.id).shares())
                 .await?;
         }
         Command::ListShares(list_shares) => {
             list_shares
-                .run(&target, storage.storage(chat.id).shares())
+                .run(&target, stores.storage(chat.id).shares())
                 .await?;
         }
         Command::RemoveShare(remove_share) => {
             remove_share
-                .run(&target, storage.storage(chat.id).shares())
+                .run(&target, stores.storage(chat.id).shares())
                 .await?;
         }
         Command::Follow(follow) => {
-            follow.run(&target, storage.clone()).await?;
+            follow.run(&target, stores.clone()).await?;
         }
         Command::Unfollow(unfollow) => {
-            unfollow.run(&target, storage.clone()).await?;
+            unfollow.run(&target, stores.clone()).await?;
         }
     }
     Ok(())

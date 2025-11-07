@@ -10,7 +10,7 @@ use yoroolbot::{
     markdown_format,
 };
 
-use crate::storages::{Category, CategoryStorageTrait};
+use crate::storages::{Category, CategoryStorageTrait, StorageReadonly};
 
 pub fn create_buttons_menu(
     titles: &[String],
@@ -124,6 +124,20 @@ pub async fn read_category_filter_by_index(
         return Ok(None);
     }
     Ok(Some(filters[idx].clone()))
+}
+
+pub async fn show_follow_status_message(
+    target: &CommandReplyTarget,
+    storage: &Arc<StorageReadonly>,
+) -> ResponseResult<()> {
+    // Show follow status as separate message if applicable
+    if let Some(external_chat_id) = storage.external_chat_id() {
+        target.send_markdown_message(markdown_format!(
+            "👁 *Note*: You are viewing expenses for chat ID `{}`.",
+            external_chat_id.0
+        )).await?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
