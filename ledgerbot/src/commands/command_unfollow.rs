@@ -58,7 +58,7 @@ impl CommandTrait for CommandUnfollow {
             Some(chat_id) => {
                 // Remove the follow relationship
                 variable_storage
-                    .remove::<Option<ChatId>>()
+                    .remove::<ChatId>()
                     .await;
 
                 target
