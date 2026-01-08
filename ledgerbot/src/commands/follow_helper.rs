@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
+use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::types::ChatId;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait},
-    markdown::MarkdownString,
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::{
     commands::command_add_follower::CommandAddFollower,

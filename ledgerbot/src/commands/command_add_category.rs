@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::{markdown_format, markdown_string};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format, markdown_string,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::Command,

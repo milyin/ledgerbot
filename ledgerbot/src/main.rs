@@ -14,9 +14,7 @@ use handlers::{handle_callback_query, handle_text_message};
 use teloxide::prelude::*;
 use yoroolbot::storage::FilesystemYamlStore;
 
-use crate::storages::{
-    CategoryData, ExpenseData, FollowersData, Stores,
-};
+use crate::storages::{CategoryData, ExpenseData, FollowersData, Stores};
 
 #[tokio::main]
 async fn main() {

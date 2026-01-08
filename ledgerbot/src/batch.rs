@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use rust_decimal::Decimal;
+use telluride::{markdown::MarkdownStringMessage, markdown_format};
 use teloxide::{prelude::*, types::Chat};
-use yoroolbot::{command_trait::CommandTrait, markdown::MarkdownStringMessage, markdown_format};
+use yoroolbot::command_trait::CommandTrait;
 
 use crate::{
     commands::{

@@ -1,7 +1,7 @@
 use std::{error::Error, fmt, str::FromStr};
 
 use serde::{Deserialize, Serialize};
-use yoroolbot::{markdown::MarkdownString, markdown_format};
+use telluride::{markdown::MarkdownString, markdown_format};
 
 /// Error type for TelegramUsername parsing
 #[derive(Debug, Clone)]

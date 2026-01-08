@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format, markdown_string,
     storage::ButtonData,
 };
 
@@ -135,10 +135,7 @@ impl CommandTrait for CommandClearExpenses {
             return Ok(());
         }
 
-        storage
-            .expenses()
-            .clear_expenses(*period)
-            .await;
+        storage.expenses().clear_expenses(*period).await;
 
         target
             .send_markdown_message(markdown_format!(

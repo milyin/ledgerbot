@@ -1,34 +1,27 @@
 use std::{collections::HashMap, sync::Arc};
 
+use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::types::ChatId;
-use yoroolbot::{
-    command_trait::CommandTrait, markdown::MarkdownString, markdown_format, storage::DataStoreTrait,
-};
+use yoroolbot::{command_trait::CommandTrait, storage::DataStoreTrait};
 
 use crate::{
     commands::{command_add_filter::CommandAddFilter, command_categories::CommandCategories},
     storages::Category,
 };
 
-
 /// Trait for category storage operations
 #[async_trait::async_trait]
 pub trait CategoryStorageReadTrait: Send + Sync {
     /// Get categories
-    async fn get_categories(
-        &self,
-    ) -> Result<HashMap<String, Vec<String>>, MarkdownString>;
+    async fn get_categories(&self) -> Result<HashMap<String, Vec<String>>, MarkdownString>;
 }
- 
+
 /// Trait for category storage operations
 #[async_trait::async_trait]
 pub trait CategoryStorageTrait: CategoryStorageReadTrait + Send + Sync {
     /// Add a category
     /// Returns error if Category::Other variant is used
-    async fn add_category(
-        &self,
-        category: &Category,
-    ) -> Result<(), MarkdownString>;
+    async fn add_category(&self, category: &Category) -> Result<(), MarkdownString>;
 
     /// Add a regex filter to an existing category
     /// Returns error if Category::Other variant is used
@@ -48,10 +41,7 @@ pub trait CategoryStorageTrait: CategoryStorageReadTrait + Send + Sync {
 
     /// Remove a category from a specific chat
     /// Returns error if Category::Other variant is used
-    async fn remove_category(
-        &self,
-        category: &Category,
-    ) -> Result<(), MarkdownString>;
+    async fn remove_category(&self, category: &Category) -> Result<(), MarkdownString>;
 
     /// Rename a category for a specific chat
     /// Returns error if Category::Other variant is used for either old or new name
@@ -74,14 +64,12 @@ pub type CategoryData = Vec<String>;
 /// Generic category storage that works with any DataStore implementation
 /// Each category is stored as a separate key (category name) with its filters as the value
 #[derive(Clone)]
-pub struct CategoryStorage
-{
+pub struct CategoryStorage {
     store: Arc<dyn DataStoreTrait<CategoryData>>,
     chat_id: ChatId,
 }
 
-impl CategoryStorage
-{
+impl CategoryStorage {
     /// Create a new CategoryStorage with the given DataStore and chat ID
     pub fn new(store: Arc<dyn DataStoreTrait<CategoryData>>, chat_id: ChatId) -> Self {
         Self { store, chat_id }
@@ -90,11 +78,8 @@ impl CategoryStorage
 
 /// Implement CategoryStorageTrait for CategoryStorage
 #[async_trait::async_trait]
-impl CategoryStorageReadTrait for CategoryStorage
-{
-    async fn get_categories(
-        &self,
-    ) -> Result<HashMap<String, Vec<String>>, MarkdownString> {
+impl CategoryStorageReadTrait for CategoryStorage {
+    async fn get_categories(&self) -> Result<HashMap<String, Vec<String>>, MarkdownString> {
         // Get all keys (category names) for this chat
         let category_names = self.store.keys(self.chat_id).await;
         let mut categories = HashMap::new();
@@ -114,12 +99,8 @@ impl CategoryStorageReadTrait for CategoryStorage
 
 /// Implement CategoryStorageTrait for CategoryStorage
 #[async_trait::async_trait]
-impl CategoryStorageTrait for CategoryStorage
-{
-     async fn add_category(
-        &self,
-        category: &Category,
-    ) -> Result<(), MarkdownString> {
+impl CategoryStorageTrait for CategoryStorage {
+    async fn add_category(&self, category: &Category) -> Result<(), MarkdownString> {
         // Only accept Category::Category variant with a name
         let Category::Category(category_name) = category else {
             return Err(markdown_format!(
@@ -139,7 +120,9 @@ impl CategoryStorageTrait for CategoryStorage
         }
 
         // Add the new category with empty filters list
-        self.store.set(self.chat_id, category_name, Vec::new()).await;
+        self.store
+            .set(self.chat_id, category_name, Vec::new())
+            .await;
 
         Ok(())
     }
@@ -210,10 +193,7 @@ impl CategoryStorageTrait for CategoryStorage
         Ok(())
     }
 
-    async fn remove_category(
-        &self,
-        category: &Category,
-    ) -> Result<(), MarkdownString> {
+    async fn remove_category(&self, category: &Category) -> Result<(), MarkdownString> {
         // Only accept Category::Category variant with a name
         let Category::Category(category_name) = category else {
             return Err(markdown_format!(

@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
+use telluride::{markdown::MarkdownString, markdown_format, markdown_string};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait},
-    markdown::MarkdownString,
-    markdown_format, markdown_string,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::storages::{Category, CategoryStorageTrait, StorageReadonly};
 
@@ -155,9 +152,11 @@ pub async fn show_follow_status_message(
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
+
     use teloxide::types::ChatId;
     use yoroolbot::storage::{
-        CallbackData, CallbackDataStorage, CallbackDataStorageTrait, InMemStore, pack_callback_data, unpack_callback_data,
+        CallbackData, CallbackDataStorage, CallbackDataStorageTrait, InMemStore,
+        pack_callback_data, unpack_callback_data,
     };
 
     #[tokio::test]
@@ -165,7 +164,8 @@ mod tests {
         let chat_id = ChatId(12345);
         let message_id = 67890;
         let data_store = Arc::new(InMemStore::<CallbackData>::new());
-        let storage: Arc<dyn CallbackDataStorageTrait> = Arc::new(CallbackDataStorage::new(data_store, chat_id));
+        let storage: Arc<dyn CallbackDataStorageTrait> =
+            Arc::new(CallbackDataStorage::new(data_store, chat_id));
 
         // Create button data with short and long callback data
         let button_rows = vec![
@@ -236,7 +236,8 @@ mod tests {
         let chat_id = ChatId(12345);
         let message_id = 67890;
         let data_store = Arc::new(InMemStore::<CallbackData>::new());
-        let storage: Arc<dyn CallbackDataStorageTrait> = Arc::new(CallbackDataStorage::new(data_store, chat_id));
+        let storage: Arc<dyn CallbackDataStorageTrait> =
+            Arc::new(CallbackDataStorage::new(data_store, chat_id));
 
         // Create initial buttons with long callback data
         let initial_buttons = vec![vec![(
@@ -245,8 +246,7 @@ mod tests {
         )]];
 
         // Pack initial buttons
-        let initial_keyboard =
-            pack_callback_data(&storage, message_id, initial_buttons).await;
+        let initial_keyboard = pack_callback_data(&storage, message_id, initial_buttons).await;
 
         let initial_cb = match &initial_keyboard.inline_keyboard[0][0].kind {
             teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),

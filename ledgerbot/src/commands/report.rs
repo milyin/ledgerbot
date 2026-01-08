@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use rust_decimal::Decimal;
-use yoroolbot::{markdown::MarkdownString, markdown_format, markdown_string};
+use telluride::{markdown::MarkdownString, markdown_format, markdown_string};
 
 use crate::{
     storages::{Category, Expense, ExpensePeriod},

@@ -82,10 +82,7 @@ pub async fn extract_and_merge_words(
     let storage_ = stores.storage(chat_id);
 
     // Get all expenses across all periods
-    let all_expenses = storage_
-        .expenses()
-        .get_all_expenses()
-        .await;
+    let all_expenses = storage_.expenses().get_all_expenses().await;
 
     // Extract just the Expense objects (ignore period information)
     let expenses: Vec<Expense> = all_expenses

@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format, markdown_string,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
     menus::{
@@ -180,19 +178,13 @@ impl CommandTrait for CommandEditFilter {
         }
 
         // Remove the old pattern and add the new one
-        if let Err(e) = storage
-            .remove_category_filter(name, &old_pattern)
-            .await
-        {
+        if let Err(e) = storage.remove_category_filter(name, &old_pattern).await {
             target
                 .send_markdown_message(markdown_format!("❌ Failed to remove filter: {}", e))
                 .await?;
         }
 
-        if let Err(e) = storage
-            .add_category_filter(name, pattern.clone())
-            .await
-        {
+        if let Err(e) = storage.add_category_filter(name, pattern.clone()).await {
             target.send_markdown_message(e).await?;
             return Ok(());
         }

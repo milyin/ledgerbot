@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::markdown_string;
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand}, markdown_string
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
-    commands::
-        expenses::format_expenses_chronological
-    ,
+    commands::expenses::format_expenses_chronological,
     menus::{common::show_follow_status_message, select_period::select_period},
     storages::{ExpensePeriod, StorageReadonly},
 };
@@ -93,10 +90,7 @@ impl CommandTrait for CommandList {
     ) -> ResponseResult<()> {
         show_follow_status_message(target, &storage).await?;
 
-        let chat_expenses = storage
-            .expenses_readonly()
-            .get_expenses(*period)
-            .await;
+        let chat_expenses = storage.expenses_readonly().get_expenses(*period).await;
 
         match format_expenses_chronological(&chat_expenses) {
             Ok(messages) => {

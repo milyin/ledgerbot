@@ -1,16 +1,14 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::markdown_format;
 use teloxide::prelude::{Requester, ResponseResult};
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
-    commands::{
-        command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter
-    }, menus::common::show_follow_status_message, storages::{Category, StorageReadonly}
+    commands::{command_add_category::CommandAddCategory, command_add_filter::CommandAddFilter},
+    menus::common::show_follow_status_message,
+    storages::{Category, StorageReadonly},
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

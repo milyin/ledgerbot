@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format, markdown_string,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
     commands::command_add_filter::CommandAddFilter,
@@ -120,10 +118,7 @@ impl CommandTrait for CommandAddWordsFilter {
         selected_words: &Words,
     ) -> ResponseResult<()> {
         // Get all expenses across all periods for word extraction
-        let all_expenses = storage
-            .expenses()
-            .get_all_expenses()
-            .await;
+        let all_expenses = storage.expenses().get_all_expenses().await;
 
         // Extract just the Expense objects (ignore period information)
         let expenses: Vec<Expense> = all_expenses

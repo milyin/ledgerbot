@@ -1,5 +1,6 @@
 use std::{any::TypeId, error::Error, fmt::Display, str::FromStr, sync::Arc};
 
+use telluride::markdown::{MarkdownString, MarkdownStringMessage};
 use teloxide::{
     Bot,
     payloads::{EditMessageReplyMarkupSetters, SendMessage},
@@ -9,10 +10,7 @@ use teloxide::{
     utils::command::ParseError,
 };
 
-use crate::{
-    markdown::{MarkdownString, MarkdownStringMessage},
-    storage::{ButtonData, CallbackDataStorageTrait, pack_callback_data},
-};
+use crate::storage::{ButtonData, CallbackDataStorageTrait, pack_callback_data};
 
 #[derive(Clone)]
 pub struct CommandReplyTarget {

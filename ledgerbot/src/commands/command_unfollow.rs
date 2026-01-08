@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::markdown_format;
 use teloxide::{prelude::ResponseResult, types::ChatId};
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::storages::Stores;
 
@@ -48,7 +46,7 @@ impl CommandTrait for CommandUnfollow {
         storage: Self::Context,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
-            let storage_ = storage.storage(chat_id);
+        let storage_ = storage.storage(chat_id);
         let variable_storage = storage_.variables();
 
         // Check if currently following any chat
@@ -57,9 +55,7 @@ impl CommandTrait for CommandUnfollow {
         match followed_chat {
             Some(chat_id) => {
                 // Remove the follow relationship
-                variable_storage
-                    .remove::<ChatId>()
-                    .await;
+                variable_storage.remove::<ChatId>().await;
 
                 target
                     .send_markdown_message(markdown_format!(

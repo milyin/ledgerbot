@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::types::ChatId;
-use yoroolbot::{markdown::MarkdownString, markdown_format, storage::DataStoreTrait};
+use yoroolbot::storage::DataStoreTrait;
 
 use crate::storages::TelegramUsername;
-
 
 /// Trait for followers storage read operations
 #[async_trait::async_trait]
@@ -17,22 +17,13 @@ pub trait FollowersStorageReadTrait: Send + Sync {
 #[async_trait::async_trait]
 pub trait FollowersStorageTrait: FollowersStorageReadTrait + Send + Sync {
     /// Add a username to the follower list
-    async fn add_follower(
-        &self,
-        username: &TelegramUsername,
-    ) -> Result<(), MarkdownString>;
+    async fn add_follower(&self, username: &TelegramUsername) -> Result<(), MarkdownString>;
 
     /// Remove a username from the follower list
-    async fn remove_follower(
-        &self,
-        username: &TelegramUsername,
-    ) -> Result<(), MarkdownString>;
+    async fn remove_follower(&self, username: &TelegramUsername) -> Result<(), MarkdownString>;
 
     /// Replace all followers
-    async fn replace_followers(
-        &self,
-        users: Vec<TelegramUsername>,
-    ) -> Result<(), MarkdownString>;
+    async fn replace_followers(&self, users: Vec<TelegramUsername>) -> Result<(), MarkdownString>;
 }
 
 /// Type alias for followers data (list of username strings)
@@ -41,14 +32,12 @@ pub type FollowersData = Vec<String>;
 /// Generic followers storage that works with any DataStore implementation
 /// Stores followers as a single key "followers" with a list of usernames as the value
 #[derive(Clone)]
-pub struct FollowersStorage
-{
+pub struct FollowersStorage {
     store: Arc<dyn DataStoreTrait<FollowersData>>,
     chat_id: ChatId,
 }
 
-impl FollowersStorage
-{
+impl FollowersStorage {
     /// Create a new FollowersStorage with the given DataStore and chat ID
     pub fn new(store: Arc<dyn DataStoreTrait<FollowersData>>, chat_id: ChatId) -> Self {
         Self { store, chat_id }
@@ -59,11 +48,14 @@ const FOLLOWERS_KEY: &str = "followers";
 
 /// Implement FollowersStorageReadTrait for FollowersStorage
 #[async_trait::async_trait]
-impl FollowersStorageReadTrait for FollowersStorage
-{
+impl FollowersStorageReadTrait for FollowersStorage {
     async fn get_followers(&self) -> Result<Vec<TelegramUsername>, MarkdownString> {
         // Get all usernames stored under the key
-        let username_strings = self.store.get(self.chat_id, FOLLOWERS_KEY).await.unwrap_or_default();
+        let username_strings = self
+            .store
+            .get(self.chat_id, FOLLOWERS_KEY)
+            .await
+            .unwrap_or_default();
 
         // Parse each string into TelegramUsername
         let mut followers = Vec::new();
@@ -71,7 +63,11 @@ impl FollowersStorageReadTrait for FollowersStorage
             match TelegramUsername::from_string(&username_str) {
                 Ok(username) => followers.push(username),
                 Err(e) => {
-                    log::warn!("Invalid follower username in storage: {}: {}", username_str, e);
+                    log::warn!(
+                        "Invalid follower username in storage: {}: {}",
+                        username_str,
+                        e
+                    );
                     // Skip invalid usernames
                 }
             }
@@ -83,14 +79,14 @@ impl FollowersStorageReadTrait for FollowersStorage
 
 /// Implement FollowersStorageTrait for FollowersStorage
 #[async_trait::async_trait]
-impl FollowersStorageTrait for FollowersStorage
-{
-    async fn add_follower(
-        &self,
-        username: &TelegramUsername,
-    ) -> Result<(), MarkdownString> {
+impl FollowersStorageTrait for FollowersStorage {
+    async fn add_follower(&self, username: &TelegramUsername) -> Result<(), MarkdownString> {
         // Get existing followers
-        let mut follower_strings = self.store.get(self.chat_id, FOLLOWERS_KEY).await.unwrap_or_default();
+        let mut follower_strings = self
+            .store
+            .get(self.chat_id, FOLLOWERS_KEY)
+            .await
+            .unwrap_or_default();
 
         // Check if already exists
         let username_str = username.as_str().to_string();
@@ -103,17 +99,20 @@ impl FollowersStorageTrait for FollowersStorage
 
         // Add new username
         follower_strings.push(username_str);
-        self.store.set(self.chat_id, FOLLOWERS_KEY, follower_strings).await;
+        self.store
+            .set(self.chat_id, FOLLOWERS_KEY, follower_strings)
+            .await;
 
         Ok(())
     }
 
-    async fn remove_follower(
-        &self,
-        username: &TelegramUsername,
-    ) -> Result<(), MarkdownString> {
+    async fn remove_follower(&self, username: &TelegramUsername) -> Result<(), MarkdownString> {
         // Get existing followers
-        let mut follower_strings = self.store.get(self.chat_id, FOLLOWERS_KEY).await.unwrap_or_default();
+        let mut follower_strings = self
+            .store
+            .get(self.chat_id, FOLLOWERS_KEY)
+            .await
+            .unwrap_or_default();
 
         let username_str = username.as_str();
 
@@ -127,20 +126,21 @@ impl FollowersStorageTrait for FollowersStorage
 
         // Remove username
         follower_strings.retain(|s| s != username_str);
-        self.store.set(self.chat_id, FOLLOWERS_KEY, follower_strings).await;
+        self.store
+            .set(self.chat_id, FOLLOWERS_KEY, follower_strings)
+            .await;
 
         Ok(())
     }
 
-    async fn replace_followers(
-        &self,
-        users: Vec<TelegramUsername>,
-    ) -> Result<(), MarkdownString> {
+    async fn replace_followers(&self, users: Vec<TelegramUsername>) -> Result<(), MarkdownString> {
         // Convert to strings
         let user_strings: Vec<String> = users.iter().map(|u| u.as_str().to_string()).collect();
 
         // Replace all followers
-        self.store.set(self.chat_id, FOLLOWERS_KEY, user_strings).await;
+        self.store
+            .set(self.chat_id, FOLLOWERS_KEY, user_strings)
+            .await;
 
         Ok(())
     }

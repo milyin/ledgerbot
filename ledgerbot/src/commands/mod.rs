@@ -43,8 +43,9 @@ use crate::{
         command_clear_expenses::CommandClearExpenses, command_edit_filter::CommandEditFilter,
         command_edit_words_filter::CommandEditWordsFilter, command_follow::CommandFollow,
         command_help::CommandHelp, command_list::CommandList,
-        command_list_followers::CommandListFollowers, command_remove_category::CommandRemoveCategory,
-        command_remove_filter::CommandRemoveFilter, command_remove_follower::CommandRemoveFollower,
+        command_list_followers::CommandListFollowers,
+        command_remove_category::CommandRemoveCategory, command_remove_filter::CommandRemoveFilter,
+        command_remove_follower::CommandRemoveFollower,
         command_rename_category::CommandRenameCategory, command_report::CommandReport,
         command_select_period::CommandSelectPeriod, command_start::CommandStart,
         command_unfollow::CommandUnfollow, follow_helper::validate_and_get_follow_access,
@@ -273,14 +274,10 @@ pub async fn execute_command(
             clear_expenses.run(&target, storage).await?;
         }
         Command::ClearCategories(clear_categories) => {
-            clear_categories
-                .run(&target, storage.categories())
-                .await?;
+            clear_categories.run(&target, storage.categories()).await?;
         }
         Command::AddCategory(add_category) => {
-            add_category
-                .run(&target, storage.categories())
-                .await?;
+            add_category.run(&target, storage.categories()).await?;
         }
         Command::Categories(categories) => {
             categories.run(&target, storage_readonly).await?;
@@ -294,19 +291,13 @@ pub async fn execute_command(
                 .await?;
         }
         Command::RenameCategory(rename_category) => {
-            rename_category
-                .run(&target, storage.categories())
-                .await?;
+            rename_category.run(&target, storage.categories()).await?;
         }
         Command::RemoveFilter(remove_filter) => {
-            remove_filter
-                .run(&target, storage.categories())
-                .await?;
+            remove_filter.run(&target, storage.categories()).await?;
         }
         Command::EditFilter(edit_filter) => {
-            edit_filter
-                .run(&target, storage.categories())
-                .await?;
+            edit_filter.run(&target, storage.categories()).await?;
         }
         Command::AddExpense(add_expense) => {
             add_expense.run(&target, storage).await?;

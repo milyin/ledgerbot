@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
+use telluride::markdown_format;
 use teloxide::{prelude::ResponseResult, utils::command::BotCommands};
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use super::Command;
 

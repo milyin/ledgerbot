@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::markdown_format;
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::command_add_words_filter::CommandAddWordsFilter,
@@ -87,7 +85,8 @@ impl CommandTrait for CommandAddFilter {
         category: &Category,
         pattern: &String,
     ) -> ResponseResult<()> {
-        if let Err(msg) = storage.categories()
+        if let Err(msg) = storage
+            .categories()
             .add_category_filter(category, pattern.clone())
             .await
         {

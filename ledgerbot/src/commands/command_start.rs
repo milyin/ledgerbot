@@ -1,14 +1,11 @@
 use serde::{Deserialize, Serialize};
+use telluride::{markdown::MarkdownStringMessage, markdown_format};
 use teloxide::{
     payloads::SendMessageSetters,
     prelude::ResponseResult,
     types::{KeyboardButton, ReplyMarkup},
 };
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown::MarkdownStringMessage,
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::commands::command_help::CommandHelp;
 

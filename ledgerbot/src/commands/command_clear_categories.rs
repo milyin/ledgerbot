@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
+use telluride::markdown_string;
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_string,
     storage::ButtonData,
 };
 
@@ -82,10 +82,7 @@ impl CommandTrait for CommandClearCategories {
             return Ok(());
         }
 
-        if let Err(e) = storage
-            .replace_categories(HashMap::new())
-            .await
-        {
+        if let Err(e) = storage.replace_categories(HashMap::new()).await {
             target.send_markdown_message(e).await?;
             return Ok(());
         }

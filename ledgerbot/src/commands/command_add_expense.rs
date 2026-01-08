@@ -3,11 +3,9 @@ use std::sync::Arc;
 use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use telluride::markdown_format;
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::storages::{Expense, Storage, get_current_period};
 
@@ -156,10 +154,7 @@ impl CommandTrait for CommandAddExpense {
         let period = get_current_period(&storage).await;
 
         // Store the expense in the selected period
-        storage
-            .expenses()
-            .add_expenses(period, vec![expense])
-            .await;
+        storage.expenses().add_expenses(period, vec![expense]).await;
 
         if !target.batch {
             // Send confirmation message

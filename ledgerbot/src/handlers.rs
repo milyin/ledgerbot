@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
+use telluride::{markdown::MarkdownStringMessage, markdown_format};
 use teloxide::{prelude::*, types::CallbackQuery, utils::command::BotCommands};
-use yoroolbot::{markdown::MarkdownStringMessage, markdown_format, storage::unpack_callback_data};
+use yoroolbot::storage::unpack_callback_data;
 
 use crate::{
     batch::{add_to_batch, execute_batch},
@@ -43,8 +44,7 @@ pub async fn handle_text_message(
         if is_multiline || is_forwarded {
             // Add to batch storage for deferred execution
             let batch_storage = storage.storage(msg.chat.id).batch();
-            let is_first_message =
-                add_to_batch(batch_storage.clone(), parsed_results).await;
+            let is_first_message = add_to_batch(batch_storage.clone(), parsed_results).await;
 
             // Start timeout task only for the first message in batch
             if is_first_message {

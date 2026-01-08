@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
+use telluride::{markdown::MarkdownString, markdown_string};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait},
-    markdown::MarkdownString,
-    markdown_string,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::storages::{ExpensePeriod, ExpenseStorageReadTrait};
 

@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::markdown_format;
 use teloxide::prelude::{Requester, ResponseResult};
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::{command_add_follower::CommandAddFollower, command_follow::CommandFollow},
@@ -74,7 +72,8 @@ impl CommandTrait for CommandListFollowers {
             sorted_followers.sort();
 
             for username in sorted_followers {
-                result.push_str(&CommandAddFollower::new(username.as_str()).to_command_string(true));
+                result
+                    .push_str(&CommandAddFollower::new(username.as_str()).to_command_string(true));
                 result.push('\n');
             }
 

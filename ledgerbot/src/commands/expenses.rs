@@ -1,4 +1,4 @@
-use yoroolbot::{markdown::MarkdownString, markdown_format};
+use telluride::{markdown::MarkdownString, markdown_format};
 
 use crate::storages::Expense;
 

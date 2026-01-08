@@ -6,9 +6,8 @@ use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
 use yoroolbot::storage::DataStoreTrait;
 
-use crate::storages::Storage;
-
 use super::ExpensePeriod;
+use crate::storages::Storage;
 
 /// Type alias for expense data (list of expenses for a period)
 pub type ExpenseData = Vec<Expense>;
@@ -61,7 +60,6 @@ impl Expense {
     }
 }
 
-
 /// Trait for expense storage operations
 #[async_trait::async_trait]
 pub trait ExpenseStorageReadTrait: Send + Sync {
@@ -98,14 +96,12 @@ pub trait ExpenseStorageTrait: ExpenseStorageReadTrait + Send + Sync {
 /// Generic expense storage that works with any DataStore implementation
 /// Each period is stored as a separate key (period string) with its expenses as the value
 #[derive(Clone)]
-pub struct ExpenseStorage
-{
+pub struct ExpenseStorage {
     store: Arc<dyn DataStoreTrait<ExpenseData>>,
     chat_id: ChatId,
 }
 
-impl ExpenseStorage
-{
+impl ExpenseStorage {
     /// Create a new ExpenseStorage with the given DataStore and chat ID
     pub fn new(store: Arc<dyn DataStoreTrait<ExpenseData>>, chat_id: ChatId) -> Self {
         Self { store, chat_id }
@@ -117,7 +113,10 @@ impl ExpenseStorage
 impl ExpenseStorageReadTrait for ExpenseStorage {
     async fn get_expenses(&self, period: ExpensePeriod) -> Vec<Expense> {
         let period = period.to_string();
-        self.store.get(self.chat_id, &period).await.unwrap_or_default()
+        self.store
+            .get(self.chat_id, &period)
+            .await
+            .unwrap_or_default()
     }
 
     async fn list_periods(&self) -> Vec<ExpensePeriod> {
@@ -138,7 +137,11 @@ impl ExpenseStorageReadTrait for ExpenseStorage {
 impl ExpenseStorageTrait for ExpenseStorage {
     async fn add_expenses(&self, period: ExpensePeriod, expenses: Vec<Expense>) {
         let period = period.to_string();
-        let mut period_expenses = self.store.get(self.chat_id, &period).await.unwrap_or_default();
+        let mut period_expenses = self
+            .store
+            .get(self.chat_id, &period)
+            .await
+            .unwrap_or_default();
         period_expenses.extend(expenses);
         self.store.set(self.chat_id, &period, period_expenses).await;
     }

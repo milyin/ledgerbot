@@ -5,13 +5,14 @@ package.version = "0.4.0"
 
 [workspace.dependencies]
 teloxide = { version = "0.17.0", features = ["macros"] }
-log = "0.4"
+telluride = "0.1.0"
+log = "0.4.29"
 pretty_env_logger = "0.5"
 tokio = { version =  "1.8", features = ["rt-multi-thread", "macros"] }
 clap = { version = "4.4", features = ["derive"] }
 regex = "1.7"
 serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.9"
+serde_yaml = "0.9.33"
 chrono = { version = "0.4", features = ["serde"] }
 async-trait = "0.1"
 rust_decimal = { version = "1.36", features = ["serde"] }

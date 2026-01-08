@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    markdown_format, markdown_string,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
     menus::{select_category::select_category, update_category::update_category},
@@ -112,10 +110,7 @@ impl CommandTrait for CommandRenameCategory {
         old_category: &Category,
         new_category: &Category,
     ) -> ResponseResult<()> {
-        if let Err(e) = storage
-            .rename_category(old_category, new_category)
-            .await
-        {
+        if let Err(e) = storage.rename_category(old_category, new_category).await {
             target.send_markdown_message(e).await?;
         }
         target

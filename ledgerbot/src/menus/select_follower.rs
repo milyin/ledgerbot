@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
+use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
     types::InlineKeyboardMarkup,
 };
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait},
-    markdown::MarkdownString,
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::{
     commands::command_add_follower::CommandAddFollower,
@@ -24,10 +21,7 @@ pub async fn select_follower<NEXT: CommandTrait, BACK: CommandTrait>(
     next_command: impl Fn(&TelegramUsername) -> NEXT,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
-    let followers = storage
-        .get_followers()
-        .await
-        .unwrap_or_default();
+    let followers = storage.get_followers().await.unwrap_or_default();
     if followers.is_empty() {
         target
             .send_markdown_message(markdown_format!(

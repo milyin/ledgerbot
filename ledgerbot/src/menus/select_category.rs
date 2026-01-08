@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
+use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
     types::InlineKeyboardMarkup,
 };
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait},
-    markdown::MarkdownString,
-    markdown_format,
-};
+use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::{
     commands::command_add_category::CommandAddCategory,
@@ -24,10 +21,7 @@ pub async fn select_category<NEXT: CommandTrait, BACK: CommandTrait>(
     next_command: impl Fn(&Category) -> NEXT,
     back_command: Option<BACK>,
 ) -> ResponseResult<()> {
-    let categories = storage
-        .get_categories()
-        .await
-        .unwrap_or_default();
+    let categories = storage.get_categories().await.unwrap_or_default();
     if categories.is_empty() {
         target
             .send_markdown_message(markdown_format!(

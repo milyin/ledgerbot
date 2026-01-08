@@ -2,19 +2,17 @@ use std::sync::Arc;
 
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
 use yoroolbot::{
     command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    markdown_format, markdown_string,
     storage::ButtonData,
 };
 
 use crate::{
-    commands::{
-        report::{
-            check_category_conflicts, filter_category_expenses, format_category_comparison,
-            format_single_category_report,
-        },
+    commands::report::{
+        check_category_conflicts, filter_category_expenses, format_category_comparison,
+        format_single_category_report,
     },
     menus::common::make_follow_status_message,
     storages::{Category, ExpensePeriod, StorageReadonly},
@@ -142,9 +140,7 @@ impl CommandTrait for CommandReport {
         // Get expenses for both periods
         let expense_storage = storage.expenses_readonly();
         let current_expenses = expense_storage.get_expenses(*period).await;
-        let reference_expenses = expense_storage
-            .get_expenses(*reference_period)
-            .await;
+        let reference_expenses = expense_storage.get_expenses(*reference_period).await;
 
         // Determine if we should show comparison (only if periods differ)
         let (reference_expenses_opt, reference_period_opt) = if period == reference_period {
@@ -261,10 +257,7 @@ impl CommandTrait for CommandReport {
     ) -> ResponseResult<()> {
         // If category is None, show summary with category buttons
         if category.is_none() {
-            let chat_expenses = storage
-                .expenses_readonly()
-                .get_expenses(*period)
-                .await;
+            let chat_expenses = storage.expenses_readonly().get_expenses(*period).await;
             let reference_expenses = storage
                 .expenses_readonly()
                 .get_expenses(*reference_period)
@@ -391,10 +384,7 @@ impl CommandTrait for CommandReport {
     ) -> ResponseResult<()> {
         const RECORDS_PER_PAGE: usize = 25;
 
-        let chat_expenses = storage
-            .expenses_readonly()
-            .get_expenses(*period)
-            .await;
+        let chat_expenses = storage.expenses_readonly().get_expenses(*period).await;
         let chat_categories = storage
             .categories_readonly()
             .get_categories()
@@ -420,13 +410,13 @@ impl CommandTrait for CommandReport {
 
         // Build header with category name, period, page info, and total
         let category_report = if filtered_expenses.is_empty() {
-            yoroolbot::markdown_format!(
+            markdown_format!(
                 "*{}* \\(period: *{}*\\): No expenses in this category\\.",
                 category.as_str(),
                 &period.to_string()
             )
         } else if total_pages > 1 {
-            yoroolbot::markdown_format!(
+            markdown_format!(
                 "*{}* \\(period: *{}*\\), total `{}`,  page {}/{}\n{}",
                 category.as_str(),
                 &period.to_string(),
@@ -436,7 +426,7 @@ impl CommandTrait for CommandReport {
                 @code report_text
             )
         } else {
-            yoroolbot::markdown_format!(
+            markdown_format!(
                 "*{}* \\(period: *{}*\\), total `{}`\n{}",
                 category.as_str(),
                 &period.to_string(),
