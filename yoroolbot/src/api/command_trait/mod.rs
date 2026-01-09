@@ -22,14 +22,18 @@ pub struct CommandReplyTarget {
 }
 
 impl CommandReplyTarget {
-    /// Send a markdown message without a menu
+    /// Send a new or edit a current markdown message without a menu
     pub async fn markdown_message(&self, text: MarkdownString) -> ResponseResult<Message> {
-        self.bot
-            .markdown_message(self.chat.id, self.msg_id, text)
-            .await
+        if let Some(message_id) = self.msg_id {
+            self.bot.edit_markdown_message_text(self.chat.id, message_id, text)
+                .await
+        } else {
+            self.bot.send_markdown_message(self.chat.id, text)
+                .await
+        }
     }
 
-    /// Send a markdown message with an inline keyboard menu
+    /// Send a new or edit a current markdown message with an inline keyboard menu
     /// The menu is automatically packed using pack_callback_data to handle long callback data
     pub async fn markdown_message_with_menu<R, B>(
         &self,
@@ -41,8 +45,7 @@ impl CommandReplyTarget {
         B: Into<ButtonData>,
     {
         let msg = self
-            .bot
-            .markdown_message(self.chat.id, self.msg_id, text)
+            .markdown_message(text)
             .await?;
 
         Self::attach_menu_to_message(
@@ -57,6 +60,7 @@ impl CommandReplyTarget {
         Ok(msg)
     }
 
+    /// Send a new markdown message without a menu
     pub fn send_markdown_message(&self, text: MarkdownString) -> JsonRequest<SendMessage> {
         self.bot.send_markdown_message(self.chat.id, text)
     }
@@ -86,7 +90,7 @@ impl CommandReplyTarget {
         Ok(msg)
     }
 
-    /// Helper function to attach a menu to an existing message
+    /// Internal helper function to attach a menu to an existing message
     /// Extracted to avoid code duplication between different send methods
     async fn attach_menu_to_message<R, B>(
         bot: &Bot,
@@ -107,15 +111,6 @@ impl CommandReplyTarget {
         Ok(())
     }
 
-    pub fn edit_markdown_message_text(
-        &self,
-        message_id: MessageId,
-        text: MarkdownString,
-    ) -> <Bot as Requester>::EditMessageText {
-        self.bot
-            .edit_markdown_message_text(self.chat.id, message_id, text)
-    }
-}
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct EmptyArg;

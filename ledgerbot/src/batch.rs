@@ -67,7 +67,7 @@ pub async fn execute_batch(
                     // Send error message to user
                     log::warn!("Parse error in batch for chat {}: {}", chat.id, err_msg);
                     if let Err(e) = bot
-                        .markdown_message(chat.id, None, markdown_format!("❌ {}", err_msg))
+                        .send_markdown_message(chat.id, markdown_format!("❌ {}", err_msg))
                         .await
                     {
                         log::error!("Failed to send error message: {}", e);
@@ -84,9 +84,8 @@ pub async fn execute_batch(
             .unwrap_or(ExpensePeriod::current());
 
         if let Err(e) = bot
-            .markdown_message(
+            .send_markdown_message(
                 chat.id,
-                None,
                 markdown_format!(
                     "✅ **Batch Summary Report**\n\n\
             Current period: {}\n\
