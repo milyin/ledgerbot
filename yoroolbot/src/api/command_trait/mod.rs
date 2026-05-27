@@ -25,11 +25,11 @@ impl CommandReplyTarget {
     /// Send a new or edit a current markdown message without a menu
     pub async fn markdown_message(&self, text: MarkdownString) -> ResponseResult<Message> {
         if let Some(message_id) = self.msg_id {
-            self.bot.edit_markdown_message_text(self.chat.id, message_id, text)
+            self.bot
+                .edit_markdown_message_text(self.chat.id, message_id, text)
                 .await
         } else {
-            self.bot.send_markdown_message(self.chat.id, text)
-                .await
+            self.bot.send_markdown_message(self.chat.id, text).await
         }
     }
 
@@ -44,9 +44,7 @@ impl CommandReplyTarget {
         R: IntoIterator<Item = B>,
         B: Into<ButtonData>,
     {
-        let msg = self
-            .markdown_message(text)
-            .await?;
+        let msg = self.markdown_message(text).await?;
 
         Self::attach_menu_to_message(
             &self.bot,
@@ -110,7 +108,7 @@ impl CommandReplyTarget {
             .await?;
         Ok(())
     }
-
+}
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct EmptyArg;

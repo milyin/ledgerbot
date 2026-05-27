@@ -92,25 +92,27 @@ The bot uses a trait-based storage architecture with multiple storage backends:
 
 ### Command Processing Pipeline
 
-1. **Message Reception** (`handlers.rs`): All text messages flow through `handle_text_message`
-2. **Parsing** (`parser.rs`): `parse_expenses()` converts message text to `Vec<Result<Command, String>>`
+1. **Direct command routing** (`main.rs`, `handlers.rs`): single-line, non-forwarded command messages are parsed through a teloxide `BotCommands` branch using `filter_command_prefixed()`
+2. **Batch/mixed message parsing** (`handlers.rs`, `utils/parse_expenses.rs`): multiline text, forwarded messages, and plain expense input still flow through `handle_text_message()`
    - Lines starting with `/` are parsed as commands
    - Other lines are parsed as expense entries
    - Bot name prefix and emojis are stripped
    - Supports both explicit dates (YYYY-MM-DD format) and implicit dates (message timestamp)
-3. **Batching** (`batch.rs`): Commands are collected into batches per chat for atomic execution
-4. **Execution** (`commands/mod.rs`): `execute_command()` dispatches to specific command handlers
+3. **Batching** (`batch.rs`): multiline and forwarded inputs are collected into per-chat batches and executed after the timeout window
+4. **Execution** (`commands/mod.rs`, `handlers.rs`): parsed commands are executed through the shared command dispatcher, for both direct commands and batched commands
 
 ### Command System
 
-Commands are implemented using the `CommandTrait` pattern:
+Ledgerbot now uses a hybrid command architecture:
 
-- Each command is a module in `commands/` (e.g., `command_help.rs`, `command_report.rs`)
-- Commands implement `CommandTrait` which provides:
+- The top-level `Command` enum (in `commands/mod.rs`) is the primary teloxide-facing command API and derives `teloxide::BotCommands`
+- Single-line commands are parsed directly from Telegram messages through that enum
+- Individual command modules still implement `CommandTrait` internally for progressive parameter gathering and menu-driven flows
+- Each command lives in `commands/` (e.g., `command_help.rs`, `command_report.rs`) and `CommandTrait` still provides:
   - `parse_arguments()`: Custom parsing from command string
   - `run()`: Async execution with access to storage
   - `to_command_string()`: Serialization back to command format
-- The main `Command` enum (in `commands/mod.rs`) aggregates all commands using `teloxide::BotCommands`
+- Inline keyboard callbacks are packed through telluride `CallbackKey` storage under the existing yoroolbot menu helpers
 
 ### Markdown Formatting (yoroolbot)
 
@@ -130,7 +132,7 @@ Interactive menus (`menus/` directory) use Telegram inline keyboards:
 - `select_category_filter.rs`: Filter selection within categories
 - `update_category.rs` / `update_category_filter.rs`: Edit/remove operations
 
-Menus use type-safe callback data via the `CallbackData` enum in `handlers.rs`.
+Menus still build command-string callback payloads, but those payloads are now packed and unpacked through telluride's `CallbackKey` mechanism inside `yoroolbot::storage`.
 
 ## Key Implementation Details
 

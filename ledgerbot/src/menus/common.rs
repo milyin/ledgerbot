@@ -153,6 +153,7 @@ pub async fn show_follow_status_message(
 mod tests {
     use std::sync::Arc;
 
+    use telluride::command::CallbackKey;
     use teloxide::types::ChatId;
     use yoroolbot::storage::{
         CallbackData, CallbackDataStorage, CallbackDataStorageTrait, InMemStore,
@@ -208,13 +209,12 @@ mod tests {
             _ => panic!("Expected callback button"),
         };
 
-        // Verify short data is not stored (kept as-is)
-        assert_eq!(cb1, "short");
-        assert_eq!(cb3, "another_short");
-
-        // Verify long data is stored (replaced with reference)
-        assert!(cb2.starts_with("cb:"));
-        assert!(cb4.starts_with("cb:"));
+        // Telluride now packs short values inline and stores large values behind
+        // a compact storage-backed key.
+        assert!(CallbackKey::is_packed_data(&cb1));
+        assert!(cb2.starts_with("s:"));
+        assert!(CallbackKey::is_packed_data(&cb3));
+        assert!(CallbackKey::is_packed_data(&cb4));
 
         // Unpack and verify
         let unpacked1 = unpack_callback_data(&storage, &cb1).await;
@@ -232,7 +232,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_pack_callback_data_clears_old_data() {
+    async fn test_pack_callback_data_rebuilds_markup() {
         let chat_id = ChatId(12345);
         let message_id = 67890;
         let data_store = Arc::new(InMemStore::<CallbackData>::new());
@@ -253,8 +253,7 @@ mod tests {
             _ => panic!("Expected callback button"),
         };
 
-        // Verify initial data is stored
-        assert!(initial_cb.starts_with("cb:"));
+        assert!(CallbackKey::is_packed_data(&initial_cb));
         let initial_unpacked = unpack_callback_data(&storage, &initial_cb).await;
         assert_eq!(
             initial_unpacked,
@@ -274,19 +273,10 @@ mod tests {
             _ => panic!("Expected callback button"),
         };
 
-        // Verify new data is stored
-        assert!(new_cb.starts_with("cb:"));
+        assert!(CallbackKey::is_packed_data(&new_cb));
         let new_unpacked = unpack_callback_data(&storage, &new_cb).await;
         assert_eq!(
             new_unpacked,
-            "toggle_word:new_category:another_very_long_word_that_also_exceeds_limit"
-        );
-
-        // Verify old reference now points to new data (since it uses same position)
-        // This is correct behavior: when buttons are updated, old references are reused
-        let old_ref_unpacked = unpack_callback_data(&storage, &initial_cb).await;
-        assert_eq!(
-            old_ref_unpacked,
             "toggle_word:new_category:another_very_long_word_that_also_exceeds_limit"
         );
     }

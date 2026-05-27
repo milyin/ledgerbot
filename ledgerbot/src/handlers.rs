@@ -1,7 +1,12 @@
 use std::sync::Arc;
 
 use telluride::{markdown::MarkdownStringMessage, markdown_format};
-use teloxide::{prelude::*, types::CallbackQuery, utils::command::BotCommands};
+use teloxide::{
+    dispatching::DpHandlerDescription,
+    prelude::*,
+    types::{CallbackQuery, Chat, Me, MessageId},
+    utils::command::BotCommands,
+};
 use yoroolbot::storage::unpack_callback_data;
 
 use crate::{
@@ -10,6 +15,74 @@ use crate::{
     storages::Stores,
     utils::parse_expenses::parse_expenses,
 };
+
+pub fn filter_command_prefixed<C, Output>() -> dptree::Handler<'static, Output, DpHandlerDescription>
+where
+    C: BotCommands + Send + Sync + 'static,
+    Output: Send + Sync + 'static,
+{
+    dptree::filter_map(move |message: Message, me: Me| {
+        let bot_name = me.user.username.expect("Bots must have a username");
+        let text = message.text().or_else(|| message.caption())?;
+        C::parse(text, &bot_name).ok().or_else(|| {
+            let prefix = format!("@{} ", bot_name);
+            text.strip_prefix(&prefix)
+                .and_then(|stripped| C::parse(stripped, &bot_name).ok())
+        })
+    })
+}
+
+pub fn is_direct_command_message(msg: &Message) -> bool {
+    if msg.text().is_none() || msg.forward_date().is_some() {
+        return false;
+    }
+
+    msg.text()
+        .map(|text| text.lines().filter(|line| !line.trim().is_empty()).count() == 1)
+        .unwrap_or(false)
+}
+
+async fn execute_and_report_command(
+    bot: Bot,
+    chat: Chat,
+    msg_id: Option<MessageId>,
+    storage: Arc<Stores>,
+    cmd: Command,
+    batch: bool,
+) -> ResponseResult<()> {
+    if let Err(e) = execute_command(
+        bot.clone(),
+        chat.clone(),
+        msg_id,
+        storage,
+        cmd.clone(),
+        batch,
+    )
+    .await
+    {
+        log::error!("Failed to execute command `{}`: {}", cmd, e);
+        bot.send_markdown_message(
+            chat.id,
+            markdown_format!(
+                "❌ Error executing command `{}`: {}",
+                cmd.to_string(),
+                e.to_string()
+            ),
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn handle_command_message(
+    bot: Bot,
+    msg: Message,
+    cmd: Command,
+    storage: Arc<Stores>,
+) -> ResponseResult<()> {
+    execute_and_report_command(bot, msg.chat.clone(), None, storage, cmd, false).await
+}
 
 /// Handle text messages containing potential expense data
 pub async fn handle_text_message(
@@ -59,8 +132,7 @@ pub async fn handle_text_message(
             for result in parsed_results {
                 match result {
                     Ok(cmd) => {
-                        // Execute the command using the shared execute_command function
-                        let exec_result = execute_command(
+                        execute_and_report_command(
                             bot.clone(),
                             msg.chat.clone(),
                             None,
@@ -68,15 +140,7 @@ pub async fn handle_text_message(
                             cmd,
                             false,
                         )
-                        .await;
-                        if let Err(e) = exec_result {
-                            log::error!("Failed to execute command: {}", e);
-                            bot.send_markdown_message(
-                                msg.chat.id,
-                                markdown_format!("❌ Error: {}", e.to_string()),
-                            )
-                            .await?;
-                        }
+                        .await?;
                     }
                     Err(err_msg) => {
                         // Send error message to user
@@ -133,28 +197,15 @@ pub async fn handle_callback_query(
     // Try to parse the callback data as command
     if let Ok(cmd) = Command::parse(&unpacked_data, &bot_username) {
         log::info!("Parsed command from callback: {:?}", cmd);
-        // Execute the command using the shared execute_command function
-        if let Err(e) = execute_command(
+        execute_and_report_command(
             bot.clone(),
             msg.chat.clone(),
             Some(msg.id),
             storage.clone(),
-            cmd.clone(),
+            cmd,
             false,
         )
-        .await
-        {
-            log::error!("Failed to execute command from callback: {}", e);
-            bot.send_markdown_message(
-                chat_id,
-                markdown_format!(
-                    "❌ Error executing command `{}`: {}",
-                    cmd.to_string(),
-                    e.to_string()
-                ),
-            )
-            .await?;
-        }
+        .await?;
         return Ok(());
     }
 

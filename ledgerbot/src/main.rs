@@ -10,7 +10,10 @@ use std::{path::PathBuf, sync::Arc};
 
 use clap::Parser;
 use config::Args;
-use handlers::{handle_callback_query, handle_text_message};
+use handlers::{
+    filter_command_prefixed, handle_callback_query, handle_command_message, handle_text_message,
+    is_direct_command_message,
+};
 use teloxide::prelude::*;
 use yoroolbot::storage::FilesystemYamlStore;
 
@@ -54,17 +57,18 @@ async fn main() {
     // Wrap storage in Arc for use throughout the bot
     let storage: Arc<Stores> = Arc::new(storage);
 
-    // Create handler using modern teloxide patterns
+    // Route direct single-line commands through teloxide's command parser while
+    // preserving ledgerbot's batch parser for multiline and forwarded input.
     let handler = dptree::entry()
         .branch(
             Update::filter_message()
-                // Route all text messages (including commands) to handle_text_message
-                // which can parse and execute multiple commands from a single message
-                .branch(
-                    dptree::filter(|msg: Message| msg.text().is_some())
-                        .endpoint(handle_text_message),
-                ),
+                .filter(is_direct_command_message)
+                .chain(filter_command_prefixed::<commands::Command, _>())
+                .endpoint(handle_command_message),
         )
+        .branch(Update::filter_message().branch(
+            dptree::filter(|msg: Message| msg.text().is_some()).endpoint(handle_text_message),
+        ))
         .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
