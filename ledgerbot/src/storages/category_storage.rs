@@ -2,10 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::types::ChatId;
-use yoroolbot::{command_trait::CommandTrait, storage::DataStoreTrait};
 
 use crate::{
     commands::{command_add_filter::CommandAddFilter, command_categories::CommandCategories},
+    data_store::DataStoreTrait,
     storages::Category,
 };
 

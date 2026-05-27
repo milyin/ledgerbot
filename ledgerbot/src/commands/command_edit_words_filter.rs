@@ -3,10 +3,10 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
     commands::command_edit_filter::CommandEditFilter,
+    impl_command_execute_4, impl_command_io,
     menus::{
         common::read_category_filter_by_index,
         select_category::select_category,
@@ -14,10 +14,11 @@ use crate::{
         select_word::{Words, select_word},
     },
     storages::{Category, Stores},
+    ui::CommandContext,
     utils::extract_words::extract_and_merge_words,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandEditWordsFilter {
     pub category: Option<Category>,
     pub position: Option<usize>,
@@ -25,82 +26,31 @@ pub struct CommandEditWordsFilter {
     pub words: Option<Words>,
 }
 
-impl CommandTrait for CommandEditWordsFilter {
-    type A = Category;
-    type B = usize;
-    type C = usize;
-    type D = Words;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<Stores>;
-
-    const NAME: &'static str = "edit_words_filter";
-    const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<page>", "<words>"];
-
-    fn from_arguments(
-        category: Option<Self::A>,
-        position: Option<Self::B>,
-        page: Option<Self::C>,
-        words: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandEditWordsFilter {
-            category,
-            position,
-            page,
-            words,
-        }
-    }
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
-    }
-
-    fn param2(&self) -> Option<&Self::B> {
-        self.position.as_ref()
-    }
-
-    fn param3(&self) -> Option<&Self::C> {
-        self.page.as_ref()
-    }
-
-    fn param4(&self) -> Option<&Self::D> {
-        self.words.as_ref()
-    }
-
-    async fn run0(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-    ) -> ResponseResult<()> {
+impl CommandEditWordsFilter {
+    async fn run0(&self, target: &CommandContext, storage: Arc<Stores>) -> ResponseResult<()> {
         let storage_ = storage.storage(target.chat.id);
         select_category(
             target,
             &storage_.categories(),
             markdown_string!("✏️ Select Category to edit word filter"),
-            |category| CommandEditWordsFilter {
-                category: Some(category.clone()),
-                position: None,
-                page: None,
-                words: None,
+            |category| {
+                CommandEditWordsFilter {
+                    category: Some(category.clone()),
+                    position: None,
+                    page: None,
+                    words: None,
+                }
+                .into()
             },
-            None::<NoopCommand>,
+            None,
         )
         .await
     }
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Stores>,
         category: &Category,
     ) -> ResponseResult<()> {
         let storage_ = storage.storage(target.chat.id);
@@ -113,41 +63,43 @@ impl CommandTrait for CommandEditWordsFilter {
                 category.as_str()
             ),
             |idx, pattern| {
-                // Only show word-based filters (those that can be parsed by Words::read_pattern)
-                Words::read_pattern(pattern).map(|_| CommandEditWordsFilter {
-                    category: Some(category.clone()),
-                    position: Some(idx),
-                    page: None,
-                    words: None,
+                Words::read_pattern(pattern).map(|_| {
+                    CommandEditWordsFilter {
+                        category: Some(category.clone()),
+                        position: Some(idx),
+                        page: None,
+                        words: None,
+                    }
+                    .into()
                 })
             },
-            Some(CommandEditWordsFilter::default()),
+            Some(CommandEditWordsFilter::default().into()),
         )
         .await
     }
 
     async fn run2(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Stores>,
         category: &Category,
         position: &usize,
     ) -> ResponseResult<()> {
         let storage_ = storage.storage(target.chat.id);
-        //
-        // Prefill with words from old pattern only when runned with <category> and <position>
-        //
         let Some(current_pattern) = read_category_filter_by_index(
             target,
             &storage_.categories(),
             category,
             *position,
-            Some(CommandEditWordsFilter {
-                category: Some(category.clone()),
-                position: None,
-                page: None,
-                words: None,
-            }),
+            Some(
+                CommandEditWordsFilter {
+                    category: Some(category.clone()),
+                    position: None,
+                    page: None,
+                    words: None,
+                }
+                .into(),
+            ),
         )
         .await?
         else {
@@ -155,31 +107,26 @@ impl CommandTrait for CommandEditWordsFilter {
         };
 
         let words = Words::read_pattern(&current_pattern).unwrap_or_default();
-
-        // Navigate to next page
         self.run4(target, storage, category, position, &0, &words)
             .await
     }
 
     async fn run3(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Stores>,
         category: &Category,
         position: &usize,
         page: &usize,
     ) -> ResponseResult<()> {
-        //
-        // When page is already selected and words are not provided, assume that current words list is empty
-        //
         self.run4(target, storage, category, position, page, &Words::default())
             .await
     }
 
     async fn run4(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Stores>,
         category: &Category,
         position: &usize,
         page: &usize,
@@ -194,12 +141,15 @@ impl CommandTrait for CommandEditWordsFilter {
             &storage_.categories(),
             &category,
             position,
-            Some(CommandEditWordsFilter {
-                category: Some(category.clone()),
-                position: None,
-                page: None,
-                words: None,
-            }),
+            Some(
+                CommandEditWordsFilter {
+                    category: Some(category.clone()),
+                    position: None,
+                    page: None,
+                    words: None,
+                }
+                .into(),
+            ),
         )
         .await?
         else {
@@ -212,7 +162,6 @@ impl CommandTrait for CommandEditWordsFilter {
         )
         .await;
 
-        // Show word selection menu with pagination
         let prompt = |current_page: usize, total_pages: usize, total_words: usize| {
             markdown_format!(
                 "✏️ Edit word filter **\\#{}** in category `{}`\n\n{}\n\nPage {}/{} \\({} words total\\)",
@@ -238,21 +187,25 @@ impl CommandTrait for CommandEditWordsFilter {
                 page: Some(*page),
                 words: Some(new_words.into()),
             }
+            .into()
         };
 
-        let page_command = |page_num: usize| CommandEditWordsFilter {
-            category: Some(category.clone()),
-            position: Some(position),
-            page: Some(page_num),
-            words: Some(selected_words.clone()),
+        let page_command = |page_num: usize| {
+            CommandEditWordsFilter {
+                category: Some(category.clone()),
+                position: Some(position),
+                page: Some(page_num),
+                words: Some(selected_words.clone()),
+            }
+            .into()
         };
 
-        // Apply command will edit the existing filter
         let apply_command = CommandEditFilter {
             category: Some(category.clone()),
             position: Some(position),
             pattern: selected_words.build_pattern(),
-        };
+        }
+        .into();
 
         select_word(
             target,
@@ -263,16 +216,37 @@ impl CommandTrait for CommandEditWordsFilter {
             word_command,
             page_command,
             apply_command,
-            Some(CommandEditWordsFilter {
-                category: Some(category.clone()),
-                position: None,
-                page: None,
-                words: None,
-            }),
+            Some(
+                CommandEditWordsFilter {
+                    category: Some(category.clone()),
+                    position: None,
+                    page: None,
+                    words: None,
+                }
+                .into(),
+            ),
         )
         .await
     }
 }
+
+impl_command_io!(
+    CommandEditWordsFilter,
+    "edit_words_filter",
+    ["<category>", "<position>", "<page>", "<words>"],
+    category: Category,
+    position: usize,
+    page: usize,
+    words: Words
+);
+impl_command_execute_4!(
+    CommandEditWordsFilter,
+    Arc<Stores>,
+    category,
+    position,
+    page,
+    words
+);
 
 impl From<CommandEditWordsFilter> for crate::commands::Command {
     fn from(cmd: CommandEditWordsFilter) -> Self {

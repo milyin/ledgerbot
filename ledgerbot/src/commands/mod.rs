@@ -23,16 +23,18 @@ pub mod command_unfollow;
 pub mod expenses;
 pub mod follow_helper;
 pub mod report;
+pub mod support;
 
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
+use telluride::command::CallbackKey;
+use telluride::data_store::InMemStore;
 use teloxide::{
     prelude::*,
-    types::{Chat, MessageId},
+    types::{Chat, MessageId, UserId},
     utils::command::BotCommands,
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::{
     commands::{
@@ -51,10 +53,11 @@ use crate::{
         command_unfollow::CommandUnfollow, follow_helper::validate_and_get_follow_access,
     },
     storages::Stores,
+    ui::CommandContext,
 };
 
 /// Bot commands
-#[derive(BotCommands, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(BotCommands, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[command(
     rename_rule = "lowercase",
     description = "These commands are supported:"
@@ -190,36 +193,44 @@ pub enum Command {
 // Command constants as string representations
 impl Command {
     pub const ADD_FILTER: &'static str = "/add_filter";
+
+    pub fn to_command_string(&self, complete: bool) -> String {
+        match self {
+            Command::Start(start) => start.to_command_string(complete),
+            Command::Help(help) => help.to_command_string(complete),
+            Command::List(list) => list.to_command_string(complete),
+            Command::Report(report) => report.to_command_string(complete),
+            Command::ClearExpenses(clear_expenses) => clear_expenses.to_command_string(complete),
+            Command::Categories(categories) => categories.to_command_string(complete),
+            Command::ClearCategories(clear_categories) => {
+                clear_categories.to_command_string(complete)
+            }
+            Command::AddCategory(add_category) => add_category.to_command_string(complete),
+            Command::AddFilter(add_filter) => add_filter.to_command_string(complete),
+            Command::RemoveCategory(remove_category) => remove_category.to_command_string(complete),
+            Command::RenameCategory(rename_category) => rename_category.to_command_string(complete),
+            Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(complete),
+            Command::EditFilter(edit_filter) => edit_filter.to_command_string(complete),
+            Command::AddExpense(add_expense) => add_expense.to_command_string(complete),
+            Command::AddWordsFilter(add_words_filter) => {
+                add_words_filter.to_command_string(complete)
+            }
+            Command::EditWordsFilter(edit_words_filter) => {
+                edit_words_filter.to_command_string(complete)
+            }
+            Command::SelectPeriod(select_period) => select_period.to_command_string(complete),
+            Command::AddFollower(add_follower) => add_follower.to_command_string(complete),
+            Command::ListFollowers(list_followers) => list_followers.to_command_string(complete),
+            Command::RemoveFollower(remove_follower) => remove_follower.to_command_string(complete),
+            Command::Follow(follow) => follow.to_command_string(complete),
+            Command::Unfollow(unfollow) => unfollow.to_command_string(complete),
+        }
+    }
 }
 
 impl From<Command> for String {
     fn from(val: Command) -> Self {
-        match val {
-            Command::Start(start) => start.to_command_string(true),
-            Command::Help(help) => help.to_command_string(true),
-            Command::List(list) => list.to_command_string(true),
-            Command::Report(report) => report.to_command_string(true),
-            Command::ClearExpenses(clear_expenses) => clear_expenses.to_command_string(true),
-            Command::Categories(categories) => categories.to_command_string(true),
-            Command::ClearCategories(clear_categories) => clear_categories.to_command_string(true),
-            Command::AddCategory(add_category) => add_category.to_command_string(true),
-            Command::AddFilter(add_filter) => add_filter.to_command_string(true),
-            Command::RemoveCategory(remove_category) => remove_category.to_command_string(true),
-            Command::RenameCategory(rename_category) => rename_category.to_command_string(true),
-            Command::RemoveFilter(remove_filter) => remove_filter.to_command_string(true),
-            Command::EditFilter(edit_filter) => edit_filter.to_command_string(true),
-            Command::AddExpense(add_expense) => add_expense.to_command_string(true),
-            Command::AddWordsFilter(add_words_filter) => add_words_filter.to_command_string(true),
-            Command::EditWordsFilter(edit_words_filter) => {
-                edit_words_filter.to_command_string(true)
-            }
-            Command::SelectPeriod(select_period) => select_period.to_command_string(true),
-            Command::AddFollower(add_follower) => add_follower.to_command_string(true),
-            Command::ListFollowers(list_followers) => list_followers.to_command_string(true),
-            Command::RemoveFollower(remove_follower) => remove_follower.to_command_string(true),
-            Command::Follow(follow) => follow.to_command_string(true),
-            Command::Unfollow(unfollow) => unfollow.to_command_string(true),
-        }
+        val.to_command_string(true)
     }
 }
 
@@ -234,17 +245,20 @@ pub async fn execute_command(
     bot: Bot,
     chat: Chat,
     msg_id: Option<MessageId>,
+    user_id: UserId,
     stores: Arc<Stores>,
+    callback_storage: Arc<InMemStore<CallbackKey, Command>>,
     cmd: Command,
     batch: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let storage = stores.storage(chat.id);
-    let target = CommandReplyTarget {
+    let target = CommandContext {
         bot: bot.clone(),
         chat: chat.clone(),
-        msg_id,
+        message_id: msg_id,
+        user_id,
         batch,
-        callback_data_storage: storage.callback_data(),
+        callback_storage,
     };
     // Validate follow access (setting to use data from another user) and
     // get appropriate readonly storage. The readwrite storage is always for the current chat.
@@ -259,78 +273,82 @@ pub async fn execute_command(
 
     match cmd {
         Command::Start(start) => {
-            start.run(&target, ()).await?;
+            start.execute(&target, ()).await?;
         }
         Command::Help(help) => {
-            help.run(&target, ()).await?;
+            help.execute(&target, ()).await?;
         }
         Command::List(list) => {
-            list.run(&target, storage_readonly).await?;
+            list.execute(&target, storage_readonly).await?;
         }
         Command::Report(report) => {
-            report.run(&target, storage_readonly).await?;
+            report.execute(&target, storage_readonly).await?;
         }
         Command::ClearExpenses(clear_expenses) => {
-            clear_expenses.run(&target, storage).await?;
+            clear_expenses.execute(&target, storage).await?;
         }
         Command::ClearCategories(clear_categories) => {
-            clear_categories.run(&target, storage.categories()).await?;
+            clear_categories
+                .execute(&target, storage.categories())
+                .await?;
         }
         Command::AddCategory(add_category) => {
-            add_category.run(&target, storage.categories()).await?;
+            add_category.execute(&target, storage.categories()).await?;
         }
         Command::Categories(categories) => {
-            categories.run(&target, storage_readonly).await?;
+            categories.execute(&target, storage_readonly).await?;
         }
         Command::AddFilter(add_filter) => {
-            add_filter.run(&target, storage).await?;
+            add_filter.execute(&target, storage).await?;
         }
         Command::RemoveCategory(remove_category) => {
             remove_category
-                .run(&target, stores.storage(target.chat.id).categories())
+                .execute(&target, stores.storage(target.chat.id).categories())
                 .await?;
         }
         Command::RenameCategory(rename_category) => {
-            rename_category.run(&target, storage.categories()).await?;
+            rename_category
+                .execute(&target, storage.categories())
+                .await?;
         }
         Command::RemoveFilter(remove_filter) => {
-            remove_filter.run(&target, storage.categories()).await?;
+            remove_filter.execute(&target, storage.categories()).await?;
         }
         Command::EditFilter(edit_filter) => {
-            edit_filter.run(&target, storage.categories()).await?;
+            edit_filter.execute(&target, storage.categories()).await?;
         }
         Command::AddExpense(add_expense) => {
-            add_expense.run(&target, storage).await?;
+            add_expense.execute(&target, storage).await?;
         }
         Command::AddWordsFilter(add_words_filter) => {
-            add_words_filter.run(&target, storage).await?;
+            add_words_filter.execute(&target, storage).await?;
         }
         Command::EditWordsFilter(edit_words_filter) => {
-            edit_words_filter.run(&target, stores.clone()).await?;
+            edit_words_filter.execute(&target, stores.clone()).await?;
         }
         Command::SelectPeriod(select_period) => {
-            select_period.run(&target, storage).await?;
+            select_period.execute(&target, storage).await?;
         }
         Command::AddFollower(add_follower) => {
             add_follower
-                .run(&target, stores.storage(chat.id).followers())
+                .execute(&target, stores.storage(chat.id).followers())
                 .await?;
         }
         Command::ListFollowers(list_followers) => {
             list_followers
-                .run(&target, stores.storage(chat.id).followers())
+                .execute(&target, stores.storage(chat.id).followers())
                 .await?;
         }
         Command::RemoveFollower(remove_follower) => {
             remove_follower
-                .run(&target, stores.storage(chat.id).followers())
+                .execute(&target, stores.storage(chat.id).followers())
                 .await?;
         }
         Command::Follow(follow) => {
-            follow.run(&target, stores.clone()).await?;
+            follow.execute(&target, stores.clone()).await?;
         }
         Command::Unfollow(unfollow) => {
-            unfollow.run(&target, stores.clone()).await?;
+            unfollow.execute(&target, stores.clone()).await?;
         }
     }
     Ok(())

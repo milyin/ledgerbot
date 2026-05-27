@@ -7,14 +7,15 @@ use teloxide::{
     prelude::{Requester, ResponseResult},
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::command_follow::CommandFollow,
+    impl_command_execute_1, impl_command_io,
     storages::{FollowersStorageTrait, TelegramUsername},
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandAddFollower {
     pub username: Option<TelegramUsername>,
 }
@@ -27,45 +28,15 @@ impl CommandAddFollower {
     }
 }
 
-impl CommandTrait for CommandAddFollower {
-    type A = TelegramUsername;
-    type B = EmptyArg;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
+impl_command_io!(CommandAddFollower, "add_follower", ["<username>"], username: TelegramUsername);
+impl_command_execute_1!(CommandAddFollower, Arc<dyn FollowersStorageTrait>, username);
 
-    type Context = Arc<dyn FollowersStorageTrait>;
-
-    const NAME: &'static str = "add_follower";
-    const PLACEHOLDERS: &[&'static str] = &["<username>"];
-
-    fn from_arguments(
-        a: Option<Self::A>,
-        _: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandAddFollower { username: a }
-    }
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.username.as_ref()
-    }
-
+impl CommandAddFollower {
     async fn run0(
         &self,
-        target: &CommandReplyTarget,
-        _storage: Self::Context,
-    ) -> teloxide::prelude::ResponseResult<()> {
+        target: &CommandContext,
+        _storage: Arc<dyn FollowersStorageTrait>,
+    ) -> ResponseResult<()> {
         target
             .send_markdown_message(markdown_string!("➕ Add Follower"))
             .await?;
@@ -75,10 +46,10 @@ impl CommandTrait for CommandAddFollower {
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn FollowersStorageTrait>,
         username: &TelegramUsername,
-    ) -> teloxide::prelude::ResponseResult<()> {
+    ) -> ResponseResult<()> {
         match storage.add_follower(username).await {
             Ok(()) => {
                 target
@@ -101,8 +72,7 @@ impl CommandTrait for CommandAddFollower {
     }
 }
 
-/// Show add share menu
-pub async fn add_follower_menu(target: &CommandReplyTarget) -> ResponseResult<()> {
+pub async fn add_follower_menu(target: &CommandContext) -> ResponseResult<()> {
     let text = markdown_string!(
         "➕ **Add a username to followers list:**\n\nClick the button below and type the username \\(e\\.g\\., @username\\)\\."
     );
@@ -121,4 +91,10 @@ pub async fn add_follower_menu(target: &CommandReplyTarget) -> ResponseResult<()
         .await?;
 
     Ok(())
+}
+
+impl From<CommandAddFollower> for crate::commands::Command {
+    fn from(cmd: CommandAddFollower) -> Self {
+        crate::commands::Command::AddFollower(cmd)
+    }
 }

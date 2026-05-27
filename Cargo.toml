@@ -1,5 +1,5 @@
 [workspace]
-members = ["ledgerbot", "yoroolbot"]
+members = ["ledgerbot"]
 resolver = "2"
 package.version = "0.4.0"
 

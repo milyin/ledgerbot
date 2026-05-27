@@ -3,70 +3,31 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::markdown_format;
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::command_add_words_filter::CommandAddWordsFilter,
+    impl_command_execute_2, impl_command_io,
     storages::{Category, Storage},
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandAddFilter {
     pub category: Option<Category>,
     pub pattern: Option<String>,
 }
 
-impl CommandTrait for CommandAddFilter {
-    type A = Category;
-    type B = String;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<Storage>;
-
-    const NAME: &'static str = "add_filter";
-
-    const PLACEHOLDERS: &[&'static str] = &["<category>", "<pattern>"];
-
-    fn from_arguments(
-        category: Option<Self::A>,
-        pattern: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandAddFilter { category, pattern }
-    }
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
-    }
-
-    fn param2(&self) -> Option<&Self::B> {
-        self.pattern.as_ref()
-    }
-
-    async fn run0(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-    ) -> ResponseResult<()> {
-        CommandAddWordsFilter::default().run(target, storage).await
+impl CommandAddFilter {
+    async fn run0(&self, target: &CommandContext, storage: Arc<Storage>) -> ResponseResult<()> {
+        CommandAddWordsFilter::default()
+            .execute(target, storage)
+            .await
     }
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Storage>,
         category: &Category,
     ) -> ResponseResult<()> {
         CommandAddWordsFilter {
@@ -74,14 +35,14 @@ impl CommandTrait for CommandAddFilter {
             page: None,
             words: None,
         }
-        .run(target, storage)
+        .execute(target, storage)
         .await
     }
 
     async fn run2(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Storage>,
         category: &Category,
         pattern: &String,
     ) -> ResponseResult<()> {
@@ -101,5 +62,20 @@ impl CommandTrait for CommandAddFilter {
             ))
             .await?;
         Ok(())
+    }
+}
+
+impl_command_io!(
+    CommandAddFilter,
+    "add_filter",
+    ["<category>", "<pattern>"],
+    category: Category,
+    pattern: String
+);
+impl_command_execute_2!(CommandAddFilter, Arc<Storage>, category, pattern);
+
+impl From<CommandAddFilter> for crate::commands::Command {
+    fn from(cmd: CommandAddFilter) -> Self {
+        crate::commands::Command::AddFilter(cmd)
     }
 }

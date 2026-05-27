@@ -3,105 +3,59 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
     commands::command_add_filter::CommandAddFilter,
+    impl_command_execute_3, impl_command_io,
     menus::{
         select_category::select_category,
         select_word::{Words, select_word},
     },
     storages::{Category, Expense, Storage},
+    ui::CommandContext,
     utils::extract_words::extract_words,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandAddWordsFilter {
     pub category: Option<Category>,
     pub page: Option<usize>,
     pub words: Option<Words>,
 }
 
-impl CommandTrait for CommandAddWordsFilter {
-    type A = Category;
-    type B = usize;
-    type C = Words;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<Storage>;
-
-    const NAME: &'static str = "add_words_filter";
-    const PLACEHOLDERS: &[&'static str] = &["<category>", "<page>", "<words>"];
-
-    fn from_arguments(
-        category: Option<Self::A>,
-        page: Option<Self::B>,
-        words: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandAddWordsFilter {
-            category,
-            page,
-            words,
-        }
-    }
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
-    }
-
-    fn param2(&self) -> Option<&Self::B> {
-        self.page.as_ref()
-    }
-
-    fn param3(&self) -> Option<&Self::C> {
-        self.words.as_ref()
-    }
-
-    async fn run0(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-    ) -> ResponseResult<()> {
+impl CommandAddWordsFilter {
+    async fn run0(&self, target: &CommandContext, storage: Arc<Storage>) -> ResponseResult<()> {
         select_category(
             target,
             &storage.categories(),
             markdown_string!("➕ Select Category to add filter"),
-            |category| CommandAddWordsFilter {
-                category: Some(category.clone()),
-                page: Some(0),
-                words: None,
+            |category| {
+                CommandAddWordsFilter {
+                    category: Some(category.clone()),
+                    page: Some(0),
+                    words: None,
+                }
+                .into()
             },
-            None::<NoopCommand>,
+            None,
         )
         .await
     }
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Storage>,
         category: &Category,
     ) -> ResponseResult<()> {
-        // Default to page 0 when no page specified
         self.run3(target, storage, category, &0, &Words::default())
             .await
     }
 
     async fn run2(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Storage>,
         category: &Category,
         page: &usize,
     ) -> ResponseResult<()> {
@@ -111,16 +65,13 @@ impl CommandTrait for CommandAddWordsFilter {
 
     async fn run3(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Storage>,
         category: &Category,
         page: &usize,
         selected_words: &Words,
     ) -> ResponseResult<()> {
-        // Get all expenses across all periods for word extraction
         let all_expenses = storage.expenses().get_all_expenses().await;
-
-        // Extract just the Expense objects (ignore period information)
         let expenses: Vec<Expense> = all_expenses
             .into_iter()
             .map(|(_, expense)| expense)
@@ -132,7 +83,6 @@ impl CommandTrait for CommandAddWordsFilter {
             .await
             .unwrap_or_default();
 
-        // Extract words from uncategorized expenses
         let words = extract_words(&expenses, &categories);
 
         if words.is_empty() {
@@ -146,7 +96,6 @@ impl CommandTrait for CommandAddWordsFilter {
 
         let category = category.clone();
 
-        // Show word selection menu with pagination
         let prompt = |current_page: usize, total_pages: usize, total_words: usize| {
             markdown_format!(
                 "💡 Select word\\(s\\) for filter in category `{}`\n\n{}\n\nPage {}/{} \\({} words total\\)",
@@ -170,15 +119,18 @@ impl CommandTrait for CommandAddWordsFilter {
                 page: Some(*page),
                 words: Some(selected_words.into()),
             }
+            .into()
         };
 
-        let page_command = |page_num: usize| CommandAddWordsFilter {
-            category: Some(category.clone()),
-            page: Some(page_num),
-            words: Some(selected_words.clone()),
+        let page_command = |page_num: usize| {
+            CommandAddWordsFilter {
+                category: Some(category.clone()),
+                page: Some(page_num),
+                words: Some(selected_words.clone()),
+            }
+            .into()
         };
 
-        // Build regex pattern from selected words
         select_word(
             target,
             prompt,
@@ -190,16 +142,30 @@ impl CommandTrait for CommandAddWordsFilter {
             CommandAddFilter {
                 category: Some(category.clone()),
                 pattern: selected_words.build_pattern(),
-            },
-            Some(CommandAddWordsFilter {
-                category: None,
-                page: None,
-                words: None,
-            }),
+            }
+            .into(),
+            Some(
+                CommandAddWordsFilter {
+                    category: None,
+                    page: None,
+                    words: None,
+                }
+                .into(),
+            ),
         )
         .await
     }
 }
+
+impl_command_io!(
+    CommandAddWordsFilter,
+    "add_words_filter",
+    ["<category>", "<page>", "<words>"],
+    category: Category,
+    page: usize,
+    words: Words
+);
+impl_command_execute_3!(CommandAddWordsFilter, Arc<Storage>, category, page, words);
 
 impl From<CommandAddWordsFilter> for crate::commands::Command {
     fn from(cmd: CommandAddWordsFilter) -> Self {

@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
 use rust_decimal::Decimal;
-use telluride::{markdown::MarkdownStringMessage, markdown_format};
-use teloxide::{prelude::*, types::Chat};
-use yoroolbot::command_trait::CommandTrait;
+use telluride::{
+    command::CallbackKey, data_store::InMemStore, markdown::MarkdownStringMessage, markdown_format,
+};
+use teloxide::{
+    prelude::*,
+    types::{Chat, UserId},
+};
 
 use crate::{
     commands::{
@@ -28,6 +32,8 @@ pub async fn execute_batch(
     batch_storage: Arc<dyn BatchStorageTrait>,
     chat: Chat,
     storage: Arc<Stores>,
+    callback_storage: Arc<InMemStore<CallbackKey, Command>>,
+    user_id: UserId,
 ) {
     // Wait for the timeout period
     tokio::time::sleep(tokio::time::Duration::from_secs(BATCH_TIMEOUT_SECONDS)).await;
@@ -54,7 +60,9 @@ pub async fn execute_batch(
                         bot.clone(),
                         chat.clone(),
                         None,
+                        user_id,
                         storage.clone(),
+                        callback_storage.clone(),
                         cmd,
                         true,
                     )

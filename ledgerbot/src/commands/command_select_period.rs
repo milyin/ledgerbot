@@ -3,57 +3,25 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::markdown_format;
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
+    commands::Command,
+    impl_command_execute_1, impl_command_io,
     menus::select_period::select_period,
     storages::{ExpensePeriod, Storage},
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandSelectPeriod {
     pub period: Option<ExpensePeriod>,
 }
 
-impl CommandTrait for CommandSelectPeriod {
-    type A = ExpensePeriod;
-    type B = EmptyArg;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
+impl_command_io!(CommandSelectPeriod, "select_period", ["YYYY-MM"], period: ExpensePeriod);
+impl_command_execute_1!(CommandSelectPeriod, Arc<Storage>, period);
 
-    type Context = Arc<Storage>;
-
-    const NAME: &'static str = "select_period";
-    const PLACEHOLDERS: &[&'static str] = &["YYYY-MM"];
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.period.as_ref()
-    }
-
-    fn from_arguments(
-        period: Option<Self::A>,
-        _: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandSelectPeriod { period }
-    }
-
-    async fn run0(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-    ) -> ResponseResult<()> {
+impl CommandSelectPeriod {
+    async fn run0(&self, target: &CommandContext, storage: Arc<Storage>) -> ResponseResult<()> {
         let var_storage = storage.variables();
         let current_period: Option<ExpensePeriod> = var_storage.get().await;
 
@@ -63,7 +31,6 @@ impl CommandTrait for CommandSelectPeriod {
             ExpensePeriod::current().to_string()
         };
 
-        // Create inline command for new period with current period as default
         let new_period_command = CommandSelectPeriod { period: None };
         let new_period_command_str = new_period_command.to_command_string(true);
 
@@ -74,20 +41,18 @@ impl CommandTrait for CommandSelectPeriod {
             new_period_command_str
         );
 
-        // Show menu with available periods
         let expense_storage = storage.expenses_readonly();
         select_period(
             target,
             &expense_storage,
             prompt,
             |period| {
-                // Parse the period string from the menu
-                CommandSelectPeriod {
+                Command::SelectPeriod(CommandSelectPeriod {
                     period: Some(*period),
-                }
+                })
             },
-            None::<CommandSelectPeriod>,
-            Some(new_period_command),
+            None,
+            Some(Command::SelectPeriod(new_period_command)),
         )
         .await?;
 
@@ -96,11 +61,10 @@ impl CommandTrait for CommandSelectPeriod {
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Storage>,
         period: &ExpensePeriod,
     ) -> ResponseResult<()> {
-        // Store the selected period in VariableStorage
         let var_storage = storage.variables();
         var_storage.set(*period).await;
 

@@ -3,14 +3,15 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::markdown_format;
 use teloxide::{prelude::ResponseResult, types::ChatId};
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::{command_unfollow::CommandUnfollow, follow_helper},
+    impl_command_execute_1, impl_command_io,
     storages::Stores,
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandFollow {
     pub chat_id: Option<i64>,
 }
@@ -23,84 +24,48 @@ impl CommandFollow {
     }
 }
 
-impl CommandTrait for CommandFollow {
-    type A = i64;
-    type B = EmptyArg;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<Stores>;
-
-    const NAME: &'static str = "follow";
-    const PLACEHOLDERS: &[&'static str] = &["<chat_id>"];
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.chat_id.as_ref()
+impl From<CommandFollow> for crate::commands::Command {
+    fn from(cmd: CommandFollow) -> Self {
+        crate::commands::Command::Follow(cmd)
     }
+}
 
-    fn from_arguments(
-        chat_id: Option<Self::A>,
-        _: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandFollow { chat_id }
-    }
+impl_command_io!(CommandFollow, "follow", ["<chat_id>"], chat_id: i64);
+impl_command_execute_1!(CommandFollow, Arc<Stores>, chat_id);
 
-    async fn run0(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-    ) -> ResponseResult<()> {
+impl CommandFollow {
+    async fn run0(&self, target: &CommandContext, storage: Arc<Stores>) -> ResponseResult<()> {
         let storage_ = storage.storage(target.chat.id);
         let variable_storage = storage_.variables();
-
-        // Check if currently following any chat
         let followed_chat: Option<ChatId> = variable_storage.get().await;
 
         let status_message = match followed_chat {
             Some(chat_id) => {
-                // Validate current follow access
                 match follow_helper::validate_and_get_follow_access(target, &storage).await {
-                    Ok(_) => {
-                        markdown_format!(
-                            "👁️ **Currently following:** chat `{}`\n\n\
-                             To change, use `{}`\n\
-                             To stop following, use `{}`",
-                            chat_id.0,
-                            CommandFollow::default().to_command_string(true),
-                            CommandUnfollow.to_command_string(true)
-                        )
-                    }
+                    Ok(_) => markdown_format!(
+                        "👁️ **Currently following:** chat `{}`\n\n\
+                     To change, use `{}`\n\
+                     To stop following, use `{}`",
+                        chat_id.0,
+                        CommandFollow::default().to_command_string(true),
+                        CommandUnfollow.to_command_string(true)
+                    ),
                     Err(warning_msg) => {
-                        // Access lost, show warning and usage
                         warning_msg
                             + markdown_format!(
                                 "\n\nℹ️ Usage: `{}`\n\n\
-                                 Follow expenses from another chat that has shared access to you\\.",
+                             Follow expenses from another chat that has shared access to you\\.",
                                 CommandFollow::default().to_command_string(true)
                             )
                     }
                 }
             }
-            None => {
-                markdown_format!(
-                    "ℹ️ Not currently following any chat\\.\n\n\
-                     Usage: `{}`\n\n\
-                     Follow expenses from another chat that has shared access to you\\.",
-                    CommandFollow::default().to_command_string(true)
-                )
-            }
+            None => markdown_format!(
+                "ℹ️ Not currently following any chat\\.\n\n\
+                 Usage: `{}`\n\n\
+                 Follow expenses from another chat that has shared access to you\\.",
+                CommandFollow::default().to_command_string(true)
+            ),
         };
 
         target.send_markdown_message(status_message).await?;
@@ -109,13 +74,12 @@ impl CommandTrait for CommandFollow {
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Stores>,
         target_chat_id: &i64,
     ) -> ResponseResult<()> {
         let target_chat_id = ChatId(*target_chat_id);
 
-        // Validate access using the shared helper
         if let Err(error_msg) =
             follow_helper::validate_follow_access(target, &storage, target_chat_id).await
         {
@@ -123,7 +87,6 @@ impl CommandTrait for CommandFollow {
             return Ok(());
         }
 
-        // User is authorized - store the follow relationship
         let storage_ = storage.storage(target.chat.id);
         let variable_storage = storage_.variables();
         variable_storage.set(target_chat_id).await;

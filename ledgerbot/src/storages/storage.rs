@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
 use teloxide::types::ChatId;
-use yoroolbot::storage::{
-    CallbackData, CallbackDataStorage, CallbackDataStorageTrait, DataStoreTrait, InMemStore,
-};
 
+use crate::data_store::{DataStoreTrait, InMemStore};
 use crate::storages::{
     BatchData, BatchStorage, BatchStorageTrait, CategoryData, CategoryStorage,
     CategoryStorageTrait, ExpenseData, ExpenseStorage, ExpenseStorageTrait, FollowersData,
@@ -21,7 +19,6 @@ pub struct Stores {
     categories_data_store: Arc<dyn DataStoreTrait<CategoryData>>,
     followers_data_store: Arc<dyn DataStoreTrait<FollowersData>>,
     batch_data_store: Arc<dyn DataStoreTrait<BatchData>>,
-    callback_data_store: Arc<dyn DataStoreTrait<CallbackData>>,
     variables_data: VariableData,
 }
 
@@ -32,14 +29,12 @@ impl Stores {
         let categories_data_store = Arc::new(InMemStore::<CategoryData>::new());
         let followers_data_store = Arc::new(InMemStore::<FollowersData>::new());
         let batch_data_store = Arc::new(InMemStore::<BatchData>::new());
-        let callback_data_store = Arc::new(InMemStore::<CallbackData>::new());
         let variables_data = VariableData::default();
         Self {
             expenses_data_store,
             categories_data_store,
             followers_data_store,
             batch_data_store,
-            callback_data_store,
             variables_data,
         }
     }
@@ -88,16 +83,6 @@ impl Stores {
     /// Replaces the batch storage with the provided implementation
     pub fn batch_store(mut self, store: impl DataStoreTrait<BatchData> + 'static) -> Self {
         self.batch_data_store = Arc::new(store);
-        self
-    }
-
-    /// Builder-like method to configure callback data storage
-    /// Replaces the callback data storage with the provided implementation
-    pub fn callback_data_store(
-        mut self,
-        store: impl DataStoreTrait<CallbackData> + 'static,
-    ) -> Self {
-        self.callback_data_store = Arc::new(store);
         self
     }
 }
@@ -170,15 +155,6 @@ impl Storage {
             self.chat_id,
         ))
     }
-
-    /// Get callback data storage for this chat
-    pub fn callback_data(&self) -> Arc<dyn CallbackDataStorageTrait> {
-        Arc::new(CallbackDataStorage::new(
-            self.stores.callback_data_store.clone(),
-            self.chat_id,
-        ))
-    }
-
     /// Get variable storage for this chat
     pub fn variables(&self) -> VariableStorage {
         VariableStorage::new(self.stores.variables_data.clone(), self.chat_id)

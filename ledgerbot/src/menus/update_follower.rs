@@ -4,20 +4,22 @@ use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
-    types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
-use crate::storages::{FollowersStorageTrait, TelegramUsername};
+use crate::{
+    commands::Command,
+    storages::{FollowersStorageTrait, TelegramUsername},
+    ui::{ButtonData, CommandContext},
+};
 
-pub async fn update_follower<NEXT: CommandTrait, BACK: CommandTrait>(
-    target: &CommandReplyTarget,
+pub async fn update_follower(
+    target: &CommandContext,
     storage: &Arc<dyn FollowersStorageTrait>,
     username: &TelegramUsername,
     prompt: MarkdownString,
     button_text: &str,
-    update_command: NEXT,
-    back_command: Option<BACK>,
+    update_command: Command,
+    back_command: Option<Command>,
 ) -> ResponseResult<()> {
     let followers = storage.get_followers().await.unwrap_or_default();
     if !followers.contains(username) {
@@ -28,35 +30,30 @@ pub async fn update_follower<NEXT: CommandTrait, BACK: CommandTrait>(
             ))
             .await?;
         if let Some(back) = back_command {
-            let menu = vec![vec![InlineKeyboardButton::callback(
-                "↩️ Back",
-                back.to_command_string(false),
-            )]];
+            let menu = target
+                .keyboard(vec![vec![ButtonData::Command("↩️ Back".to_string(), back)]])
+                .await;
             target
                 .bot
                 .edit_message_reply_markup(target.chat.id, msg.id)
-                .reply_markup(teloxide::types::InlineKeyboardMarkup::new(menu))
+                .reply_markup(menu)
                 .await?;
         }
         return Ok(());
     }
     let msg = target.markdown_message(prompt).await?;
-    let mut buttons = vec![vec![
-        InlineKeyboardButton::switch_inline_query_current_chat(
-            button_text,
-            update_command.to_command_string(false),
-        ),
-    ]];
+    let mut buttons = vec![vec![ButtonData::SwitchInlineQuery(
+        button_text.to_string(),
+        update_command.to_command_string(false),
+    )]];
     if let Some(back) = back_command {
-        buttons.push(vec![InlineKeyboardButton::callback(
-            "↩️ Back",
-            back.to_command_string(false),
-        )]);
+        buttons.push(vec![ButtonData::Command("↩️ Back".to_string(), back)]);
     };
+    let keyboard = target.keyboard(buttons).await;
     target
         .bot
         .edit_message_reply_markup(target.chat.id, msg.id)
-        .reply_markup(InlineKeyboardMarkup::new(buttons))
+        .reply_markup(keyboard)
         .await?;
     Ok(())
 }

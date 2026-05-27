@@ -3,79 +3,61 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
+    commands::Command,
+    impl_command_execute_2, impl_command_io,
     menus::{select_follower::select_follower, update_follower::update_follower},
     storages::{FollowersStorageTrait, TelegramUsername},
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandRemoveFollower {
     pub username: Option<TelegramUsername>,
     pub confirm: Option<bool>,
 }
 
-impl CommandTrait for CommandRemoveFollower {
-    type A = TelegramUsername;
-    type B = bool;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
+impl_command_io!(
+    CommandRemoveFollower,
+    "remove_follower",
+    ["<username>", "<confirm>"],
+    username: TelegramUsername,
+    confirm: bool
+);
+impl_command_execute_2!(
+    CommandRemoveFollower,
+    Arc<dyn FollowersStorageTrait>,
+    username,
+    confirm
+);
 
-    type Context = Arc<dyn FollowersStorageTrait>;
-
-    const NAME: &'static str = "remove_follower";
-    const PLACEHOLDERS: &[&'static str] = &["<username>", "<confirm>"];
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.username.as_ref()
-    }
-
-    fn param2(&self) -> Option<&Self::B> {
-        self.confirm.as_ref()
-    }
-
-    fn from_arguments(
-        username: Option<Self::A>,
-        confirm: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandRemoveFollower { username, confirm }
-    }
-
+impl CommandRemoveFollower {
     async fn run0(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn FollowersStorageTrait>,
     ) -> ResponseResult<()> {
         select_follower(
             target,
             &storage,
             markdown_string!("✏️ Select username to remove"),
-            |username| CommandRemoveFollower {
-                username: Some(username.clone()),
-                confirm: None,
+            |username| {
+                CommandRemoveFollower {
+                    username: Some(username.clone()),
+                    confirm: None,
+                }
+                .into()
             },
-            None::<NoopCommand>,
+            None,
         )
         .await
     }
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn FollowersStorageTrait>,
         username: &TelegramUsername,
     ) -> ResponseResult<()> {
         update_follower(
@@ -87,19 +69,20 @@ impl CommandTrait for CommandRemoveFollower {
             CommandRemoveFollower {
                 username: Some(username.clone()),
                 confirm: Some(true),
-            },
-            Some(CommandRemoveFollower {
+            }
+            .into(),
+            Some(Command::RemoveFollower(CommandRemoveFollower {
                 username: None,
                 confirm: None,
-            }),
+            })),
         )
         .await
     }
 
     async fn run2(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn FollowersStorageTrait>,
         username: &TelegramUsername,
         confirm: &bool,
     ) -> ResponseResult<()> {
@@ -123,5 +106,11 @@ impl CommandTrait for CommandRemoveFollower {
             ))
             .await?;
         Ok(())
+    }
+}
+
+impl From<CommandRemoveFollower> for crate::commands::Command {
+    fn from(cmd: CommandRemoveFollower) -> Self {
+        crate::commands::Command::RemoveFollower(cmd)
     }
 }

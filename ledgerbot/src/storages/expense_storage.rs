@@ -4,9 +4,9 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use teloxide::types::ChatId;
-use yoroolbot::storage::DataStoreTrait;
 
 use super::ExpensePeriod;
+use crate::data_store::DataStoreTrait;
 use crate::storages::Storage;
 
 /// Type alias for expense data (list of expenses for a period)

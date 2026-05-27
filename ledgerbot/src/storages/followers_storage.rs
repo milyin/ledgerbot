@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::types::ChatId;
-use yoroolbot::storage::DataStoreTrait;
 
+use crate::data_store::DataStoreTrait;
 use crate::storages::TelegramUsername;
 
 /// Trait for followers storage read operations
@@ -148,9 +148,8 @@ impl FollowersStorageTrait for FollowersStorage {
 
 #[cfg(test)]
 mod tests {
-    use yoroolbot::storage::InMemStore;
-
     use super::*;
+    use crate::data_store::InMemStore;
 
     #[tokio::test]
     async fn test_add_and_get_followers() {

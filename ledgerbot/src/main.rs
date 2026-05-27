@@ -1,9 +1,11 @@
 mod batch;
 mod commands;
 mod config;
+mod data_store;
 mod handlers;
 pub mod menus;
 mod storages;
+mod ui;
 mod utils;
 
 use std::{path::PathBuf, sync::Arc};
@@ -14,10 +16,14 @@ use handlers::{
     filter_command_prefixed, handle_callback_query, handle_command_message, handle_text_message,
     is_direct_command_message,
 };
+use telluride::{command::CallbackKey, data_store::InMemStore};
 use teloxide::prelude::*;
-use yoroolbot::storage::FilesystemYamlStore;
 
-use crate::storages::{CategoryData, ExpenseData, FollowersData, Stores};
+use crate::data_store::FilesystemYamlStore;
+use crate::{
+    commands::Command,
+    storages::{CategoryData, ExpenseData, FollowersData, Stores},
+};
 
 #[tokio::main]
 async fn main() {
@@ -56,6 +62,7 @@ async fn main() {
 
     // Wrap storage in Arc for use throughout the bot
     let storage: Arc<Stores> = Arc::new(storage);
+    let callback_storage = Arc::new(InMemStore::<CallbackKey, Command>::new());
 
     // Route direct single-line commands through teloxide's command parser while
     // preserving ledgerbot's batch parser for multiline and forwarded input.
@@ -72,7 +79,7 @@ async fn main() {
         .branch(Update::filter_callback_query().endpoint(handle_callback_query));
 
     Dispatcher::builder(bot, handler)
-        .dependencies(dptree::deps![storage])
+        .dependencies(dptree::deps![storage, callback_storage])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

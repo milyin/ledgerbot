@@ -3,91 +3,52 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
+    impl_command_execute_3, impl_command_io,
     menus::{
         common::read_category_filter_by_index, select_category::select_category,
         select_category_filter::select_category_filter,
         update_category_filter::update_category_filter,
     },
     storages::{Category, CategoryStorageTrait},
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandEditFilter {
     pub category: Option<Category>,
     pub position: Option<usize>,
     pub pattern: Option<String>,
 }
 
-impl CommandTrait for CommandEditFilter {
-    type A = Category;
-    type B = usize;
-    type C = String;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<dyn CategoryStorageTrait>;
-
-    const NAME: &'static str = "edit_filter";
-    const PLACEHOLDERS: &[&'static str] = &["<category>", "<position>", "<new_pattern>"];
-
-    fn from_arguments(
-        a: Option<Self::A>,
-        b: Option<Self::B>,
-        c: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandEditFilter {
-            category: a,
-            position: b,
-            pattern: c,
-        }
-    }
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
-    }
-    fn param2(&self) -> Option<&Self::B> {
-        self.position.as_ref()
-    }
-    fn param3(&self) -> Option<&Self::C> {
-        self.pattern.as_ref()
-    }
-
+impl CommandEditFilter {
     async fn run0(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
     ) -> ResponseResult<()> {
         select_category(
             target,
             &storage,
             markdown_string!("✏️ Select Category for editing filter"),
-            |category| CommandEditFilter {
-                category: Some(category.clone()),
-                position: None,
-                pattern: None,
+            |category| {
+                CommandEditFilter {
+                    category: Some(category.clone()),
+                    position: None,
+                    pattern: None,
+                }
+                .into()
             },
-            None::<NoopCommand>,
+            None,
         )
         .await
     }
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         name: &Category,
     ) -> ResponseResult<()> {
         select_category_filter(
@@ -96,21 +57,24 @@ impl CommandTrait for CommandEditFilter {
             name,
             markdown_format!("✏️ Select Filter to edit in category `{}`", name.as_str()),
             |idx, _pattern| {
-                Some(CommandEditFilter {
-                    category: Some(name.clone()),
-                    position: Some(idx),
-                    pattern: None,
-                })
+                Some(
+                    CommandEditFilter {
+                        category: Some(name.clone()),
+                        position: Some(idx),
+                        pattern: None,
+                    }
+                    .into(),
+                )
             },
-            Some(CommandEditFilter::default()),
+            Some(CommandEditFilter::default().into()),
         )
         .await
     }
 
     async fn run2(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         name: &Category,
         idx: &usize,
     ) -> ResponseResult<()> {
@@ -128,24 +92,30 @@ impl CommandTrait for CommandEditFilter {
                 )
             },
             "✏️ Edit pattern",
-            |pattern| CommandEditFilter {
-                category: Some(name.clone()),
-                position: Some(*idx),
-                pattern: Some(pattern.to_string()),
+            |pattern| {
+                CommandEditFilter {
+                    category: Some(name.clone()),
+                    position: Some(*idx),
+                    pattern: Some(pattern.to_string()),
+                }
+                .into()
             },
-            Some(CommandEditFilter {
-                category: Some(name.clone()),
-                position: None,
-                pattern: None,
-            }),
+            Some(
+                CommandEditFilter {
+                    category: Some(name.clone()),
+                    position: None,
+                    pattern: None,
+                }
+                .into(),
+            ),
         )
         .await
     }
 
     async fn run3(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         name: &Category,
         idx: &usize,
         pattern: &String,
@@ -155,11 +125,14 @@ impl CommandTrait for CommandEditFilter {
             &storage,
             name,
             *idx,
-            Some(CommandEditFilter {
-                category: Some(name.clone()),
-                position: None,
-                pattern: None,
-            }),
+            Some(
+                CommandEditFilter {
+                    category: Some(name.clone()),
+                    position: None,
+                    pattern: None,
+                }
+                .into(),
+            ),
         )
         .await?
         else {
@@ -177,7 +150,6 @@ impl CommandTrait for CommandEditFilter {
             return Ok(());
         }
 
-        // Remove the old pattern and add the new one
         if let Err(e) = storage.remove_category_filter(name, &old_pattern).await {
             target
                 .send_markdown_message(markdown_format!("❌ Failed to remove filter: {}", e))
@@ -199,5 +171,27 @@ impl CommandTrait for CommandEditFilter {
             .await?;
 
         Ok(())
+    }
+}
+
+impl_command_io!(
+    CommandEditFilter,
+    "edit_filter",
+    ["<category>", "<position>", "<new_pattern>"],
+    category: Category,
+    position: usize,
+    pattern: String
+);
+impl_command_execute_3!(
+    CommandEditFilter,
+    Arc<dyn CategoryStorageTrait>,
+    category,
+    position,
+    pattern
+);
+
+impl From<CommandEditFilter> for crate::commands::Command {
+    fn from(cmd: CommandEditFilter) -> Self {
+        crate::commands::Command::EditFilter(cmd)
     }
 }

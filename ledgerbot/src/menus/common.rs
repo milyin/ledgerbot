@@ -4,46 +4,45 @@ use telluride::{markdown::MarkdownString, markdown_format, markdown_string};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
-    types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
-use crate::storages::{Category, CategoryStorageTrait, StorageReadonly};
+use crate::{
+    commands::Command,
+    storages::{Category, CategoryStorageTrait, StorageReadonly},
+    ui::{ButtonData, CommandContext},
+};
 
 pub fn create_buttons_menu(
     titles: &[String],
-    values: &[String],
-    back_command: Option<impl CommandTrait>,
+    values: &[Command],
+    back_command: Option<Command>,
     inline: bool,
-) -> InlineKeyboardMarkup {
-    let mut buttons: Vec<Vec<InlineKeyboardButton>> = titles
+) -> Vec<Vec<ButtonData>> {
+    let mut buttons: Vec<Vec<ButtonData>> = titles
         .iter()
         .zip(values.iter())
         .map(|(text, value)| {
             if inline {
-                vec![InlineKeyboardButton::switch_inline_query_current_chat(
-                    text,
-                    value.clone(),
+                vec![ButtonData::SwitchInlineQuery(
+                    text.clone(),
+                    value.to_command_string(false),
                 )]
             } else {
-                vec![InlineKeyboardButton::callback(text, value.clone())]
+                vec![ButtonData::Command(text.clone(), value.clone())]
             }
         })
         .collect();
     if let Some(back) = back_command {
-        buttons.push(vec![InlineKeyboardButton::callback(
-            "↩️ Back",
-            back.to_command_string(false),
-        )]);
+        buttons.push(vec![ButtonData::Command("↩️ Back".to_string(), back)]);
     }
-    InlineKeyboardMarkup::new(buttons)
+    buttons
 }
 
 pub async fn read_category_filters_list(
-    target: &CommandReplyTarget,
+    target: &CommandContext,
     storage: &Arc<dyn CategoryStorageTrait>,
     category: &Category,
-    back_command: Option<impl CommandTrait>,
+    back_command: Option<Command>,
 ) -> ResponseResult<Vec<String>> {
     let categories = storage.get_categories().await.unwrap_or_default();
     let Some(filters) = categories.get(category.as_str()) else {
@@ -54,10 +53,9 @@ pub async fn read_category_filters_list(
             ))
             .await?;
         if let Some(back) = back_command {
-            let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
-                "↩️ Back",
-                back.to_command_string(false),
-            )]]);
+            let menu = target
+                .keyboard(vec![vec![ButtonData::Command("↩️ Back".to_string(), back)]])
+                .await;
             target
                 .bot
                 .edit_message_reply_markup(target.chat.id, msg.id)
@@ -74,10 +72,9 @@ pub async fn read_category_filters_list(
             ))
             .await?;
         if let Some(back) = back_command {
-            let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
-                "↩️ Back",
-                back.to_command_string(false),
-            )]]);
+            let menu = target
+                .keyboard(vec![vec![ButtonData::Command("↩️ Back".to_string(), back)]])
+                .await;
             target
                 .bot
                 .edit_message_reply_markup(target.chat.id, msg.id)
@@ -90,11 +87,11 @@ pub async fn read_category_filters_list(
 }
 
 pub async fn read_category_filter_by_index(
-    target: &CommandReplyTarget,
+    target: &CommandContext,
     storage: &Arc<dyn CategoryStorageTrait>,
     category: &Category,
     idx: usize,
-    back_command: Option<impl CommandTrait>,
+    back_command: Option<Command>,
 ) -> ResponseResult<Option<String>> {
     let filters =
         read_category_filters_list(target, storage, category, back_command.clone()).await?;
@@ -106,10 +103,9 @@ pub async fn read_category_filter_by_index(
             .markdown_message(markdown_format!("❌ Invalid filter position `{}`", idx))
             .await?;
         if let Some(back) = back_command {
-            let menu = InlineKeyboardMarkup::new(vec![vec![InlineKeyboardButton::callback(
-                "↩️ Back",
-                back.to_command_string(false),
-            )]]);
+            let menu = target
+                .keyboard(vec![vec![ButtonData::Command("↩️ Back".to_string(), back)]])
+                .await;
             target
                 .bot
                 .edit_message_reply_markup(target.chat.id, msg.id)
@@ -121,7 +117,6 @@ pub async fn read_category_filter_by_index(
     Ok(Some(filters[idx].clone()))
 }
 
-/// Generate follow status message text without sending it
 pub fn make_follow_status_message(storage: &Arc<StorageReadonly>) -> MarkdownString {
     if let Some(external_chat_id) = storage.external_chat_id() {
         markdown_format!(
@@ -134,10 +129,9 @@ pub fn make_follow_status_message(storage: &Arc<StorageReadonly>) -> MarkdownStr
 }
 
 pub async fn show_follow_status_message(
-    target: &CommandReplyTarget,
+    target: &CommandContext,
     storage: &Arc<StorageReadonly>,
 ) -> ResponseResult<()> {
-    // Show follow status as separate message if applicable
     if let Some(external_chat_id) = storage.external_chat_id() {
         target
             .send_markdown_message(markdown_format!(
@@ -147,137 +141,4 @@ pub async fn show_follow_status_message(
             .await?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use telluride::command::CallbackKey;
-    use teloxide::types::ChatId;
-    use yoroolbot::storage::{
-        CallbackData, CallbackDataStorage, CallbackDataStorageTrait, InMemStore,
-        pack_callback_data, unpack_callback_data,
-    };
-
-    #[tokio::test]
-    async fn test_pack_unpack_callback_data() {
-        let chat_id = ChatId(12345);
-        let message_id = 67890;
-        let data_store = Arc::new(InMemStore::<CallbackData>::new());
-        let storage: Arc<dyn CallbackDataStorageTrait> =
-            Arc::new(CallbackDataStorage::new(data_store, chat_id));
-
-        // Create button data with short and long callback data
-        let button_rows = vec![
-            vec![
-                ("Button 1".to_string(), "short".to_string()),
-                (
-                    "Button 2".to_string(),
-                    "toggle_word:long_category_name:long_word_that_exceeds_64_bytes_limit_for_telegram_callback_data".to_string(),
-                ),
-            ],
-            vec![
-                ("Button 3".to_string(), "another_short".to_string()),
-                ("Button 4".to_string(), "Кнопка с кириллицей".to_string()),
-            ],
-        ];
-
-        // Pack the callback data
-        let keyboard = pack_callback_data(&storage, message_id, button_rows.clone()).await;
-
-        // Verify keyboard structure
-        assert_eq!(keyboard.inline_keyboard.len(), 2);
-        assert_eq!(keyboard.inline_keyboard[0].len(), 2);
-        assert_eq!(keyboard.inline_keyboard[1].len(), 2);
-
-        // Get callback data strings from buttons
-        let cb1 = match &keyboard.inline_keyboard[0][0].kind {
-            teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
-            _ => panic!("Expected callback button"),
-        };
-        let cb2 = match &keyboard.inline_keyboard[0][1].kind {
-            teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
-            _ => panic!("Expected callback button"),
-        };
-        let cb3 = match &keyboard.inline_keyboard[1][0].kind {
-            teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
-            _ => panic!("Expected callback button"),
-        };
-        let cb4 = match &keyboard.inline_keyboard[1][1].kind {
-            teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
-            _ => panic!("Expected callback button"),
-        };
-
-        // Telluride now packs short values inline and stores large values behind
-        // a compact storage-backed key.
-        assert!(CallbackKey::is_packed_data(&cb1));
-        assert!(cb2.starts_with("s:"));
-        assert!(CallbackKey::is_packed_data(&cb3));
-        assert!(CallbackKey::is_packed_data(&cb4));
-
-        // Unpack and verify
-        let unpacked1 = unpack_callback_data(&storage, &cb1).await;
-        let unpacked2 = unpack_callback_data(&storage, &cb2).await;
-        let unpacked3 = unpack_callback_data(&storage, &cb3).await;
-        let unpacked4 = unpack_callback_data(&storage, &cb4).await;
-
-        assert_eq!(unpacked1, "short");
-        assert_eq!(
-            unpacked2,
-            "toggle_word:long_category_name:long_word_that_exceeds_64_bytes_limit_for_telegram_callback_data"
-        );
-        assert_eq!(unpacked3, "another_short");
-        assert_eq!(unpacked4, "Кнопка с кириллицей");
-    }
-
-    #[tokio::test]
-    async fn test_pack_callback_data_rebuilds_markup() {
-        let chat_id = ChatId(12345);
-        let message_id = 67890;
-        let data_store = Arc::new(InMemStore::<CallbackData>::new());
-        let storage: Arc<dyn CallbackDataStorageTrait> =
-            Arc::new(CallbackDataStorage::new(data_store, chat_id));
-
-        // Create initial buttons with long callback data
-        let initial_buttons = vec![vec![(
-            "Button 1".to_string(),
-            "toggle_word:category_name:very_long_word_that_exceeds_telegram_limit".to_string(),
-        )]];
-
-        // Pack initial buttons
-        let initial_keyboard = pack_callback_data(&storage, message_id, initial_buttons).await;
-
-        let initial_cb = match &initial_keyboard.inline_keyboard[0][0].kind {
-            teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
-            _ => panic!("Expected callback button"),
-        };
-
-        assert!(CallbackKey::is_packed_data(&initial_cb));
-        let initial_unpacked = unpack_callback_data(&storage, &initial_cb).await;
-        assert_eq!(
-            initial_unpacked,
-            "toggle_word:category_name:very_long_word_that_exceeds_telegram_limit"
-        );
-
-        // Now pack new buttons for the same message (should clear old data)
-        let new_buttons = vec![vec![(
-            "Button 2".to_string(),
-            "toggle_word:new_category:another_very_long_word_that_also_exceeds_limit".to_string(),
-        )]];
-
-        let new_keyboard = pack_callback_data(&storage, message_id, new_buttons).await;
-
-        let new_cb = match &new_keyboard.inline_keyboard[0][0].kind {
-            teloxide::types::InlineKeyboardButtonKind::CallbackData(data) => data.clone(),
-            _ => panic!("Expected callback button"),
-        };
-
-        assert!(CallbackKey::is_packed_data(&new_cb));
-        let new_unpacked = unpack_callback_data(&storage, &new_cb).await;
-        assert_eq!(
-            new_unpacked,
-            "toggle_word:new_category:another_very_long_word_that_also_exceeds_limit"
-        );
-    }
 }

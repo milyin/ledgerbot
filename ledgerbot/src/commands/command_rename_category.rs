@@ -3,74 +3,38 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
+    impl_command_execute_2, impl_command_io,
     menus::{select_category::select_category, update_category::update_category},
     storages::{Category, CategoryStorageTrait},
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandRenameCategory {
     pub old_category: Option<Category>,
     pub new_category: Option<Category>,
 }
 
-impl CommandTrait for CommandRenameCategory {
-    type A = Category;
-    type B = Category;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<dyn CategoryStorageTrait>;
-
-    const NAME: &'static str = "rename_category";
-    const PLACEHOLDERS: &[&'static str] = &["<old_name>", "<new_name>"];
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.old_category.as_ref()
-    }
-
-    fn param2(&self) -> Option<&Self::B> {
-        self.new_category.as_ref()
-    }
-
-    fn from_arguments(
-        old_category: Option<Self::A>,
-        new_category: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandRenameCategory {
-            old_category,
-            new_category,
-        }
-    }
-
+impl CommandRenameCategory {
     async fn run0(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
     ) -> ResponseResult<()> {
         select_category(
             target,
             &storage,
             markdown_string!("✏️ Select Category to rename"),
-            |category| CommandRenameCategory {
-                old_category: Some(category.clone()),
-                new_category: None,
+            |category| {
+                CommandRenameCategory {
+                    old_category: Some(category.clone()),
+                    new_category: None,
+                }
+                .into()
             },
-            None::<NoopCommand>,
+            None,
         )
         .await?;
 
@@ -79,8 +43,8 @@ impl CommandTrait for CommandRenameCategory {
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         old_category: &Category,
     ) -> ResponseResult<()> {
         update_category(
@@ -92,11 +56,15 @@ impl CommandTrait for CommandRenameCategory {
             CommandRenameCategory {
                 old_category: Some(old_category.clone()),
                 new_category: None,
-            },
-            Some(CommandRenameCategory {
-                old_category: None,
-                new_category: None,
-            }),
+            }
+            .into(),
+            Some(
+                CommandRenameCategory {
+                    old_category: None,
+                    new_category: None,
+                }
+                .into(),
+            ),
         )
         .await?;
 
@@ -105,8 +73,8 @@ impl CommandTrait for CommandRenameCategory {
 
     async fn run2(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         old_category: &Category,
         new_category: &Category,
     ) -> ResponseResult<()> {
@@ -123,6 +91,20 @@ impl CommandTrait for CommandRenameCategory {
         Ok(())
     }
 }
+
+impl_command_io!(
+    CommandRenameCategory,
+    "rename_category",
+    ["<old_name>", "<new_name>"],
+    old_category: Category,
+    new_category: Category
+);
+impl_command_execute_2!(
+    CommandRenameCategory,
+    Arc<dyn CategoryStorageTrait>,
+    old_category,
+    new_category
+);
 
 impl From<CommandRenameCategory> for crate::commands::Command {
     fn from(cmd: CommandRenameCategory) -> Self {

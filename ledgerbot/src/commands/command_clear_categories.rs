@@ -3,60 +3,25 @@ use std::{collections::HashMap, sync::Arc};
 use serde::{Deserialize, Serialize};
 use telluride::markdown_string;
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg},
-    storage::ButtonData,
+
+use crate::{
+    impl_command_execute_1, impl_command_io,
+    storages::CategoryStorageTrait,
+    ui::{ButtonData, CommandContext},
 };
 
-use crate::storages::CategoryStorageTrait;
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandClearCategories {
     pub confirm: Option<bool>,
 }
 
-impl CommandTrait for CommandClearCategories {
-    type A = bool;
-    type B = EmptyArg;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<dyn CategoryStorageTrait>;
-
-    const NAME: &'static str = "clear_categories";
-    const PLACEHOLDERS: &[&'static str] = &["<confirm>"];
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.confirm.as_ref()
-    }
-
-    fn from_arguments(
-        confirm: Option<Self::A>,
-        _: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandClearCategories { confirm }
-    }
-
+impl CommandClearCategories {
     async fn run0(
         &self,
-        target: &CommandReplyTarget,
-        _storage: Self::Context,
+        target: &CommandContext,
+        _storage: Arc<dyn CategoryStorageTrait>,
     ) -> ResponseResult<()> {
-        // Show confirmation prompt with buttons
         let message = markdown_string!("🗑️ Confirm clearing all categories\\?");
-
         let buttons = vec![vec![ButtonData::SwitchInlineQuery(
             "✅ Yes, Clear All".to_string(),
             CommandClearCategories {
@@ -64,15 +29,14 @@ impl CommandTrait for CommandClearCategories {
             }
             .to_command_string(false),
         )]];
-
         target.markdown_message_with_menu(message, buttons).await?;
         Ok(())
     }
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         confirm: &bool,
     ) -> ResponseResult<()> {
         if !*confirm {
@@ -93,6 +57,13 @@ impl CommandTrait for CommandClearCategories {
         Ok(())
     }
 }
+
+impl_command_io!(CommandClearCategories, "clear_categories", ["<confirm>"], confirm: bool);
+impl_command_execute_1!(
+    CommandClearCategories,
+    Arc<dyn CategoryStorageTrait>,
+    confirm
+);
 
 impl From<CommandClearCategories> for crate::commands::Command {
     fn from(cmd: CommandClearCategories) -> Self {

@@ -5,49 +5,20 @@ use teloxide::{
     prelude::ResponseResult,
     types::{KeyboardButton, ReplyMarkup},
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
-use crate::commands::command_help::CommandHelp;
+use crate::{
+    commands::command_help::CommandHelp, impl_command_execute_0, impl_command_io,
+    ui::CommandContext,
+};
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandStart;
 
-impl CommandTrait for CommandStart {
-    type A = EmptyArg;
-    type B = EmptyArg;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
+impl_command_io!(CommandStart, "start", []);
+impl_command_execute_0!(CommandStart, ());
 
-    type Context = ();
-
-    const NAME: &'static str = "start";
-    const PLACEHOLDERS: &[&'static str] = &[];
-
-    fn from_arguments(
-        _: Option<Self::A>,
-        _: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandStart
-    }
-
-    async fn run0(
-        &self,
-        target: &CommandReplyTarget,
-        _context: Self::Context,
-    ) -> ResponseResult<()> {
-        // Send a follow-up message to set the persistent reply keyboard menu
+impl CommandStart {
+    async fn run0(&self, target: &CommandContext, _context: ()) -> ResponseResult<()> {
         target
             .bot
             .send_markdown_message(
@@ -60,9 +31,7 @@ impl CommandTrait for CommandStart {
             .reply_markup(create_menu_keyboard())
             .await?;
 
-        // Use CommandHelp to display help
-        CommandHelp.run(target, ()).await?;
-
+        CommandHelp.execute(target, ()).await?;
         Ok(())
     }
 }
@@ -73,7 +42,6 @@ impl From<CommandStart> for crate::commands::Command {
     }
 }
 
-/// Create a persistent menu keyboard that shows on the left of the input field
 pub fn create_menu_keyboard() -> ReplyMarkup {
     let keyboard = vec![vec![
         KeyboardButton::new("💡 /help"),

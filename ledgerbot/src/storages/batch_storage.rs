@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use teloxide::types::ChatId;
-use yoroolbot::storage::DataStoreTrait;
 
 use crate::commands::Command;
+use crate::data_store::DataStoreTrait;
 
 /// Type alias for batch data (list of command results)
 pub type BatchData = Vec<Result<Command, String>>;

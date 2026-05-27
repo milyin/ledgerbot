@@ -3,50 +3,25 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::markdown_format;
 use teloxide::prelude::{Requester, ResponseResult};
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::{command_add_follower::CommandAddFollower, command_follow::CommandFollow},
+    impl_command_execute_0, impl_command_io,
     storages::FollowersStorageTrait,
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandListFollowers;
 
-impl CommandTrait for CommandListFollowers {
-    type A = EmptyArg;
-    type B = EmptyArg;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
+impl_command_io!(CommandListFollowers, "list_followers", []);
+impl_command_execute_0!(CommandListFollowers, Arc<dyn FollowersStorageTrait>);
 
-    type Context = Arc<dyn FollowersStorageTrait>;
-
-    const NAME: &'static str = "list_followers";
-    const PLACEHOLDERS: &[&'static str] = &[];
-
-    fn from_arguments(
-        _: Option<Self::A>,
-        _: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandListFollowers
-    }
-
+impl CommandListFollowers {
     async fn run0(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn FollowersStorageTrait>,
     ) -> ResponseResult<()> {
         let chat_id = target.chat.id;
         let followers = storage.get_followers().await.unwrap_or_default();
@@ -66,8 +41,7 @@ impl CommandTrait for CommandListFollowers {
                 ))
                 .await?;
 
-            let mut result = "".to_string();
-            // Sort usernames for consistent output
+            let mut result = String::new();
             let mut sorted_followers = followers;
             sorted_followers.sort();
 
@@ -81,5 +55,11 @@ impl CommandTrait for CommandListFollowers {
         }
 
         Ok(())
+    }
+}
+
+impl From<CommandListFollowers> for crate::commands::Command {
+    fn from(cmd: CommandListFollowers) -> Self {
+        crate::commands::Command::ListFollowers(cmd)
     }
 }

@@ -1,13 +1,17 @@
 use std::sync::Arc;
 
-use telluride::{markdown::MarkdownStringMessage, markdown_format};
+use telluride::{
+    command::CallbackKey,
+    data_store::{InMemStore, UserProxy},
+    markdown::MarkdownStringMessage,
+    markdown_format,
+};
 use teloxide::{
     dispatching::DpHandlerDescription,
     prelude::*,
-    types::{CallbackQuery, Chat, Me, MessageId},
+    types::{CallbackQuery, Chat, Me, MessageId, UserId},
     utils::command::BotCommands,
 };
-use yoroolbot::storage::unpack_callback_data;
 
 use crate::{
     batch::{add_to_batch, execute_batch},
@@ -46,7 +50,9 @@ async fn execute_and_report_command(
     bot: Bot,
     chat: Chat,
     msg_id: Option<MessageId>,
+    user_id: UserId,
     storage: Arc<Stores>,
+    callback_storage: Arc<InMemStore<CallbackKey, Command>>,
     cmd: Command,
     batch: bool,
 ) -> ResponseResult<()> {
@@ -54,7 +60,9 @@ async fn execute_and_report_command(
         bot.clone(),
         chat.clone(),
         msg_id,
+        user_id,
         storage,
+        callback_storage,
         cmd.clone(),
         batch,
     )
@@ -80,8 +88,24 @@ pub async fn handle_command_message(
     msg: Message,
     cmd: Command,
     storage: Arc<Stores>,
+    callback_storage: Arc<InMemStore<CallbackKey, Command>>,
 ) -> ResponseResult<()> {
-    execute_and_report_command(bot, msg.chat.clone(), None, storage, cmd, false).await
+    let user_id = msg
+        .from
+        .as_ref()
+        .map(|user| user.id)
+        .unwrap_or_else(|| UserId(msg.chat.id.0.unsigned_abs()));
+    execute_and_report_command(
+        bot,
+        msg.chat.clone(),
+        None,
+        user_id,
+        storage,
+        callback_storage,
+        cmd,
+        false,
+    )
+    .await
 }
 
 /// Handle text messages containing potential expense data
@@ -89,6 +113,7 @@ pub async fn handle_text_message(
     bot: Bot,
     msg: Message,
     storage: Arc<Stores>,
+    callback_storage: Arc<InMemStore<CallbackKey, Command>>,
 ) -> ResponseResult<()> {
     if let Some(text) = msg.text() {
         // Get bot username for filtering
@@ -115,6 +140,11 @@ pub async fn handle_text_message(
         // For multiline or forwarded messages, collect commands for batch execution.
         // For single-line, non-forwarded messages, execute immediately.
         if is_multiline || is_forwarded {
+            let user_id = msg
+                .from
+                .as_ref()
+                .map(|user| user.id)
+                .unwrap_or_else(|| UserId(msg.chat.id.0.unsigned_abs()));
             // Add to batch storage for deferred execution
             let batch_storage = storage.storage(msg.chat.id).batch();
             let is_first_message = add_to_batch(batch_storage.clone(), parsed_results).await;
@@ -123,8 +153,17 @@ pub async fn handle_text_message(
             if is_first_message {
                 let bot_clone = bot.clone();
                 let storage_clone = storage.clone();
+                let callback_storage_clone = callback_storage.clone();
                 tokio::spawn(async move {
-                    execute_batch(bot_clone, batch_storage, msg.chat.clone(), storage_clone).await;
+                    execute_batch(
+                        bot_clone,
+                        batch_storage,
+                        msg.chat.clone(),
+                        storage_clone,
+                        callback_storage_clone,
+                        user_id,
+                    )
+                    .await;
                 });
             }
         } else {
@@ -136,7 +175,12 @@ pub async fn handle_text_message(
                             bot.clone(),
                             msg.chat.clone(),
                             None,
+                            msg.from
+                                .as_ref()
+                                .map(|user| user.id)
+                                .unwrap_or_else(|| UserId(msg.chat.id.0.unsigned_abs())),
                             storage.clone(),
+                            callback_storage.clone(),
                             cmd,
                             false,
                         )
@@ -163,12 +207,10 @@ pub async fn handle_callback_query(
     bot: Bot,
     q: CallbackQuery,
     storage: Arc<Stores>,
+    callback_storage: Arc<InMemStore<CallbackKey, Command>>,
 ) -> ResponseResult<()> {
-    let bot_username = bot.get_me().await?.username().to_string();
-    // Answer the callback query to remove the loading state
     bot.answer_callback_query(q.id.clone()).await?;
 
-    // Get the message that contained the button
     let Some(message) = q.message else {
         return Ok(());
     };
@@ -178,36 +220,29 @@ pub async fn handle_callback_query(
     };
 
     let msg = msg.clone();
-    let chat_id = msg.chat.id;
-
-    // Parse callback data string into enum
-    let Some(data_str) = &q.data else {
+    let Some(data) = &q.data else {
         return Ok(());
     };
 
-    log::info!("Received callback data: {}", data_str);
-
-    // Unpack callback data from storage if needed
-    let storage_ = storage.storage(chat_id);
-    let callback_storage = storage_.callback_data();
-    let unpacked_data = unpack_callback_data(&callback_storage, data_str).await;
-
-    log::info!("Unpacked callback data: {}", unpacked_data);
-
-    // Try to parse the callback data as command
-    if let Ok(cmd) = Command::parse(&unpacked_data, &bot_username) {
-        log::info!("Parsed command from callback: {:?}", cmd);
-        execute_and_report_command(
-            bot.clone(),
-            msg.chat.clone(),
-            Some(msg.id),
-            storage.clone(),
-            cmd,
-            false,
-        )
-        .await?;
+    let user_proxy = UserProxy::new(callback_storage.clone(), q.from.id);
+    let Ok(cmd) = CallbackKey::unpack::<Command, _>(data, &user_proxy).await else {
         return Ok(());
-    }
+    };
+
+    let mut msg = msg;
+    msg.from = Some(q.from.clone());
+
+    execute_and_report_command(
+        bot.clone(),
+        msg.chat.clone(),
+        Some(msg.id),
+        q.from.id,
+        storage.clone(),
+        callback_storage,
+        cmd,
+        false,
+    )
+    .await?;
 
     Ok(())
 }

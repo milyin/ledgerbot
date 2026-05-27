@@ -3,65 +3,22 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::{
-    command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand},
-    storage::ButtonData,
-};
 
 use crate::{
+    impl_command_execute_2, impl_command_io,
     menus::select_period::select_period,
     storages::{ExpensePeriod, Storage},
+    ui::{ButtonData, CommandContext},
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandClearExpenses {
     pub period: Option<ExpensePeriod>,
     pub confirm: Option<bool>,
 }
 
-impl CommandTrait for CommandClearExpenses {
-    type A = ExpensePeriod;
-    type B = bool;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<Storage>;
-
-    const NAME: &'static str = "clear_expenses";
-    const PLACEHOLDERS: &[&'static str] = &["period", "confirm"];
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.period.as_ref()
-    }
-
-    fn param2(&self) -> Option<&Self::B> {
-        self.confirm.as_ref()
-    }
-
-    fn from_arguments(
-        period: Option<Self::A>,
-        confirm: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandClearExpenses { period, confirm }
-    }
-
-    async fn run0(
-        &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
-    ) -> ResponseResult<()> {
+impl CommandClearExpenses {
+    async fn run0(&self, target: &CommandContext, storage: Arc<Storage>) -> ResponseResult<()> {
         let var_storage = storage.variables();
         let current_period: Option<ExpensePeriod> = var_storage.get().await;
 
@@ -78,18 +35,20 @@ impl CommandTrait for CommandClearExpenses {
             current_period_str
         );
 
-        // Show menu with available periods
         let expense_storage = storage.expenses_readonly();
         select_period(
             target,
             &expense_storage,
             prompt,
-            |period| CommandClearExpenses {
-                period: Some(*period),
-                confirm: None,
+            |period| {
+                CommandClearExpenses {
+                    period: Some(*period),
+                    confirm: None,
+                }
+                .into()
             },
-            None::<CommandClearExpenses>,
-            None::<NoopCommand>, // No new period button
+            None,
+            None,
         )
         .await?;
 
@@ -98,11 +57,10 @@ impl CommandTrait for CommandClearExpenses {
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        _storage: Self::Context,
+        target: &CommandContext,
+        _storage: Arc<Storage>,
         period: &ExpensePeriod,
     ) -> ResponseResult<()> {
-        // Show confirmation prompt with buttons
         let message = markdown_format!(
             "🗑️ Confirm clearing all expenses for period *{}*\\?",
             period.to_string()
@@ -123,8 +81,8 @@ impl CommandTrait for CommandClearExpenses {
 
     async fn run2(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<Storage>,
         period: &ExpensePeriod,
         confirm: &bool,
     ) -> ResponseResult<()> {
@@ -146,6 +104,15 @@ impl CommandTrait for CommandClearExpenses {
         Ok(())
     }
 }
+
+impl_command_io!(
+    CommandClearExpenses,
+    "clear_expenses",
+    ["period", "confirm"],
+    period: ExpensePeriod,
+    confirm: bool
+);
+impl_command_execute_2!(CommandClearExpenses, Arc<Storage>, period, confirm);
 
 impl From<CommandClearExpenses> for crate::commands::Command {
     fn from(cmd: CommandClearExpenses) -> Self {

@@ -4,22 +4,22 @@ use telluride::markdown::MarkdownString;
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
-    types::InlineKeyboardMarkup,
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::{
+    commands::Command,
     menus::common::{create_buttons_menu, read_category_filters_list},
     storages::{Category, CategoryStorageTrait},
+    ui::CommandContext,
 };
 
-pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
-    target: &CommandReplyTarget,
+pub async fn select_category_filter(
+    target: &CommandContext,
     storage: &Arc<dyn CategoryStorageTrait>,
     category: &Category,
     prompt: MarkdownString,
-    next_command: impl Fn(usize, &str) -> Option<NEXT>,
-    back_command: Option<BACK>,
+    next_command: impl Fn(usize, &str) -> Option<Command>,
+    back_command: Option<Command>,
 ) -> ResponseResult<()> {
     let filters =
         read_category_filters_list(target, storage, category, back_command.clone()).await?;
@@ -27,28 +27,23 @@ pub async fn select_category_filter<NEXT: CommandTrait, BACK: CommandTrait>(
         return Ok(());
     }
     let msg = target.markdown_message(prompt).await?;
-    let menu = create_category_filters_menu(
-        &filters,
-        |idx, pattern| next_command(idx, pattern).map(|cmd| cmd.to_command_string(false)),
-        back_command,
-        false,
-    );
+    let menu = create_category_filters_menu(&filters, next_command, back_command, false);
+    let keyboard = target.keyboard(menu).await;
     target
         .bot
         .edit_message_reply_markup(target.chat.id, msg.id)
-        .reply_markup(menu)
+        .reply_markup(keyboard)
         .await?;
     Ok(())
 }
 
 pub fn create_category_filters_menu(
     filters: &[String],
-    operation: impl Fn(usize, &str) -> Option<String>,
-    back_command: Option<impl CommandTrait>,
+    operation: impl Fn(usize, &str) -> Option<Command>,
+    back_command: Option<Command>,
     inline: bool,
-) -> InlineKeyboardMarkup {
-    // Filter out items where operation returns None
-    let items: Vec<(String, String)> = filters
+) -> Vec<Vec<crate::ui::ButtonData>> {
+    let items: Vec<(String, Command)> = filters
         .iter()
         .enumerate()
         .filter_map(|(idx, pattern)| {
@@ -57,8 +52,6 @@ pub fn create_category_filters_menu(
         .collect();
 
     let texts: Vec<String> = items.iter().map(|(text, _)| text.clone()).collect();
-    let values: Vec<String> = items.iter().map(|(_, value)| value.clone()).collect();
-
-    // use create_menu
+    let values: Vec<Command> = items.into_iter().map(|(_, value)| value).collect();
     create_buttons_menu(&texts, &values, back_command, inline)
 }

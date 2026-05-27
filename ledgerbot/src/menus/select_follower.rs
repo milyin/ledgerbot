@@ -4,22 +4,21 @@ use telluride::{markdown::MarkdownString, markdown_format};
 use teloxide::{
     payloads::EditMessageReplyMarkupSetters,
     prelude::{Requester, ResponseResult},
-    types::InlineKeyboardMarkup,
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait};
 
 use crate::{
-    commands::command_add_follower::CommandAddFollower,
+    commands::{Command, command_add_follower::CommandAddFollower},
     menus::common::create_buttons_menu,
     storages::{FollowersStorageTrait, TelegramUsername},
+    ui::CommandContext,
 };
 
-pub async fn select_follower<NEXT: CommandTrait, BACK: CommandTrait>(
-    target: &CommandReplyTarget,
+pub async fn select_follower(
+    target: &CommandContext,
     storage: &Arc<dyn FollowersStorageTrait>,
     prompt: MarkdownString,
-    next_command: impl Fn(&TelegramUsername) -> NEXT,
-    back_command: Option<BACK>,
+    next_command: impl Fn(&TelegramUsername) -> Command,
+    back_command: Option<Command>,
 ) -> ResponseResult<()> {
     let followers = storage.get_followers().await.unwrap_or_default();
     if followers.is_empty() {
@@ -33,26 +32,22 @@ pub async fn select_follower<NEXT: CommandTrait, BACK: CommandTrait>(
     }
 
     let msg = target.markdown_message(prompt).await?;
-    let menu = create_followers_menu(
-        &followers,
-        |username| next_command(username).to_command_string(false),
-        back_command,
-        false,
-    );
+    let menu = create_followers_menu(&followers, next_command, back_command, false);
+    let keyboard = target.keyboard(menu).await;
     target
         .bot
         .edit_message_reply_markup(target.chat.id, msg.id)
-        .reply_markup(menu)
+        .reply_markup(keyboard)
         .await?;
     Ok(())
 }
 
 pub fn create_followers_menu(
     users: &[TelegramUsername],
-    operation: impl Fn(&TelegramUsername) -> String,
-    back_command: Option<impl CommandTrait>,
+    operation: impl Fn(&TelegramUsername) -> Command,
+    back_command: Option<Command>,
     inline: bool,
-) -> InlineKeyboardMarkup {
+) -> Vec<Vec<crate::ui::ButtonData>> {
     let texts = users
         .iter()
         .map(|username| format!("👤 {}", username.as_str()))

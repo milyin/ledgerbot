@@ -3,79 +3,46 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use telluride::{markdown_format, markdown_string};
 use teloxide::prelude::ResponseResult;
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg, NoopCommand};
 
 use crate::{
+    impl_command_execute_2, impl_command_io,
     menus::{select_category::select_category, update_category::update_category},
     storages::{Category, CategoryStorageTrait},
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandRemoveCategory {
     pub category: Option<Category>,
     pub confirm: Option<bool>,
 }
 
-impl CommandTrait for CommandRemoveCategory {
-    type A = Category;
-    type B = bool;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<dyn CategoryStorageTrait>;
-
-    const NAME: &'static str = "remove_category";
-    const PLACEHOLDERS: &[&'static str] = &["<name>", "<confirm>"];
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
-    }
-
-    fn param2(&self) -> Option<&Self::B> {
-        self.confirm.as_ref()
-    }
-
-    fn from_arguments(
-        category: Option<Self::A>,
-        confirm: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandRemoveCategory { category, confirm }
-    }
-
+impl CommandRemoveCategory {
     async fn run0(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
     ) -> ResponseResult<()> {
         select_category(
             target,
             &storage,
             markdown_string!("✏️ Select Category to remove"),
-            |category| CommandRemoveCategory {
-                category: Some(category.clone()),
-                confirm: None,
+            |category| {
+                CommandRemoveCategory {
+                    category: Some(category.clone()),
+                    confirm: None,
+                }
+                .into()
             },
-            None::<NoopCommand>,
+            None,
         )
         .await
     }
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         category: &Category,
     ) -> ResponseResult<()> {
         update_category(
@@ -87,19 +54,23 @@ impl CommandTrait for CommandRemoveCategory {
             CommandRemoveCategory {
                 category: Some(category.clone()),
                 confirm: Some(true),
-            },
-            Some(CommandRemoveCategory {
-                category: None,
-                confirm: None,
-            }),
+            }
+            .into(),
+            Some(
+                CommandRemoveCategory {
+                    category: None,
+                    confirm: None,
+                }
+                .into(),
+            ),
         )
         .await
     }
 
     async fn run2(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         category: &Category,
         confirm: &bool,
     ) -> ResponseResult<()> {
@@ -123,5 +94,25 @@ impl CommandTrait for CommandRemoveCategory {
             ))
             .await?;
         Ok(())
+    }
+}
+
+impl_command_io!(
+    CommandRemoveCategory,
+    "remove_category",
+    ["<name>", "<confirm>"],
+    category: Category,
+    confirm: bool
+);
+impl_command_execute_2!(
+    CommandRemoveCategory,
+    Arc<dyn CategoryStorageTrait>,
+    category,
+    confirm
+);
+
+impl From<CommandRemoveCategory> for crate::commands::Command {
+    fn from(cmd: CommandRemoveCategory) -> Self {
+        crate::commands::Command::RemoveCategory(cmd)
     }
 }

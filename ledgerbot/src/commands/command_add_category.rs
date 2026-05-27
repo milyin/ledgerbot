@@ -7,14 +7,15 @@ use teloxide::{
     prelude::{Requester, ResponseResult},
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
 };
-use yoroolbot::command_trait::{CommandReplyTarget, CommandTrait, EmptyArg};
 
 use crate::{
     commands::Command,
+    impl_command_execute_1, impl_command_io,
     storages::{Category, CategoryStorageTrait},
+    ui::CommandContext,
 };
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CommandAddCategory {
     pub category: Option<Category>,
 }
@@ -25,47 +26,12 @@ impl CommandAddCategory {
             category: Category::from_string(&name.into()).ok(),
         }
     }
-}
-
-impl CommandTrait for CommandAddCategory {
-    type A = Category;
-    type B = EmptyArg;
-    type C = EmptyArg;
-    type D = EmptyArg;
-    type E = EmptyArg;
-    type F = EmptyArg;
-    type G = EmptyArg;
-    type H = EmptyArg;
-    type I = EmptyArg;
-
-    type Context = Arc<dyn CategoryStorageTrait>;
-
-    const NAME: &'static str = "add_category";
-    const PLACEHOLDERS: &[&'static str] = &["<name>"];
-
-    fn from_arguments(
-        a: Option<Self::A>,
-        _: Option<Self::B>,
-        _: Option<Self::C>,
-        _: Option<Self::D>,
-        _: Option<Self::E>,
-        _: Option<Self::F>,
-        _: Option<Self::G>,
-        _: Option<Self::H>,
-        _: Option<Self::I>,
-    ) -> Self {
-        CommandAddCategory { category: a }
-    }
-
-    fn param1(&self) -> Option<&Self::A> {
-        self.category.as_ref()
-    }
 
     async fn run0(
         &self,
-        target: &CommandReplyTarget,
-        _storage: Self::Context,
-    ) -> teloxide::prelude::ResponseResult<()> {
+        target: &CommandContext,
+        _storage: Arc<dyn CategoryStorageTrait>,
+    ) -> ResponseResult<()> {
         target
             .send_markdown_message(markdown_string!("➕ Add Category"))
             .await?;
@@ -75,10 +41,10 @@ impl CommandTrait for CommandAddCategory {
 
     async fn run1(
         &self,
-        target: &CommandReplyTarget,
-        storage: Self::Context,
+        target: &CommandContext,
+        storage: Arc<dyn CategoryStorageTrait>,
         category: &Category,
-    ) -> teloxide::prelude::ResponseResult<()> {
+    ) -> ResponseResult<()> {
         match storage.add_category(category).await {
             Ok(()) => {
                 target
@@ -97,14 +63,16 @@ impl CommandTrait for CommandAddCategory {
     }
 }
 
+impl_command_io!(CommandAddCategory, "add_category", ["<name>"], category: Category);
+impl_command_execute_1!(CommandAddCategory, Arc<dyn CategoryStorageTrait>, category);
+
 impl From<CommandAddCategory> for crate::commands::Command {
     fn from(cmd: CommandAddCategory) -> Self {
         crate::commands::Command::AddCategory(cmd)
     }
 }
 
-/// Show add category menu
-pub async fn add_category_menu(target: &CommandReplyTarget) -> ResponseResult<()> {
+pub async fn add_category_menu(target: &CommandContext) -> ResponseResult<()> {
     let text = markdown_string!(
         "➕ **Add a new category:**\n\nClick the button below and type the category name\\."
     );
